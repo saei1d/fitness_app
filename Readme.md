@@ -26,7 +26,7 @@ ER diagram
 fitness
 
 ![img.png](img.png)
-
+-----------------------
 
 Users
 •	id
@@ -38,6 +38,7 @@ Users
 •	role (enum: customer, owner, admin)
 •	referral_code (کدی که خودش داره)
 •	referred_by (کسی که معرف بوده)
+-------------------
 Gyms
 •	id
 •	owner_id (FK → Users)
@@ -47,6 +48,7 @@ Gyms
 •	address
 •	working_hours
 •	banners / images
+--------------------
 Packages
 •	id
 •	gym_id (FK → Gyms)
@@ -54,6 +56,7 @@ Packages
 •	description
 •	price
 •	duration (مثلا ۱ ماهه، ۳ ماهه)
+-------------------
 Purchases
 •	id
 •	user_id (FK → Users)
@@ -61,11 +64,13 @@ Purchases
 •	purchase_date
 •	expire_date
 •	payment_status
+--------------
 Wallet (برای صاحب باشگاه)
 •	id
 •	owner_id (FK → Users where role=owner)
 •	balance
 •	updated_at
+----------------
 Transactions
 •	id
 •	wallet_id (FK → Wallet)
@@ -73,6 +78,7 @@ Transactions
 •	amount
 •	type (credit/debit)
 •	created_at
+---------------------
 Reviews
 •	id
 •	user_id
@@ -80,14 +86,17 @@ Reviews
 •	rating (1-5)
 •	comment
 •	created_at
+-------------------------------
 Favorites
 •	id
 •	user_id
 •	gym_id
+---------------------------
 FAQs
 •	id
 •	question
 •	answer
+---------------------------
 Tickets (برای سوال و جواب باکس)
 •	id
 •	user_id
