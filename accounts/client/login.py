@@ -8,6 +8,8 @@ from accounts.models import User, OTP
 import random
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.conf import settings
+from drf_spectacular.utils import extend_schema
+
 
 OTP_TTL_SECONDS = 300
 
@@ -19,6 +21,11 @@ def send_sms_fake(phone, code):
 class RequestOTPView(APIView):
     permission_classes = [permissions.AllowAny]
 
+    @extend_schema(
+        request=RequestOTPSerializer,
+        responses={200: dict},
+        description="ارسال پیام به شماره موبایل"
+    )
     def post(self, request):
         serializer = RequestOTPSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -46,6 +53,11 @@ class RequestOTPView(APIView):
 class VerifyOTPView(APIView):
     permission_classes = [permissions.AllowAny]
 
+    @extend_schema(
+        request=VerifyOTPSerializer,
+        responses={200: dict},
+        description="تایید پیام و دریافت توکن "
+    )
     def post(self, request):
         serializer = VerifyOTPSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -90,8 +102,13 @@ class VerifyOTPView(APIView):
 
 
 class CompleteRegistrationView(APIView):
-    permission_classes = [permissions.IsAuthenticated]  # باید با توکن احراز هویت شده باشد
+    permission_classes = [permissions.IsAuthenticated]
 
+    @extend_schema(
+        request=CompleteRegistrationSerializer,
+        responses={200: dict},
+        description="تکمیل اطلاعات با توکن"
+    )
     def post(self, request):
         serializer = CompleteRegistrationSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
