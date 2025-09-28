@@ -1,7 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, BaseUserManager
 from django.utils import timezone
-import uuid
+
 
 class UserManager(BaseUserManager):
     def create_user(self, phone, password=None, **extra_fields):
@@ -20,6 +20,7 @@ class UserManager(BaseUserManager):
         extra_fields.setdefault('is_superuser', True)
         return self.create_user(phone, password, **extra_fields)
 
+
 class User(AbstractBaseUser, PermissionsMixin):
     phone = models.CharField(max_length=20, unique=True)
     first_name = models.CharField(max_length=150, blank=True)
@@ -29,6 +30,12 @@ class User(AbstractBaseUser, PermissionsMixin):
     is_staff = models.BooleanField(default=False)
     date_joined = models.DateTimeField(default=timezone.now)
     is_phone_verified = models.BooleanField(default=False)
+    ROLES_CHOICES = [
+        ('client', 'Client'),
+        ('manager', 'Manager'),
+        ('admin', 'Admin'),
+    ]
+    role = models.CharField(max_length=20, choices=ROLES_CHOICES, default='client')
 
     objects = UserManager()
 
@@ -37,6 +44,7 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     def __str__(self):
         return self.phone
+
 
 class OTP(models.Model):
     phone = models.CharField(max_length=20)

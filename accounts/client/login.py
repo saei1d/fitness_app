@@ -9,11 +9,12 @@ import random
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.conf import settings
 
-OTP_TTL_SECONDS = 300  # 5 minutes, قابل تغییر
+OTP_TTL_SECONDS = 300
+
 
 def send_sms_fake(phone, code):
-    # جای ارسال واقعی قرار می‌گیرد؛ فعلاً تستی چاپ می‌کنیم
     print(f"[FAKE SMS] To: {phone}, OTP: {code}")
+
 
 class RequestOTPView(APIView):
     permission_classes = [permissions.AllowAny]
@@ -23,7 +24,6 @@ class RequestOTPView(APIView):
         serializer.is_valid(raise_exception=True)
         phone = serializer.validated_data['phone']
 
-        # تولید کد تستی 6 رقمی
         code = f"{random.randint(0, 999999):06d}"
         now = timezone.now()
         otp = OTP.objects.create(
@@ -33,9 +33,7 @@ class RequestOTPView(APIView):
             expires_at=now + timedelta(seconds=OTP_TTL_SECONDS)
         )
 
-        # اگر قبلاً کاربر وجود نداشت، پیش‌ثبت‌نام کن (بدون password و is_phone_verified=False)
         user, created = User.objects.get_or_create(phone=phone)
-        # اگر کاربر از قبل وجود داشت تغییری نمیدیم؛ فقط OTP تولید شد.
 
         send_sms_fake(phone, code)
 
@@ -43,6 +41,7 @@ class RequestOTPView(APIView):
             "detail": "OTP sent (test).",
             "is_new_user": created
         }, status=status.HTTP_200_OK)
+
 
 class VerifyOTPView(APIView):
     permission_classes = [permissions.AllowAny]
@@ -62,18 +61,14 @@ class VerifyOTPView(APIView):
         if otp.code != code:
             return Response({"detail": "Invalid OTP."}, status=status.HTTP_400_BAD_REQUEST)
 
-        # علامت زده می‌شود به عنوان استفاده شده
         otp.is_used = True
         otp.save()
 
-        # کاربر را پیدا یا ایجاد کن
         user, created = User.objects.get_or_create(phone=phone)
 
-        # الآن شماره را VERIFIED میکنیم (پیش‌ثبت‌نام کامل شد از نظر شماره)
         user.is_phone_verified = True
         user.save()
 
-        # ساخت توکن JWT و بازگرداندن آن — فرانت با این توکن به صفحه تکمیل پروفایل می‌رود
         refresh = RefreshToken.for_user(user)
         access = str(refresh.access_token)
         refresh_token = str(refresh)
@@ -93,6 +88,7 @@ class VerifyOTPView(APIView):
             }
         }, status=status.HTTP_200_OK)
 
+
 class CompleteRegistrationView(APIView):
     permission_classes = [permissions.IsAuthenticated]  # باید با توکن احراز هویت شده باشد
 
@@ -102,8 +98,6 @@ class CompleteRegistrationView(APIView):
 
         user = request.user
 
-        # فقط اگر شماره تأیید نشده یا کاربر بدون مشخصات باشد، اجازه تکمیل می‌دهیم.
-        # (در هر صورت اجازه می‌دهیم تا بتواند مشخصات را به‌روز کند)
         first_name = serializer.validated_data['first_name']
         last_name = serializer.validated_data['last_name']
         birthdate = serializer.validated_data['birthdate']
