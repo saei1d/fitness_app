@@ -59,36 +59,36 @@
 #         return f"Image {self.id} for {self.gym.name}"
 # -------------------------------------------------------------------------------
 
-# from django.conf import settings
-# from django.contrib.gis.db import models as gis_models
-# from django.db import models
-# from accounts.models import User
-#
-#
-# class GymGeo(models.Model):
-#     owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name="gyms_geo")
-#     name = models.CharField(max_length=255)
-#     description = models.TextField(blank=True)
-#     location = gis_models.PointField(geography=True, null=True, blank=True)  # (lng, lat)
-#     address = models.CharField(max_length=512, blank=True)
-#     working_hours = models.JSONField(null=True, blank=True)
-#     banner = models.ImageField(upload_to="gyms/banners/", null=True, blank=True)
-#     created_at = models.DateTimeField(auto_now_add=True)
-#     updated_at = models.DateTimeField(auto_now=True)
-#
-#     def __str__(self):
-#         return self.name
-#
-#
-# class GymImage(models.Model):
-#     gym = models.ForeignKey(GymGeo, on_delete=models.CASCADE, related_name="images")
-#     image = models.ImageField(upload_to="gyms/images/")
-#     alt_text = models.CharField(max_length=255, blank=True)
-#     order = models.PositiveSmallIntegerField(default=0)
-#     uploaded_at = models.DateTimeField(auto_now_add=True)
-#
-#     class Meta:
-#         ordering = ["order", "uploaded_at"]
-#
-#     def __str__(self):
-#         return f"Image {self.id} for {self.gym.name}"
+from django.conf import settings
+from django.contrib.gis.db import models as gis_models
+from django.db import models
+from accounts.models import User
+
+
+class GymGeo(models.Model):
+    owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name="gyms_geo")
+    name = models.CharField(max_length=255)
+    description = models.TextField(blank=True)
+    location = gis_models.PointField(geography=True, null=True, blank=True)  # (lng, lat)
+    address = models.CharField(max_length=512, blank=True)
+    working_hours = models.JSONField(null=True, blank=True)
+    banner = models.ImageField(upload_to="gyms/banners/", null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.name
+
+
+class GymImage(models.Model):
+    gym = models.ForeignKey(GymGeo, on_delete=models.CASCADE, related_name="images")
+    image = models.ImageField(upload_to="gyms/images/")
+    alt_text = models.CharField(max_length=255, blank=True)
+    order = models.PositiveSmallIntegerField(default=0)
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["order", "uploaded_at"]
+
+    def __str__(self):
+        return f"Image {self.id} for {self.gym.name}"

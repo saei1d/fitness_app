@@ -149,8 +149,3 @@ STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-
-
-# GDAL_LIBRARY_PATH = r'C:\project\dependencies\OSGeo4W\bin\gdal311.dll'
-# GEOS_LIBRARY_PATH = r'C:\project\dependencies\OSGeo4W\bin\geos_c.dll'
-# #set path in os
