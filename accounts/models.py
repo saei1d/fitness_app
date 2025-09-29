@@ -23,19 +23,20 @@ class UserManager(BaseUserManager):
 
 class User(AbstractBaseUser, PermissionsMixin):
     phone = models.CharField(max_length=20, unique=True)
-    first_name = models.CharField(max_length=150, blank=True)
-    last_name = models.CharField(max_length=150, blank=True)
+    full_name = models.CharField(max_length=250, blank=True)
     birthdate = models.DateField(null=True, blank=True)
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
     date_joined = models.DateTimeField(default=timezone.now)
     is_phone_verified = models.BooleanField(default=False)
     ROLES_CHOICES = [
-        ('client', 'Client'),
-        ('manager', 'Manager'),
+        ('customer', 'Customer'),
+        ('owner', 'Owner'),
         ('admin', 'Admin'),
     ]
     role = models.CharField(max_length=20, choices=ROLES_CHOICES, default='client')
+    referral_code = models.CharField(max_length=20)
+    referred_by = models.CharField(max_length=20, blank=True , null=True)
 
     objects = UserManager()
 

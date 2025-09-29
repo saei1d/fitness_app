@@ -40,8 +40,10 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'rest_framework_simplejwt',
+    'django.contrib.gis',
     'drf_spectacular',
     'accounts',
+    'gyms',
 
 ]
 
@@ -146,3 +148,9 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+
+
+# GDAL_LIBRARY_PATH = r'C:\project\dependencies\OSGeo4W\bin\gdal311.dll'
+# GEOS_LIBRARY_PATH = r'C:\project\dependencies\OSGeo4W\bin\geos_c.dll'
+# #set path in os

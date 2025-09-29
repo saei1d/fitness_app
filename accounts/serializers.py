@@ -14,7 +14,7 @@ class VerifyOTPSerializer(serializers.Serializer):
 
 
 class CompleteRegistrationSerializer(serializers.Serializer):
-    first_name = serializers.CharField()
-    last_name = serializers.CharField()
+    full_name = serializers.CharField()
     birthdate = serializers.DateField()
-    password = serializers.CharField(min_length=6, write_only=True)
+    password = serializers.CharField(min_length=6, write_only=True, help_text="رمز عبور بیشتر از 6  رقم"
+                                     )

@@ -1,17 +1,16 @@
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import status, permissions
-from django.utils import timezone
-from datetime import timedelta
-from accounts.serializers import RequestOTPSerializer, VerifyOTPSerializer, CompleteRegistrationSerializer
-from accounts.models import User, OTP
-import random
-from rest_framework_simplejwt.tokens import RefreshToken
-from django.conf import settings
-from drf_spectacular.utils import extend_schema
-
+from accounts.imports import *
 
 OTP_TTL_SECONDS = 300
+
+
+def generate_referral_code(existing_codes):
+    random_code = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(5))
+
+    while random_code in existing_codes:
+        random_code = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(5))
+
+    print(f"Referral Code Generated: {random_code}")
+    return random_code
 
 
 def send_sms_fake(phone, code):
@@ -85,7 +84,7 @@ class VerifyOTPView(APIView):
         access = str(refresh.access_token)
         refresh_token = str(refresh)
 
-        is_profile_complete = bool(user.first_name and user.last_name and user.birthdate and user.has_usable_password())
+        is_profile_complete = bool(user.full_name and user.birthdate and user.has_usable_password())
 
         return Response({
             "access": access,
@@ -93,8 +92,7 @@ class VerifyOTPView(APIView):
             "is_profile_complete": is_profile_complete,
             "user": {
                 "phone": user.phone,
-                "first_name": user.first_name,
-                "last_name": user.last_name,
+                "full_name": user.full_name,
                 "birthdate": user.birthdate,
                 "is_phone_verified": user.is_phone_verified
             }
@@ -112,16 +110,19 @@ class CompleteRegistrationView(APIView):
     def post(self, request):
         serializer = CompleteRegistrationSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-
         user = request.user
 
-        first_name = serializer.validated_data['first_name']
-        last_name = serializer.validated_data['last_name']
+        full_name = serializer.validated_data['full_name']
         birthdate = serializer.validated_data['birthdate']
         password = serializer.validated_data['password']
 
-        user.first_name = first_name
-        user.last_name = last_name
+        #make refrrall code
+
+        existing_codes = User.objects.values_list("referral_code", flat=True)
+        new_code = generate_referral_code(existing_codes)
+
+        user.referral_code = new_code
+        user.full_name = full_name
         user.birthdate = birthdate
         user.set_password(password)
         user.save()
@@ -129,9 +130,19 @@ class CompleteRegistrationView(APIView):
         return Response({
             "detail": "Profile completed.",
             "user": {
+                "referral":user.referral_code,
                 "phone": user.phone,
-                "first_name": user.first_name,
-                "last_name": user.last_name,
+                "full_name": user.full_name,
                 "birthdate": user.birthdate
             }
         }, status=status.HTTP_200_OK)
+
+
+
+
+
+
+
+
+
+
