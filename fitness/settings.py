@@ -40,7 +40,6 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'rest_framework_simplejwt',
-    'django.contrib.gis',
     'drf_spectacular',
     'accounts',
     'gyms',
@@ -104,10 +103,15 @@ SIMPLE_JWT = {
 }
 
 SPECTACULAR_SETTINGS = {
-    'TITLE': 'Fitness App',
-    'DESCRIPTION': 'مستندات پروژه',
+    'TITLE': 'fitness',
+    'DESCRIPTION': 'API description',
     'VERSION': '1.0.0',
     'SERVE_INCLUDE_SCHEMA': False,
+    'TAGS': [
+        {'name': 'Authentication'},
+        {'name': 'Gym'},
+    ],
+    'TAGS_SORTER': 'alpha',
 }
 
 # Password validation

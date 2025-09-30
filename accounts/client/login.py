@@ -17,6 +17,7 @@ def send_sms_fake(phone, code):
     print(f"[FAKE SMS] To: {phone}, OTP: {code}")
 
 
+@extend_schema(tags=['Authentication'])
 class RequestOTPView(APIView):
     permission_classes = [permissions.AllowAny]
 
@@ -49,6 +50,7 @@ class RequestOTPView(APIView):
         }, status=status.HTTP_200_OK)
 
 
+@extend_schema(tags=['Authentication'])
 class VerifyOTPView(APIView):
     permission_classes = [permissions.AllowAny]
 
@@ -99,6 +101,7 @@ class VerifyOTPView(APIView):
         }, status=status.HTTP_200_OK)
 
 
+@extend_schema(tags=['Authentication'])
 class CompleteRegistrationView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -116,7 +119,7 @@ class CompleteRegistrationView(APIView):
         birthdate = serializer.validated_data['birthdate']
         password = serializer.validated_data['password']
 
-        #make refrrall code
+        # make refrrall code
 
         existing_codes = User.objects.values_list("referral_code", flat=True)
         new_code = generate_referral_code(existing_codes)
@@ -130,19 +133,9 @@ class CompleteRegistrationView(APIView):
         return Response({
             "detail": "Profile completed.",
             "user": {
-                "referral":user.referral_code,
+                "referral": user.referral_code,
                 "phone": user.phone,
                 "full_name": user.full_name,
                 "birthdate": user.birthdate
             }
         }, status=status.HTTP_200_OK)
-
-
-
-
-
-
-
-
-
-

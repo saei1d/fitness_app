@@ -2,4 +2,4 @@ django
 djangorestframework
 djangorestframework-simplejwt
 drf-spectacular
-GDAL==3.11
+Pillow
