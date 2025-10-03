@@ -14,14 +14,6 @@ This project provides a backend system for managing users, gyms, packages, payme
 
 ---
 
-## Requirements
-- Python 3.10+  
-- Django 5.x  
-- PostgreSQL or SQLite  
-
----
-
-
 ER diagram
 fitness
 
@@ -107,33 +99,3 @@ Tickets (برای سوال و جواب باکس)
 
 
 
-
-
-
-
-
-
-
-## Installation
-
-```bash
-# Clone the repository
-git clone https://github.com/saei1d/fitness_app.git
-cd fitness_app
-
-# Create a virtual environment
-python -m venv venv
-source venv/bin/activate   # (Linux/Mac)
-venv\Scripts\activate      # (Windows)
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Run migrations
-python manage.py migrate
-
-# Create a superuser
-python manage.py createsuperuser
-
-# Start the development server
-python manage.py runserver
