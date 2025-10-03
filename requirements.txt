@@ -3,3 +3,5 @@ djangorestframework
 djangorestframework-simplejwt
 drf-spectacular
 Pillow
+Django[gis]>=4.2
+psycopg2-binary>=2.9

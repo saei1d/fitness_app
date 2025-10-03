@@ -1,12 +1,13 @@
 from rest_framework import serializers
 from .models import GymImage, Gym
+from django.contrib.gis.geos import Point
+from .models import Gym
 
 
 class GymImageSerializer(serializers.ModelSerializer):
     class Meta:
         model = GymImage
         fields = ["gym", "image", "alt_text", "order", "uploaded_at"]
-
 
     def create(self, validated_data):
         gym_id = validated_data["gym"]
@@ -25,11 +26,23 @@ class GymImageSerializer(serializers.ModelSerializer):
 
 
 class GymSerializer(serializers.ModelSerializer):
-    images = GymImageSerializer(many=True, read_only=True)
+    latitude = serializers.FloatField(write_only=True)
+    longitude = serializers.FloatField(write_only=True)
 
     class Meta:
         model = Gym
-        fields = [
-            "owner", "name", "description", "latitude", "longitude", "address",
-            "working_hours", "banner", "created_at", "updated_at", "images"
-        ]
+        fields = ["id", "owner", "name", "description", "address", "working_hours",
+                  "banner", "latitude", "longitude"]
+
+    def create(self, validated_data):
+        latitude = validated_data.pop("latitude")
+        longitude = validated_data.pop("longitude")
+        validated_data["location"] = Point(float(longitude), float(latitude), srid=4326)
+        return super().create(validated_data)
+
+    def update(self, instance, validated_data):
+        latitude = validated_data.pop("latitude", None)
+        longitude = validated_data.pop("longitude", None)
+        if latitude and longitude:
+            validated_data["location"] = Point(float(longitude), float(latitude), srid=4326)
+        return super().update(instance, validated_data)

@@ -45,7 +45,7 @@ class RequestOTPView(APIView):
         send_sms_fake(phone, code)
 
         return Response({
-            "detail": "OTP sent (test).",
+            "detail": f'OTP sent {code}',
             "is_new_user": created
         }, status=status.HTTP_200_OK)
 

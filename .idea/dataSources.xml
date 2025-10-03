@@ -16,5 +16,12 @@
         </library>
       </libraries>
     </data-source>
+    <data-source source="LOCAL" name="mydb@localhost" uuid="8957169e-76d9-4c0c-86b6-19b3525dfd0b">
+      <driver-ref>postgresql</driver-ref>
+      <synchronize>true</synchronize>
+      <jdbc-driver>org.postgresql.Driver</jdbc-driver>
+      <jdbc-url>jdbc:postgresql://localhost:5432/mydb</jdbc-url>
+      <working-dir>$ProjectFileDir$</working-dir>
+    </data-source>
   </component>
 </project>
