@@ -21,24 +21,42 @@ class GymDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Gym.objects.all()
     serializer_class = GymSerializer
 
+from rest_framework import generics, permissions, status, serializers
+from rest_framework.response import Response
+from drf_spectacular.utils import extend_schema
 
-@extend_schema(tags=["GymImage"])
+from ..models import GymImage
+from ..serializers import GymImageSerializer
+
+
+class GymImageBulkUploadRequestSerializer(serializers.Serializer):
+    gym = serializers.IntegerField(required=True)
+    images = serializers.ListField(
+        child=serializers.ImageField(), required=True
+    )
+    alt_texts = serializers.ListField(
+        child=serializers.CharField(allow_blank=True), required=False
+    )
+
+
+@extend_schema(
+    tags=["GymImage"],
+    request=GymImageBulkUploadRequestSerializer,
+    responses=GymImageSerializer(many=True),
+)
 class GymImageBulkUploadView(generics.GenericAPIView):
     permission_classes = [permissions.IsAuthenticated]
+    serializer_class = GymImageBulkUploadRequestSerializer  # 👈 اضافه شد
 
     def post(self, request, *args, **kwargs):
-        gym_id = request.data.get("gym")
-        images = request.FILES.getlist("images")
-        alt_texts = request.data.getlist("alt_texts") if "alt_texts" in request.data else []
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
 
-        if not gym_id or not images:
-            return Response(
-                {"detail": "gym و حداقل یک image الزامی است."},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+        gym_id = serializer.validated_data["gym"]
+        images = serializer.validated_data["images"]
+        alt_texts = serializer.validated_data.get("alt_texts", [])
 
         if len(alt_texts) < len(images):
-            # پر کردن alt_texts خالی برای عکس‌های اضافه
             alt_texts += [""] * (len(images) - len(alt_texts))
 
         gym_images = []
@@ -54,4 +72,3 @@ class GymImageBulkUploadView(generics.GenericAPIView):
             GymImageSerializer(gym_images, many=True).data,
             status=status.HTTP_201_CREATED
         )
-
