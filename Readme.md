@@ -97,5 +97,10 @@ Tickets (برای سوال و جواب باکس)
 •	status (open/closed)
 •	created_at
 
+-------------------------------
+
+docker exec -it fitness_app-db-1 psql -U myuser -d mydb
+\dt public.*
+SELECT * FROM auth_user;
 
 

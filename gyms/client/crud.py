@@ -1,7 +1,12 @@
 from drf_spectacular.utils import extend_schema
 from rest_framework import generics
 from rest_framework.response import Response
+from rest_framework import generics, permissions, status, serializers
+from rest_framework.response import Response
 
+from finance.models import Wallet
+from ..models import GymImage
+from ..serializers import GymImageSerializer
 from ..models import Gym
 from ..serializers import *
 from rest_framework import status, permissions
@@ -14,19 +19,20 @@ class GymListCreateView(generics.ListCreateAPIView):
     queryset = Gym.objects.all()
     serializer_class = GymSerializer
 
+    def perform_create(self, serializer):
+        gym = serializer.save(owner=self.request.user)
+        user = self.request.user
+        if user.role != 'owner':
+            user.role = 'owner'
+            user.save(update_fields=['role'])
+        Wallet.objects.get_or_create(owner=user)
+
 
 @extend_schema(tags=['Gym'])
 class GymDetailView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [permissions.IsAuthenticated]
     queryset = Gym.objects.all()
     serializer_class = GymSerializer
-
-from rest_framework import generics, permissions, status, serializers
-from rest_framework.response import Response
-from drf_spectacular.utils import extend_schema
-
-from ..models import GymImage
-from ..serializers import GymImageSerializer
 
 
 class GymImageBulkUploadRequestSerializer(serializers.Serializer):
