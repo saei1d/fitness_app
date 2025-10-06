@@ -1,0 +1,47 @@
+name: Django + PostGIS CI (Docker Compose)
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    env:
+      POSTGRES_DB: mydb
+      POSTGRES_USER: myuser
+      POSTGRES_PASSWORD: mypassword
+      DATABASE_URL: postgres://myuser:mypassword@db:5432/mydb
+      DJANGO_SETTINGS_MODULE: fitness.settings
+      SECRET_KEY: testsecretkey
+      DEBUG: "False"
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Compose
+        run: docker compose version
+
+      - name: Build and start services
+        run: docker compose up -d --build
+
+      - name: Wait for database to be ready
+        run: |
+          echo "Waiting for PostgreSQL to be ready..."
+          until docker exec $(docker compose ps -q db) pg_isready -U $POSTGRES_USER; do
+            sleep 2
+          done
+
+      - name: Run migrations
+        run: docker compose exec -T web python manage.py migrate
+
+      - name: Run Django tests
+        run: docker compose exec -T web python manage.py test
+
+      - name: Shut down
+        if: always()
+        run: docker compose down -v
