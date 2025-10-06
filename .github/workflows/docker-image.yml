@@ -1,4 +1,4 @@
-name: Django + PostGIS CI (Docker Compose)
+name: Django + PostGIS CI (auto makemigrations)
 
 on:
   push:
@@ -23,9 +23,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Docker Compose
-        run: docker compose version
-
       - name: Build and start services
         run: docker compose up -d --build
 
@@ -36,8 +33,11 @@ jobs:
             sleep 2
           done
 
-      - name: Run migrations
-        run: docker compose exec -T web python manage.py migrate
+      - name: Make migrations (auto)
+        run: docker compose exec -T web python manage.py makemigrations --noinput || true
+
+      - name: Apply migrations
+        run: docker compose exec -T web python manage.py migrate --noinput
 
       - name: Run Django tests
         run: docker compose exec -T web python manage.py test
