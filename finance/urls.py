@@ -1,5 +1,5 @@
-from django.urls import path , include
+from django.urls import path, include
 
 urlpatterns = [
-    path('', include('finance.client.urls')),
+    path('purchase/', include('finance.client.urls')),
 ]

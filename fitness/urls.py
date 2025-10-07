@@ -12,6 +12,8 @@ urlpatterns = [
     path('api/', include('gyms.urls')),
     path('api/', include('packages.urls')),
 
+    path('api/', include('finance.urls')),
+
 ]
 
 

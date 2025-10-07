@@ -3,7 +3,8 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from finance.serializers import PurchaseSerializer
+from finance.models import Transaction
+from finance.serializers import PurchaseSerializer, TransactionSerializer  # اضافه کردن TransactionSerializer
 from packages.models import Package
 
 
@@ -25,9 +26,16 @@ class CreatePendingPurchaseView(APIView):
         try:
             with transaction.atomic():
                 purchase = serializer.save()
+
+                trans = Transaction.objects.create(
+                    amount=package.price,
+                    purchase=purchase
+                )
+
                 return Response({
                     'message': 'Pending purchase created',
-                    'purchase': PurchaseSerializer(purchase).data
+                    'purchase': PurchaseSerializer(purchase).data,
+                    'transaction': TransactionSerializer(trans).data  # سریال‌سازی شیء Transaction
                 }, status=201)
 
         except Exception as e:

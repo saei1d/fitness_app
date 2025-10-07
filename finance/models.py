@@ -57,6 +57,10 @@ class Transaction(models.Model):
         ('credit', 'Credit'),
         ('debit', 'Debit'),
     ]
+    TRANSACTION_STATUS = [
+        ('pending', 'Pending'),
+        ('paid', 'Paid'),
+    ]
 
     wallet = models.ForeignKey(Wallet, on_delete=models.CASCADE, related_name='transactions', null=True, blank=True)
     admin_wallet = models.ForeignKey(AdminWallet, on_delete=models.CASCADE, related_name='transactions', null=True,
@@ -64,7 +68,9 @@ class Transaction(models.Model):
     purchase = models.ForeignKey(Purchase, on_delete=models.SET_NULL, null=True, blank=True,
                                  related_name='transactions')
     amount = models.DecimalField(max_digits=12, decimal_places=2)
-    type = models.CharField(max_length=6, choices=TRANSACTION_TYPES)
+    type = models.CharField(max_length=6, choices=TRANSACTION_TYPES,default='credit')
+    status = models.CharField(max_length=20, choices=TRANSACTION_STATUS, default='pending')
+    payment_id = models.BigIntegerField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -72,10 +78,3 @@ class Transaction(models.Model):
             self.admin_wallet.__str__() if self.admin_wallet else "Unknown")
         return f"{self.type.capitalize()} - {self.amount} ({owner_name})"
 
-    class Meta:
-        constraints = [
-            models.CheckConstraint(
-                check=models.Q(wallet__isnull=False) | models.Q(admin_wallet__isnull=False),
-                name='wallet_or_admin_wallet_required'
-            )
-        ]

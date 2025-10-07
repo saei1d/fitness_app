@@ -1,7 +1,9 @@
 # urls.py
 from django.urls import path
-from .purchase import PurchasePackageView
+from .pending_purchase import CreatePendingPurchaseView
+from .purchase import FinalizePurchaseView
 
 urlpatterns = [
-    path('purchase/<int:package_id>/', PurchasePackageView.as_view(), name='purchase-package'),
+    path('pending/<int:package_id>/', CreatePendingPurchaseView.as_view(), name='pending-purchase-package'),
+    path('final/', FinalizePurchaseView.as_view(), name='final-purchase-package'),
 ]

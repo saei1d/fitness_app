@@ -8,6 +8,7 @@ class PurchaseSerializer(serializers.ModelSerializer):
     class Meta:
         model = Purchase
         fields = '__all__'
+        read_only_fields = ['user', 'total_amount', 'commission_amount', 'net_amount']
 
     def validate(self, data):
         package = data.get('package')
@@ -36,19 +37,19 @@ class PurchaseSerializer(serializers.ModelSerializer):
         return purchase
 
 
-class WalletSerializer(serializers.Serializer):
+class WalletSerializer(serializers.ModelSerializer):
     class Meta:
         model = Wallet
         fields = '__all__'
 
 
-class AdminWalletSerializer(serializers.Serializer):
+class AdminWalletSerializer(serializers.ModelSerializer):
     class Meta:
         model = AdminWallet
         fields = '__all__'
 
 
-class TransactionSerializer(serializers.Serializer):
+class TransactionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Transaction
         fields = '__all__'
