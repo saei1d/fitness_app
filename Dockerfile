@@ -13,6 +13,8 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+COPY badwords_fa.json /app/badwords_fa.json
+
 COPY . .
 
 CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]

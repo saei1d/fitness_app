@@ -14,6 +14,8 @@ urlpatterns = [
 
     path('api/', include('finance.urls')),
 
+    path('api/', include('interactions.urls')),
+
 ]
 
 

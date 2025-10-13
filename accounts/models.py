@@ -8,10 +8,7 @@ class UserManager(BaseUserManager):
         if not phone:
             raise ValueError("Phone must be set")
         user = self.model(phone=phone, **extra_fields)
-        if password:
-            user.set_password(password)
-        else:
-            user.set_unusable_password()
+
         user.save(using=self._db)
         return user
 
@@ -28,15 +25,15 @@ class User(AbstractBaseUser, PermissionsMixin):
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
     date_joined = models.DateTimeField(default=timezone.now)
-    is_phone_verified = models.BooleanField(default=False)
     ROLES_CHOICES = [
         ('customer', 'Customer'),
         ('owner', 'Owner'),
         ('admin', 'Admin'),
     ]
-    role = models.CharField(max_length=20, choices=ROLES_CHOICES, default='client')
+    role = models.CharField(max_length=20, choices=ROLES_CHOICES, default='customer')
     referral_code = models.CharField(max_length=20)
     referred_by = models.CharField(max_length=20, blank=True , null=True)
+    is_banned_from_reviews = models.BooleanField(default=False)
 
     objects = UserManager()
 

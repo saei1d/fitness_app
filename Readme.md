@@ -84,11 +84,6 @@ Favorites
 •	user_id
 •	gym_id
 ---------------------------
-FAQs
-•	id
-•	question
-•	answer
----------------------------
 Tickets (برای سوال و جواب باکس)
 •	id
 •	user_id

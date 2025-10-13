@@ -1,5 +1,6 @@
 from django.db import transaction
 from django.utils import timezone
+from drf_spectacular.utils import extend_schema
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -7,9 +8,14 @@ from finance.models import Purchase, Wallet, AdminWallet, Transaction
 from finance.serializers import PurchaseSerializer
 
 
+@extend_schema(tags=['purchase'])
 class FinalizePurchaseView(APIView):
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(
+        responses={200: dict},
+        description="فقط کافیه transaction_id رو بفرستی "
+    )
     def post(self, request):
         transaction_id = request.data.get('transaction_id')
         if not transaction_id:

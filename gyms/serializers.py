@@ -32,7 +32,7 @@ class GymSerializer(serializers.ModelSerializer):
     class Meta:
         model = Gym
         fields = ["id", "owner", "name", "description", "address", "working_hours",
-                  "banner", "latitude", "longitude"]
+                  "banner", "latitude", "longitude", 'comments', 'average_rating']
 
     def create(self, validated_data):
         latitude = validated_data.pop("latitude")

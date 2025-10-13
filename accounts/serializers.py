@@ -12,9 +12,7 @@ class VerifyOTPSerializer(serializers.Serializer):
     phone = serializers.CharField()
     code = serializers.CharField()
 
-
-class CompleteRegistrationSerializer(serializers.Serializer):
-    full_name = serializers.CharField()
-    birthdate = serializers.DateField()
-    password = serializers.CharField(min_length=6, write_only=True, help_text="رمز عبور بیشتر از 6  رقم"
-                                     )
+class EditProfileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['full_name', 'birthdate']  

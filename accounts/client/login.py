@@ -1,5 +1,4 @@
 from accounts.imports import *
-
 OTP_TTL_SECONDS = 300
 
 
@@ -101,41 +100,18 @@ class VerifyOTPView(APIView):
         }, status=status.HTTP_200_OK)
 
 
-@extend_schema(tags=['Authentication'])
-class CompleteRegistrationView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
-
+@extend_schema(tags=['EditProfile'])
+class EditProfileView(APIView):
+    permission_classes = [IsAuthenticated]
     @extend_schema(
-        request=CompleteRegistrationSerializer,
+        request=EditProfileSerializer,
         responses={200: dict},
-        description="تکمیل اطلاعات با توکن"
+        description="ادیت پروفایل"
     )
-    def post(self, request):
-        serializer = CompleteRegistrationSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
+    def put(self, request):
         user = request.user
-
-        full_name = serializer.validated_data['full_name']
-        birthdate = serializer.validated_data['birthdate']
-        password = serializer.validated_data['password']
-
-        # make refrrall code
-
-        existing_codes = User.objects.values_list("referral_code", flat=True)
-        new_code = generate_referral_code(existing_codes)
-
-        user.referral_code = new_code
-        user.full_name = full_name
-        user.birthdate = birthdate
-        user.set_password(password)
-        user.save()
-
-        return Response({
-            "detail": "Profile completed.",
-            "user": {
-                "referral": user.referral_code,
-                "phone": user.phone,
-                "full_name": user.full_name,
-                "birthdate": user.birthdate
-            }
-        }, status=status.HTTP_200_OK)
+        serializer = EditProfileSerializer(user, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

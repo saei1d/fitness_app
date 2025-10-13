@@ -15,6 +15,8 @@ class Gym(gis_models.Model):
     working_hours = models.JSONField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    average_rating = models.FloatField(default=0.0)
+    comments = models.IntegerField(default=0)
     banner = models.ImageField(upload_to="gyms/banners/", null=True, blank=True)
 
     class Meta:

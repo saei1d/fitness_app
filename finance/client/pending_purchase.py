@@ -1,4 +1,5 @@
 from django.db import transaction
+from drf_spectacular.utils import extend_schema
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -7,7 +8,7 @@ from finance.models import Transaction
 from finance.serializers import PurchaseSerializer, TransactionSerializer  # اضافه کردن TransactionSerializer
 from packages.models import Package
 
-
+@extend_schema(tags=['purchase'])
 class CreatePendingPurchaseView(APIView):
     permission_classes = [IsAuthenticated]
 
