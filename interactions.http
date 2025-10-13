@@ -1,0 +1,84 @@
+### Interactions API Tests
+
+### Variables
+@baseUrl = http://localhost:8000/api
+@token = your_jwt_token_here
+
+### 1. Get All Reviews
+GET {{baseUrl}}/reviews/
+Authorization: Bearer {{token}}
+
+### 2. Create New Review
+POST {{baseUrl}}/reviews/
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+    "gym": 1,
+    "rating": 5,
+    "comment": "Great gym with excellent facilities!"
+}
+
+### 3. Get Review Details
+GET {{baseUrl}}/reviews/1/
+Authorization: Bearer {{token}}
+
+### 4. Update Review (Owner only)
+PUT {{baseUrl}}/reviews/1/
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+    "gym": 1,
+    "rating": 4,
+    "comment": "Updated review comment"
+}
+
+### 5. Delete Review
+DELETE {{baseUrl}}/reviews/1/
+Authorization: Bearer {{token}}
+
+### 6. Report Review (Owner only)
+POST {{baseUrl}}/reviews/1/report/
+Authorization: Bearer {{token}}
+
+### 7. Reply to Review (Owner only)
+POST {{baseUrl}}/reviews/
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+    "gym": 1,
+    "rating": 5,
+    "comment": "Thank you for your feedback!",
+    "reply_to": 1
+}
+
+### 8. Get User Favorites
+GET {{baseUrl}}/favorites/
+Authorization: Bearer {{token}}
+
+### 9. Add Gym to Favorites
+POST {{baseUrl}}/favorites/
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+    "gym": 1
+}
+
+### 10. Get Favorite Details
+GET {{baseUrl}}/favorites/1/
+Authorization: Bearer {{token}}
+
+### 11. Remove from Favorites
+DELETE {{baseUrl}}/favorites/1/
+Authorization: Bearer {{token}}
+
+### 12. Get Gym Reviews
+GET {{baseUrl}}/reviews/?gym=1
+Authorization: Bearer {{token}}
+
+### 13. Get User Reviews
+GET {{baseUrl}}/reviews/?user=1
+Authorization: Bearer {{token}}

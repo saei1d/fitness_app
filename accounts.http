@@ -1,0 +1,61 @@
+### Accounts API Tests
+
+### Variables
+@baseUrl = http://localhost:8000/api
+@token = your_jwt_token_here
+
+### 1. Login - Get JWT Token
+POST {{baseUrl}}/auth/login/
+Content-Type: application/json
+
+{
+    "phone": "09123456789",
+    "password": "your_password"
+}
+
+### 2. Refresh Token
+POST {{baseUrl}}/token/refresh/
+Content-Type: application/json
+
+{
+    "refresh": "your_refresh_token_here"
+}
+
+### 3. Register New User
+POST {{baseUrl}}/auth/register/
+Content-Type: application/json
+
+{
+    "phone": "09123456789",
+    "password": "your_password",
+    "full_name": "Test User",
+    "role": "customer"
+}
+
+### 4. Get User Profile
+GET {{baseUrl}}/auth/profile/
+Authorization: Bearer {{token}}
+
+### 5. Update User Profile
+PUT {{baseUrl}}/auth/profile/
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+    "full_name": "Updated Name",
+    "birthdate": "1990-01-01"
+}
+
+### 6. Change Password
+POST {{baseUrl}}/auth/change-password/
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+    "old_password": "old_password",
+    "new_password": "new_password"
+}
+
+### 7. Logout
+POST {{baseUrl}}/auth/logout/
+Authorization: Bearer {{token}}

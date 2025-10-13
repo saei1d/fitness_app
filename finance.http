@@ -1,0 +1,64 @@
+### Finance API Tests
+
+### Variables
+@baseUrl = http://localhost:8000/api
+@token = your_jwt_token_here
+
+### 1. Create Pending Purchase
+POST {{baseUrl}}/purchase/pending/1/
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+    "payment_method": "online"
+}
+
+### 2. Finalize Purchase (After Payment)
+POST {{baseUrl}}/purchase/final/
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+    "transaction_id": 1
+}
+
+### 3. Verify Purchase (Owner only)
+POST {{baseUrl}}/purchase/verify/
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+    "buyer_code": "123456"
+}
+
+### 4. Get User Purchases
+GET {{baseUrl}}/purchase/purchases/
+Authorization: Bearer {{token}}
+
+### 5. Get Purchase Details
+GET {{baseUrl}}/purchase/purchases/1/
+Authorization: Bearer {{token}}
+
+### 6. Get User Wallet (Owner only)
+GET {{baseUrl}}/purchase/wallet/
+Authorization: Bearer {{token}}
+
+### 7. Get Wallet Transactions (Owner only)
+GET {{baseUrl}}/purchase/wallet/transactions/
+Authorization: Bearer {{token}}
+
+### 8. Get Admin Wallet (Admin only)
+GET {{baseUrl}}/purchase/admin-wallet/
+Authorization: Bearer {{token}}
+
+### 9. Get Admin Transactions (Admin only)
+GET {{baseUrl}}/purchase/admin-transactions/
+Authorization: Bearer {{token}}
+
+### 10. Get All Transactions (Admin only)
+GET {{baseUrl}}/purchase/transactions/
+Authorization: Bearer {{token}}
+
+### 11. Get Transaction Details
+GET {{baseUrl}}/purchase/transactions/1/
+Authorization: Bearer {{token}}

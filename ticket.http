@@ -1,0 +1,95 @@
+### Ticket API Tests
+
+### Variables
+@baseUrl = http://localhost:8000/api
+@token = your_jwt_token_here
+
+### 1. Get All Tickets
+GET {{baseUrl}}/ticket/tickets/
+Authorization: Bearer {{token}}
+
+### 2. Create New Ticket
+POST {{baseUrl}}/ticket/tickets/
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+    "subject": "Problem with gym equipment",
+    "status": "open"
+}
+
+### 3. Get Ticket Details
+GET {{baseUrl}}/ticket/tickets/1/
+Authorization: Bearer {{token}}
+
+### 4. Update Ticket
+PUT {{baseUrl}}/ticket/tickets/1/
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+    "subject": "Updated ticket subject",
+    "status": "pending",
+    "admin": 2
+}
+
+### 5. Partial Update Ticket
+PATCH {{baseUrl}}/ticket/tickets/1/
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+    "status": "resolved"
+}
+
+### 6. Delete Ticket
+DELETE {{baseUrl}}/ticket/tickets/1/
+Authorization: Bearer {{token}}
+
+### 7. Get All Ticket Messages
+GET {{baseUrl}}/ticket/ticket-messages/
+Authorization: Bearer {{token}}
+
+### 8. Create New Ticket Message
+POST {{baseUrl}}/ticket/ticket-messages/
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+    "ticket": 1,
+    "message": "I need help with the treadmill on the second floor"
+}
+
+### 9. Get Ticket Message Details
+GET {{baseUrl}}/ticket/ticket-messages/1/
+Authorization: Bearer {{token}}
+
+### 10. Update Ticket Message
+PUT {{baseUrl}}/ticket/ticket-messages/1/
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+    "ticket": 1,
+    "message": "Updated message content"
+}
+
+### 11. Delete Ticket Message
+DELETE {{baseUrl}}/ticket/ticket-messages/1/
+Authorization: Bearer {{token}}
+
+### 12. Get Messages for Specific Ticket
+GET {{baseUrl}}/ticket/ticket-messages/?ticket=1
+Authorization: Bearer {{token}}
+
+### 13. Get User's Tickets
+GET {{baseUrl}}/ticket/tickets/?creator=1
+Authorization: Bearer {{token}}
+
+### 14. Get Assigned Tickets (Admin)
+GET {{baseUrl}}/ticket/tickets/?admin=2
+Authorization: Bearer {{token}}
+
+### 15. Filter Tickets by Status
+GET {{baseUrl}}/ticket/tickets/?status=open
+Authorization: Bearer {{token}}

@@ -1,6 +1,6 @@
 # reviews/serializers.py
 from rest_framework import serializers
-from .models import Review
+from .models import Review, Favorite
 from gyms.models import Gym
 import json, os
 from django.conf import settings
@@ -113,3 +113,13 @@ class ReviewSerializer(serializers.ModelSerializer):
         gym.save(update_fields=['comments'])
 
         return review
+
+
+
+class FavoriteSerializer(serializers.ModelSerializer):
+    user = serializers.ReadOnlyField(source='user.id')
+
+    class Meta:
+        model = Favorite
+        fields = ['id', 'user', 'gym']
+        read_only_fields = ['id', 'user']

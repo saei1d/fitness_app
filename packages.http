@@ -1,0 +1,90 @@
+### Packages API Tests
+
+### Variables
+@baseUrl = http://localhost:8000/api
+@token = your_jwt_token_here
+
+### 1. Get All Group Packages
+GET {{baseUrl}}/package/group-packages/
+Authorization: Bearer {{token}}
+
+### 2. Create New Group Package (Owner only)
+POST {{baseUrl}}/package/group-packages/
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+    "gym": 1,
+    "title": "Premium Group Package",
+    "description": "A premium package for group training"
+}
+
+### 3. Get Group Package Details
+GET {{baseUrl}}/package/group-packages/1/
+Authorization: Bearer {{token}}
+
+### 4. Update Group Package
+PUT {{baseUrl}}/package/group-packages/1/
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+    "gym": 1,
+    "title": "Updated Group Package",
+    "description": "Updated description"
+}
+
+### 5. Delete Group Package
+DELETE {{baseUrl}}/package/group-packages/1/
+Authorization: Bearer {{token}}
+
+### 6. Get All Packages
+GET {{baseUrl}}/package/packages/
+Authorization: Bearer {{token}}
+
+### 7. Create New Package (Owner only)
+POST {{baseUrl}}/package/packages/
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+    "group_package": 1,
+    "title": "Male Monthly Package",
+    "description": "Monthly package for male members",
+    "gender": "male",
+    "price": 500000.00,
+    "duration": 30,
+    "commission_rate": 0.05
+}
+
+### 8. Get Package Details
+GET {{baseUrl}}/package/packages/1/
+Authorization: Bearer {{token}}
+
+### 9. Update Package
+PUT {{baseUrl}}/package/packages/1/
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+    "group_package": 1,
+    "title": "Updated Package",
+    "description": "Updated description",
+    "gender": "female",
+    "price": 600000.00,
+    "duration": 30,
+    "commission_rate": 0.05
+}
+
+### 10. Partial Update Package
+PATCH {{baseUrl}}/package/packages/1/
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+    "price": 550000.00
+}
+
+### 11. Delete Package
+DELETE {{baseUrl}}/package/packages/1/
+Authorization: Bearer {{token}}

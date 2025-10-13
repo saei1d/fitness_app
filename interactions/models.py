@@ -26,4 +26,17 @@ class Review(models.Model):
         null=True,
         blank=True,
         related_name='replies'
-    )  # پاسخ صاحب باشگاه
+    )
+    
+    
+    
+class Favorite(models.Model):
+    user = models.ForeignKey('accounts.User', on_delete=models.CASCADE, related_name="favorites")
+    gym = models.ForeignKey('gyms.Gym', on_delete=models.CASCADE, related_name="favorited_by")
+
+    class Meta:
+        unique_together = ("user", "gym")
+
+    def __str__(self):
+        return f"{self.user.username} ❤️ {self.gym.name}"
+

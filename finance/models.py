@@ -11,14 +11,25 @@ class Purchase(models.Model):
         ('failed', 'Failed'),
         ('refunded', 'Refunded'),
     ]
+    
+    VERIFICATION_STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('verified', 'Verified'),
+        ('rejected', 'Rejected'),
+    ]
+    
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='purchases')
     package = models.ForeignKey(Package, on_delete=models.CASCADE, related_name='purchases')
+    buyer_code = models.CharField(max_length=100, null=True, blank=True)
     purchase_date = models.DateTimeField(auto_now_add=True)
     expire_date = models.DateTimeField(null=True, blank=True)
     payment_status = models.CharField(max_length=20, choices=PAYMENT_STATUS_CHOICES, default='pending')
+    verification_status = models.CharField(max_length=20, choices=VERIFICATION_STATUS_CHOICES, default='pending')
     total_amount = models.DecimalField(max_digits=10, decimal_places=2)
     commission_amount = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     net_amount = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    verified_at = models.DateTimeField(null=True, blank=True)
+    verified_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='verified_purchases')
 
     def save(self, *args, **kwargs):
 
@@ -58,7 +69,8 @@ class Transaction(models.Model):
     ]
     TRANSACTION_STATUS = [
         ('pending', 'Pending'),
-        ('paid', 'Paid'),
+        ('completed', 'Completed'),
+        ('failed', 'Failed'),
     ]
 
     wallet = models.ForeignKey(Wallet, on_delete=models.CASCADE, related_name='transactions', null=True, blank=True)
@@ -67,9 +79,10 @@ class Transaction(models.Model):
     purchase = models.ForeignKey(Purchase, on_delete=models.SET_NULL, null=True, blank=True,
                                  related_name='transactions')
     amount = models.DecimalField(max_digits=12, decimal_places=2)
-    type = models.CharField(max_length=6, choices=TRANSACTION_TYPES,default='credit')
+    type = models.CharField(max_length=6, choices=TRANSACTION_TYPES, default='credit')
     status = models.CharField(max_length=20, choices=TRANSACTION_STATUS, default='pending')
     payment_id = models.BigIntegerField(null=True, blank=True)
+    description = models.TextField(blank=True, help_text="توضیحات تراکنش")
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
