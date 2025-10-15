@@ -1,7 +1,8 @@
 from decimal import Decimal
 
-from finance.models import Purchase, Wallet, AdminWallet, Transaction
+from finance.models import Purchase, Wallet, AdminWallet, Transaction, WithdrawRequest
 from rest_framework import serializers
+from django.utils import timezone
 
 
 class PurchaseSerializer(serializers.ModelSerializer):
@@ -53,3 +54,87 @@ class TransactionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Transaction
         fields = '__all__'
+
+
+class WithdrawRequestSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = WithdrawRequest
+        fields = '__all__'
+        read_only_fields = ['user', 'wallet', 'status']
+
+    def validate(self, attrs):
+        request = self.context.get('request')
+        if request is None:
+            raise serializers.ValidationError("Request context is missing")
+
+        user = request.user
+        if not user.is_authenticated:
+            raise serializers.ValidationError("Authentication required")
+
+        if getattr(user, 'role', None) != 'owner':
+            raise serializers.ValidationError("Only owners can request withdrawals")
+
+        try:
+            wallet = Wallet.objects.get(owner=user)
+        except Wallet.DoesNotExist:
+            raise serializers.ValidationError("Owner wallet not found")
+
+        amount = attrs.get('amount')
+        if amount is None:
+            raise serializers.ValidationError({"amount": "Amount is required"})
+        if amount <= 0:
+            raise serializers.ValidationError({"amount": "Amount must be greater than zero"})
+        if amount > wallet.balance:
+            raise serializers.ValidationError({"amount": "Amount exceeds wallet balance"})
+
+        return attrs
+
+    def create(self, validated_data):
+        user = self.context['request'].user
+        wallet = Wallet.objects.get(owner=user)
+        withdraw_request = WithdrawRequest.objects.create(user=user, wallet=wallet, **validated_data)
+        return withdraw_request
+
+
+class AdminWithdrawUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = WithdrawRequest
+        fields = ['status', 'admin_message']
+
+    def validate(self, attrs):
+        request = self.context.get('request')
+        if request is None:
+            raise serializers.ValidationError("Request context is missing")
+
+        user = request.user
+        if not user.is_authenticated or getattr(user, 'role', None) != 'admin':
+            raise serializers.ValidationError("Only admin can update withdraw requests")
+
+        new_status = attrs.get('status')
+        if new_status not in ['approved', 'rejected', 'completed']:
+            raise serializers.ValidationError({"status": "Invalid status transition"})
+
+        instance = self.instance
+        if instance is None:
+            raise serializers.ValidationError("Instance is required")
+
+        if instance.status == 'pending' and new_status in ['approved', 'rejected']:
+            return attrs
+        if instance.status == 'approved' and new_status in ['completed', 'rejected']:
+            return attrs
+        if instance.status in ['rejected', 'completed']:
+            raise serializers.ValidationError("Withdraw request already finalized")
+
+        raise serializers.ValidationError({"status": "Not allowed transition"})
+
+    def update(self, instance, validated_data):
+        user = self.context['request'].user
+        new_status = validated_data['status']
+        instance.status = new_status
+        instance.admin_message = validated_data.get('admin_message', instance.admin_message)
+        instance.processed_by = user
+        instance.processed_at = timezone.now()
+        if new_status == 'completed':
+            instance.completed_at = timezone.now()
+        instance.save()
+        return instance

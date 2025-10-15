@@ -90,3 +90,20 @@ class Transaction(models.Model):
             self.admin_wallet.__str__() if self.admin_wallet else "Unknown")
         return f"{self.type.capitalize()} - {self.amount} ({owner_name})"
 
+
+class WithdrawRequest(models.Model):
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('approved', 'Approved'),
+        ('rejected', 'Rejected'),
+        ('completed', 'Completed'),
+    ]
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='withdraw_requests')
+    wallet = models.ForeignKey(Wallet, on_delete=models.CASCADE, related_name='withdraw_requests')
+    amount = models.DecimalField(max_digits=12, decimal_places=2)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    description = models.TextField(blank=True, help_text="توضیحات درخواست برداشت")
+    admin_message = models.TextField(blank=True, help_text="پیام ادمین درباره وضعیت درخواست")
+    processed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='processed_withdraw_requests')
+    processed_at = models.DateTimeField(null=True, blank=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
