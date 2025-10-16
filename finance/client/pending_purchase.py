@@ -36,7 +36,7 @@ class CreatePendingPurchaseView(APIView):
                 return Response({
                     'message': 'Pending purchase created',
                     'purchase': PurchaseSerializer(purchase).data,
-                    'transaction': TransactionSerializer(trans).data  # سریال‌سازی شیء Transaction
+                    'transaction': TransactionSerializer(trans).data  
                 }, status=201)
 
         except Exception as e:
