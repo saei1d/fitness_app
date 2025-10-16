@@ -48,10 +48,8 @@ class DiscountCodeViewSet(viewsets.ModelViewSet):
         user = self.request.user
         
         if user.is_staff:
-            # ادمین همه کدها را می‌بیند
             return DiscountCode.objects.all().select_related('club', 'club__owner')
         elif user.role == 'owner':
-            # owner فقط کدهای باشگاه خودش را می‌بیند
             return DiscountCode.objects.filter(
                 club__owner=user
             ).select_related('club', 'club__owner')

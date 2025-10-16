@@ -9,3 +9,4 @@ media
 future.txt
 *.idea
 *.xml
+.env
