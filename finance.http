@@ -31,34 +31,81 @@ Content-Type: application/json
     "buyer_code": "123456"
 }
 
-### 4. Get User Purchases
-GET {{baseUrl}}/purchase/purchases/
-Authorization: Bearer {{token}}
-
-### 5. Get Purchase Details
-GET {{baseUrl}}/purchase/purchases/1/
-Authorization: Bearer {{token}}
-
-### 6. Get User Wallet (Owner only)
-GET {{baseUrl}}/purchase/wallet/
-Authorization: Bearer {{token}}
-
-### 7. Get Wallet Transactions (Owner only)
-GET {{baseUrl}}/purchase/wallet/transactions/
-Authorization: Bearer {{token}}
-
-### 8. Get Admin Wallet (Admin only)
-GET {{baseUrl}}/purchase/admin-wallet/
-Authorization: Bearer {{token}}
-
-### 9. Get Admin Transactions (Admin only)
-GET {{baseUrl}}/purchase/admin-transactions/
-Authorization: Bearer {{token}}
-
 ### 10. Get All Transactions (Admin only)
 GET {{baseUrl}}/purchase/transactions/
 Authorization: Bearer {{token}}
 
 ### 11. Get Transaction Details
 GET {{baseUrl}}/purchase/transactions/1/
+Authorization: Bearer {{token}}
+
+### 12. Owner Create Withdraw Request (Owner only)
+POST {{baseUrl}}/purchase/owner/withdraw-request/
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+    "amount": 100000,
+    "description": "برداشت سهم ماه جاری"
+}
+
+### 13. Owner List Withdraw Requests (Owner only)
+GET {{baseUrl}}/purchase/owner/withdraw-request/
+Authorization: Bearer {{token}}
+
+### 14. Admin Update Withdraw Request -> approve
+PATCH {{baseUrl}}/purchase/admin/withdraw-request/1/
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+    "status": "approved",
+    "admin_message": "درخواست بررسی و تایید شد"
+}
+
+### 15. Admin Update Withdraw Request -> reject
+PATCH {{baseUrl}}/purchase/admin/withdraw-request/1/
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+    "status": "rejected",
+    "admin_message": "اطلاعات حساب مقصد ناقص است"
+}
+
+### 16. Admin Update Withdraw Request -> complete (balance will be debited)
+PATCH {{baseUrl}}/purchase/admin/withdraw-request/1/
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+    "status": "completed",
+    "admin_message": "مبلغ به حساب مالک واریز شد"
+}
+
+### 17. Create Transaction (Admin only)
+POST {{baseUrl}}/purchase/transactions/
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+    "wallet": 1,
+    "amount": 50000,
+    "type": "credit",
+    "status": "completed",
+    "description": "بستانکار کردن کیف پول برای تست"
+}
+
+### 18. Update Transaction (Admin only)
+PATCH {{baseUrl}}/purchase/transactions/1/
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+    "status": "completed",
+    "description": "به‌روزرسانی وضعیت تراکنش"
+}
+
+### 19. Delete Transaction (Admin only)
+DELETE {{baseUrl}}/purchase/transactions/1/
 Authorization: Bearer {{token}}

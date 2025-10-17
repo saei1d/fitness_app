@@ -16,3 +16,18 @@ class EditProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ['full_name', 'birthdate']  
+
+
+class UserDetailSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = [
+            'phone',
+            'full_name',
+            'birthdate',
+            'role',
+            'referral_code',
+            'referred_by',
+            'is_active',
+            'date_joined',
+        ]

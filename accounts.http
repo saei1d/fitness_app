@@ -1,19 +1,53 @@
-### Accounts API Tests
+### Accounts API Tests (Synced with actual URLs)
 
 ### Variables
 @baseUrl = http://localhost:8000/api
-@token = your_jwt_token_here
+@token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzYwODA1NzQ4LCJpYXQiOjE3NjA3MTkzNDgsImp0aSI6ImI0YzI0MWUxMWZlMTQ5ZDM4YzdhMmE4MTExZDJjZjcyIiwidXNlcl9pZCI6IjQifQ.cXLE20GapZpDB5aQBAmDP9fTibyN2o1btMR_xLy_CgM
 
-### 1. Login - Get JWT Token
-POST {{baseUrl}}/auth/login/
+### 1. Request OTP (Public)
+POST {{baseUrl}}/auth/request-otp/
+Content-Type: application/json
+
+{
+    "phone": "09122517586"
+}
+
+
+### 2. Verify OTP -> Returns access/refresh tokens (Public)
+POST {{baseUrl}}/auth/verify-otp/
+Content-Type: application/json
+
+{
+    "phone": "09122517586",
+    "code": "816953"
+}
+
+### 3. user Get Profile (Authenticated)
+GET {{baseUrl}}/auth/profile/
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+
+### 4. Edit Profile (Authenticated)
+PUT {{baseUrl}}/auth/profile/
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+    "full_name": "mmd",
+    "birthdate": "1990-01-01"
+}
+
+### 5. Obtain JWT via SimpleJWT (Optional)
+POST {{baseUrl}}/token/
 Content-Type: application/json
 
 {
     "phone": "09123456789",
-    "password": "your_password"
+    "password": "dummy-if-implemented"
 }
 
-### 2. Refresh Token
+### 6. Refresh JWT via SimpleJWT (Optional)
 POST {{baseUrl}}/token/refresh/
 Content-Type: application/json
 
@@ -21,41 +55,11 @@ Content-Type: application/json
     "refresh": "your_refresh_token_here"
 }
 
-### 3. Register New User
-POST {{baseUrl}}/auth/register/
-Content-Type: application/json
-
-{
-    "phone": "09123456789",
-    "password": "your_password",
-    "full_name": "Test User",
-    "role": "customer"
-}
-
-### 4. Get User Profile
-GET {{baseUrl}}/auth/profile/
-Authorization: Bearer {{token}}
-
-### 5. Update User Profile
-PUT {{baseUrl}}/auth/profile/
+# --------------------------------------------------------------
+# ADMIN API Tests
+# --------------------------------------------------------------
+### 3. Get one Profile (Authenticated) admin role only
+GET {{baseUrl}}/auth/profile/1
 Authorization: Bearer {{token}}
 Content-Type: application/json
 
-{
-    "full_name": "Updated Name",
-    "birthdate": "1990-01-01"
-}
-
-### 6. Change Password
-POST {{baseUrl}}/auth/change-password/
-Authorization: Bearer {{token}}
-Content-Type: application/json
-
-{
-    "old_password": "old_password",
-    "new_password": "new_password"
-}
-
-### 7. Logout
-POST {{baseUrl}}/auth/logout/
-Authorization: Bearer {{token}}

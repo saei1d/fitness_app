@@ -100,18 +100,3 @@ class VerifyOTPView(APIView):
         }, status=status.HTTP_200_OK)
 
 
-@extend_schema(tags=['EditProfile'])
-class EditProfileView(APIView):
-    permission_classes = [IsAuthenticated]
-    @extend_schema(
-        request=EditProfileSerializer,
-        responses={200: dict},
-        description="ادیت پروفایل"
-    )
-    def put(self, request):
-        user = request.user
-        serializer = EditProfileSerializer(user, data=request.data, partial=True)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_200_OK)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
