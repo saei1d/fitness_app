@@ -1,5 +1,0 @@
-
-
-
-class UserStaff(APIView):
-    pass

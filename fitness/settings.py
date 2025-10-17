@@ -31,7 +31,7 @@ SECRET_KEY = os.getenv('SECRET_KEY', 'change-me-in-development')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = _get_bool(os.getenv('DEBUG', 'True'))
 
-ALLOWED_HOSTS = [h.strip() for h in os.getenv('ALLOWED_HOSTS', '').split(',') if h.strip()]
+ALLOWED_HOSTS = [h.strip() for h in os.getenv('ALLOWED_HOSTS', '*').split(',') if h.strip()]
 
 AUTH_USER_MODEL = 'accounts.User'
 
