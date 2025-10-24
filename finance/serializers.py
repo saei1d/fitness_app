@@ -126,7 +126,8 @@ class AdminWithdrawUpdateSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Request context is missing")
 
         user = request.user
-        if not user.is_authenticated or getattr(user, 'role', None) != 'admin':
+        # ✅ اصلاح شرط بررسی نقش ادمین
+        if not user.is_authenticated or not (user.is_staff or user.is_superuser):
             raise serializers.ValidationError("Only admin can update withdraw requests")
 
         new_status = attrs.get('status')

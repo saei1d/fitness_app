@@ -2,13 +2,13 @@
 
 ### Variables
 @baseUrl = http://localhost:8000/api
-@token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzYxMzE2Nzc1LCJpYXQiOjE3NjEyMzAzNzUsImp0aSI6ImNhMTM4YWQwMWJiMjQ4ZDhiNjcwMjc3NzZjNmI2YjZmIiwidXNlcl9pZCI6IjYifQ.3V0B3nWvKdqj6PKH0g7Rsqec4K-3sNQKREIVhWYdPZQ
+@token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzYxNDA1NDM5LCJpYXQiOjE3NjEzMTkwMzksImp0aSI6IjZhNDJlY2IzNmVjZjQ5Mjc4ZjFmZGZlZWRiZDBhYTExIiwidXNlcl9pZCI6IjYifQ.ntSuN-UTGOwM9Urua3fCX3b0vwt1ERPBndiABeXBwR0
 
 @token_owner = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzYxMzc5ODk1LCJpYXQiOjE3NjEyOTM0OTUsImp0aSI6IjQwNjBlMTg3Mzg0NzQ5ZjI4MzY5MjE3ZDRlYzU4YzdlIiwidXNlcl9pZCI6IjMifQ.MfXJAy-pOSabOfLj72PXD7oU8unZ9HamroMo9nEGMsI
 
 @token_customer = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzYxMzgxOTg1LCJpYXQiOjE3NjEyOTU1ODUsImp0aSI6ImQ0MzRkM2NkOGFkYjQyNTI4YTgxMjc0NDBmZWYyNzVjIiwidXNlcl9pZCI6IjcifQ.kRdrWOCvNfeE7GRILqNAfvac3A0LsqLFHJaHbRVm5Ss
 
-@token_super = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzYxMzE2OTEwLCJpYXQiOjE3NjEyMzA1MTAsImp0aSI6Ijg3YjE4MDRkMzQzZjRmM2Y5NzU3ZDdmOGFiYzllNGI1IiwidXNlcl9pZCI6IjUifQ.xOHvRVx1ugvEbJ0hI1l8csRMHlpwdYv5NX5gZnveymU
+@token_super = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzYxNDAzNzIyLCJpYXQiOjE3NjEzMTczMjIsImp0aSI6IjU1MDJjNGRiMGFhNDQxNmFiNmNiNTNkYzk3OWQ0MzNjIiwidXNlcl9pZCI6IjUifQ.WLSJlyt_rCik-P_vPt2vlBHTaMfthTqA_CxPQUVQDag
 ### 1. Create Pending Purchase
 POST {{baseUrl}}/finance/pending/1/
 Authorization: Bearer {{token_customer}}
@@ -46,7 +46,7 @@ Authorization: Bearer {{token_super}}
 
 ### 12. Owner Create Withdraw Request (Owner only)
 POST {{baseUrl}}/finance/owner/withdraw-request/
-Authorization: Bearer {{token}}
+Authorization: Bearer {{token_owner}}
 Content-Type: application/json
 
 {
@@ -57,6 +57,9 @@ Content-Type: application/json
 ### 13. Owner List Withdraw Requests (Owner only)
 GET {{baseUrl}}/finance/owner/withdraw-request/
 Authorization: Bearer {{token_owner}}
+
+
+
 
 ### 14. Admin Update Withdraw Request -> approve
 PATCH {{baseUrl}}/finance/admin/withdraw-request/1/
@@ -198,5 +201,45 @@ Content-Type: application/json
 
 ### 35. Admin - Get Admin Wallet Transactions
 GET {{baseUrl}}/finance/admin/wallet/transactions/
+Authorization: Bearer {{token_super}}
+
+### 36. Admin - Get All Withdraw Requests
+GET {{baseUrl}}/finance/admin/withdraw-requests/
+Authorization: Bearer {{token_super}}
+
+### 37. Admin - Get Withdraw Request Details
+GET {{baseUrl}}/finance/admin/withdraw-requests/1/
+Authorization: Bearer {{token_super}}
+
+### 38. Admin - Filter Withdraw Requests by Status (Pending)
+GET {{baseUrl}}/finance/admin/withdraw-requests/?status=pending
+Authorization: Bearer {{token_super}}
+
+### 39. Admin - Filter Withdraw Requests by Status (Approved)
+GET {{baseUrl}}/finance/admin/withdraw-requests/?status=approved
+Authorization: Bearer {{token_super}}
+
+### 40. Admin - Filter Withdraw Requests by Status (Rejected)
+GET {{baseUrl}}/finance/admin/withdraw-requests/?status=rejected
+Authorization: Bearer {{token_super}}
+
+### 41. Admin - Filter Withdraw Requests by Status (Completed)
+GET {{baseUrl}}/finance/admin/withdraw-requests/?status=completed
+Authorization: Bearer {{token_super}}
+
+### 42. Admin - Search Withdraw Requests by Phone
+GET {{baseUrl}}/finance/admin/withdraw-requests/?phone=0912
+Authorization: Bearer {{token_super}}
+
+### 43. Admin - Search Withdraw Requests by Name
+GET {{baseUrl}}/finance/admin/withdraw-requests/?name=احمد
+Authorization: Bearer {{token_super}}
+
+### 44. Admin - Order Withdraw Requests by Date
+GET {{baseUrl}}/finance/admin/withdraw-requests/?ordering=-id
+Authorization: Bearer {{token_super}}
+
+### 45. Admin - Order Withdraw Requests by Amount
+GET {{baseUrl}}/finance/admin/withdraw-requests/?ordering=-amount
 Authorization: Bearer {{token_super}}
 

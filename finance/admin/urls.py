@@ -1,13 +1,7 @@
 from django.urls import path
-from .wallet import (
-    AdminWalletListView, 
-    AdminWalletDetailView, 
-    AdminWalletBalanceUpdateView,
-    AdminWalletTransactionsView,
-    AdminWalletSearchView,
-    AdminPurchaseListView,
-    AdminPurchaseDetailView
-)
+from .wallet import *
+from .withdraw_request import *
+
 
 urlpatterns = [
     # لیست همه کیف پول‌ها
@@ -30,4 +24,14 @@ urlpatterns = [
     
     # تراکنش‌های کیف پول ادمین
     path('wallet/transactions/', AdminWalletTransactionsView.as_view(), name='admin-wallet-transactions'),
+
+    path('withdraw-request/<int:pk>/', AdminWithdrawRequestView.as_view(), name='admin-withdraw-request'),
+    
+    # لیست همه درخواست‌های برداشت
+    path('withdraw-requests/', AdminWithdrawRequestListView.as_view(), name='admin-withdraw-request-list'),
+    
+    
+    # جزئیات درخواست برداشت خاص
+    path('withdraw-requests-detail/<int:pk>/', AdminWithdrawRequestDetailView.as_view(), name='admin-withdraw-request-detail'),
+
 ]
