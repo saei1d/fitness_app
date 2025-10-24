@@ -135,6 +135,15 @@ class VerifyPurchaseView(APIView):
                     defaults={'balance': 0}
                 )
 
+                # پیدا کردن کیف پول ادمین
+                admin_wallet = AdminWallet.objects.get(id=1)
+                
+                # بررسی موجودی کافی در کیف پول ادمین
+                if admin_wallet.balance < purchase.net_amount:
+                    return Response({
+                        'error': 'موجودی کیف پول ادمین کافی نیست'
+                    }, status=400)
+
                 # واریز سهم باشگاه (مبلغ خالص)
                 Transaction.objects.create(
                     wallet=wallet,
@@ -147,9 +156,25 @@ class VerifyPurchaseView(APIView):
                     created_at=timezone.now()
                 )
 
+                # کسر مبلغ خالص از کیف پول ادمین
+                Transaction.objects.create(
+                    wallet=None,
+                    admin_wallet=admin_wallet,
+                    purchase=purchase,
+                    amount=purchase.net_amount,
+                    type='debit',
+                    status='completed',
+                    description=f"پرداخت سهم باشگاه برای خرید #{purchase.id} - کد: {buyer_code}",
+                    created_at=timezone.now()
+                )
+
                 # به‌روزرسانی موجودی والت باشگاه
                 wallet.balance += purchase.net_amount
                 wallet.save()
+                
+                # کسر مبلغ خالص از کیف پول ادمین
+                admin_wallet.balance -= purchase.net_amount
+                admin_wallet.save()
 
                 return Response({
                     'message': 'Purchase verified successfully',

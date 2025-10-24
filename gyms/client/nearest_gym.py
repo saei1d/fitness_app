@@ -8,10 +8,13 @@ from django.contrib.gis.db.models.functions import Distance
 from django.contrib.gis.geos import Point
 from ..models import Gym
 from ..serializers import GymSerializer
+from rest_framework import status, permissions
 
 
 @extend_schema(tags=['nearest_gym'])
 class NearestGymsView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
     @extend_schema(
         request=GymSerializer,
         responses={200: dict},

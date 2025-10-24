@@ -9,18 +9,37 @@ from finance.serializers import TransactionSerializer
 class IsAdminOrOwnerReadOnly(permissions.BasePermission):
     def has_permission(self, request, view):
         # همه لاگین باشند
-        return request.user and request.user.is_authenticated
+        if not request.user or not request.user.is_authenticated:
+            return False
+        
+        # بررسی رول کاربر
+        user = request.user
+        
+        # ادمین و سوپر یوزر دسترسی کامل دارند
+        if user.is_staff:
+            return True
+        
+        # owner فقط مشاهده دارد
+        role = getattr(user, 'role', None)
+        if role == 'owner':
+            return True
+        
+        return False
 
     def has_object_permission(self, request, view, obj: Transaction):
         user = request.user
-        role = getattr(user, 'role', None)
-        if role == 'admin':
+        
+        # ادمین و سوپر یوزر دسترسی کامل دارند
+        if user.is_staff:
             return True
+        
+        # owner فقط مشاهده برای تراکنش‌های کیف پول خودش
+        role = getattr(user, 'role', None)
         if role == 'owner':
-            # فقط مشاهده برای مالک کیف پول خودش
             if request.method in permissions.SAFE_METHODS:
                 if obj.wallet and obj.wallet.owner_id == user.id:
                     return True
+        
         return False
 
 
@@ -30,21 +49,26 @@ class TransactionListCreateView(ListCreateAPIView):
 
     def get_queryset(self):
         user = self.request.user
-        role = getattr(user, 'role', None)
-        if role == 'admin':
+        
+        # ادمین و سوپر یوزر همه تراکنش‌ها را می‌بینند
+        if user.is_staff:
             return Transaction.objects.select_related('wallet__owner', 'admin_wallet', 'purchase').all().order_by('-id')
+        
+        # owner فقط تراکنش‌های کیف پول خودش را می‌بیند
+        role = getattr(user, 'role', None)
         if role == 'owner':
             try:
                 wallet = Wallet.objects.get(owner=user)
+                return Transaction.objects.filter(wallet=wallet).select_related('wallet__owner', 'admin_wallet', 'purchase').order_by('-id')
             except Wallet.DoesNotExist:
                 return Transaction.objects.none()
-            return Transaction.objects.filter(wallet=wallet).select_related('wallet__owner', 'admin_wallet', 'purchase').order_by('-id')
+        
         return Transaction.objects.none()
 
     def perform_create(self, serializer):
-        # فقط ادمین اجازه ایجاد/ویرایش/حذف دارد
+        # فقط ادمین و سوپر یوزر اجازه ایجاد/ویرایش/حذف دارند
         user = self.request.user
-        if getattr(user, 'role', None) != 'admin':
+        if not user.is_staff:
             raise permissions.PermissionDenied("Only admin can create transactions")
         serializer.save()
 
@@ -60,13 +84,13 @@ class TransactionDetailView(RetrieveUpdateDestroyAPIView):
 
     def perform_update(self, serializer):
         user = self.request.user
-        if getattr(user, 'role', None) != 'admin':
+        if not user.is_staff:
             raise permissions.PermissionDenied("Only admin can update transactions")
         serializer.save()
 
     def perform_destroy(self, instance):
         user = self.request.user
-        if getattr(user, 'role', None) != 'admin':
+        if not user.is_staff:
             raise permissions.PermissionDenied("Only admin can delete transactions")
         instance.delete()
 

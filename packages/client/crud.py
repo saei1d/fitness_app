@@ -9,27 +9,52 @@ from rest_framework import status, permissions
 
 @extend_schema(tags=['Group Package'])
 class GroupPackageListCreateView(generics.ListCreateAPIView):
-    permission_classes = [permissions.IsAuthenticated]
     queryset = GroupPackage.objects.all()
     serializer_class = GroupPackageSerializer
+    
+    def get_permissions(self):
+        if self.request.method == 'POST':
+            permission_classes = [permissions.IsAdminUser]
+        else:
+            permission_classes = [permissions.AllowAny]
+        return [permission() for permission in permission_classes]
 
 
 @extend_schema(tags=['Group Package'])
 class GroupPackageDetailView(generics.RetrieveUpdateDestroyAPIView):
-    permission_classes = [permissions.IsAuthenticated]
     queryset = GroupPackage.objects.all()
     serializer_class = GroupPackageSerializer
+    
+    def get_permissions(self):
+        if self.request.method in ['POST', 'PUT', 'PATCH', 'DELETE']:
+            permission_classes = [permissions.IsAdminUser]
+        else:
+            permission_classes = [permissions.AllowAny]
+        return [permission() for permission in permission_classes]
+
 
 
 @extend_schema(tags=['Package'])
 class PackageListCreateView(generics.ListCreateAPIView):
-    permission_classes = [permissions.IsAuthenticated]
     queryset = Package.objects.all()
     serializer_class = PackageSerializer
+    
+    def get_permissions(self):
+        if self.request.method == 'POST':
+            permission_classes = [permissions.IsAdminUser]
+        else:
+            permission_classes = [permissions.AllowAny]
+        return [permission() for permission in permission_classes]
 
 
 @extend_schema(tags=['Package'])
 class PackageDetailView(generics.RetrieveUpdateDestroyAPIView):
-    permission_classes = [permissions.IsAuthenticated]
     queryset = Package.objects.all()
     serializer_class = PackageSerializer
+
+    def get_permissions(self):
+        if self.request.method in ['POST', 'PUT', 'PATCH', 'DELETE']:
+            permission_classes = [permissions.IsAdminUser]
+        else:
+            permission_classes = [permissions.AllowAny]
+        return [permission() for permission in permission_classes]

@@ -1,0 +1,71 @@
+### Admin Wallet Management API
+@is_staff = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzYxMzE2Nzc1LCJpYXQiOjE3NjEyMzAzNzUsImp0aSI6ImNhMTM4YWQwMWJiMjQ4ZDhiNjcwMjc3NzZjNmI2YjZmIiwidXNlcl9pZCI6IjYifQ.3V0B3nWvKdqj6PKH0g7Rsqec4K-3sNQKREIVhWYdPZQ
+
+
+# لیست همه کیف پول‌ها
+GET http://localhost:8000/api/finance/admin/wallet/
+Authorization: Bearer {{is_staff}}
+Content-Type: application/json
+
+###
+
+
+# افزایش موجودی کیف پول
+POST http://localhost:8000/api/finance/admin/wallets/1/balance/
+Authorization: Bearer ADMIN_JWT_TOKEN_HERE
+Content-Type: application/json
+
+{
+    "operation": "add",
+    "amount": 100.50,
+    "description": "پاداش عملکرد ماهانه"
+}
+
+###
+
+# کاهش موجودی کیف پول
+POST http://localhost:8000/api/finance/admin/wallets/1/balance/
+Authorization: Bearer ADMIN_JWT_TOKEN_HERE
+Content-Type: application/json
+
+{
+    "operation": "subtract",
+    "amount": 50.00,
+    "description": "کسر جریمه تاخیر"
+}
+
+###
+
+# تنظیم مستقیم موجودی
+POST http://localhost:8000/api/finance/admin/wallets/1/balance/
+Authorization: Bearer ADMIN_JWT_TOKEN_HERE
+Content-Type: application/json
+
+{
+    "operation": "set",
+    "amount": 1000.00,
+    "description": "تنظیم مجدد موجودی"
+}
+
+###
+
+# تراکنش‌های کیف پول
+GET http://localhost:8000/api/finance/admin/wallets/1/transactions/
+Authorization: Bearer ADMIN_JWT_TOKEN_HERE
+Content-Type: application/json
+
+###
+
+# جستجوی کیف پول بر اساس شماره تلفن
+GET http://localhost:8000/api/finance/admin/wallets/search/?phone=0912
+Authorization: Bearer ADMIN_JWT_TOKEN_HERE
+Content-Type: application/json
+
+###
+
+# جستجوی کیف پول بر اساس نام
+GET http://localhost:8000/api/finance/admin/wallets/search/?name=احمد
+Authorization: Bearer ADMIN_JWT_TOKEN_HERE
+Content-Type: application/json
+
+###

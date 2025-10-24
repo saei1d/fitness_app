@@ -2,11 +2,11 @@
 
 ### Variables
 @baseUrl = http://localhost:8000/api
-@token = your_jwt_token_here
+@token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzYxMzE2Nzc1LCJpYXQiOjE3NjEyMzAzNzUsImp0aSI6ImNhMTM4YWQwMWJiMjQ4ZDhiNjcwMjc3NzZjNmI2YjZmIiwidXNlcl9pZCI6IjYifQ.3V0B3nWvKdqj6PKH0g7Rsqec4K-3sNQKREIVhWYdPZQ
 
 ### 1. Get All Group Packages
 GET {{baseUrl}}/package/group-packages/
-Authorization: Bearer {{token}}
+
 
 ### 2. Create New Group Package (Owner only)
 POST {{baseUrl}}/package/group-packages/
@@ -15,7 +15,7 @@ Content-Type: application/json
 
 {
     "gym": 1,
-    "title": "Premium Group Package",
+    "title": "Premium Group Package3",
     "description": "A premium package for group training"
 }
 
@@ -35,7 +35,7 @@ Content-Type: application/json
 }
 
 ### 5. Delete Group Package
-DELETE {{baseUrl}}/package/group-packages/1/
+DELETE {{baseUrl}}/package/group-packages/2/
 Authorization: Bearer {{token}}
 
 ### 6. Get All Packages
@@ -48,7 +48,7 @@ Authorization: Bearer {{token}}
 Content-Type: application/json
 
 {
-    "group_package": 1,
+    "group_package": 2,
     "title": "Male Monthly Package",
     "description": "Monthly package for male members",
     "gender": "male",
@@ -67,7 +67,7 @@ Authorization: Bearer {{token}}
 Content-Type: application/json
 
 {
-    "group_package": 1,
+    "group_package": 2,
     "title": "Updated Package",
     "description": "Updated description",
     "gender": "female",

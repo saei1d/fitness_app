@@ -22,10 +22,13 @@ class UserDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = [
+            'id',
             'phone',
             'full_name',
             'birthdate',
             'role',
+            'is_staff',
+            'is_superuser',
             'referral_code',
             'referred_by',
             'is_active',

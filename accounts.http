@@ -2,14 +2,14 @@
 
 ### Variables
 @baseUrl = http://localhost:8000/api
-@token = accsess token
+@token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzYxMzE2Nzc1LCJpYXQiOjE3NjEyMzAzNzUsImp0aSI6ImNhMTM4YWQwMWJiMjQ4ZDhiNjcwMjc3NzZjNmI2YjZmIiwidXNlcl9pZCI6IjYifQ.3V0B3nWvKdqj6PKH0g7Rsqec4K-3sNQKREIVhWYdPZQ
 
 ### 1. Request OTP (Public)
 POST {{baseUrl}}/auth/request-otp/
 Content-Type: application/json
 
 {
-    "phone": "09122517586"
+    "phone": "09111111111"
 }
 
 
@@ -18,8 +18,8 @@ POST {{baseUrl}}/auth/verify-otp/
 Content-Type: application/json
 
 {
-    "phone": "09122517586",
-    "code": "816953"
+    "phone": "09111111111",
+    "code": "803634"
 }
 
 ### 3. user Get Profile (Authenticated)
@@ -63,12 +63,17 @@ GET {{baseUrl}}/auth/profile/1
 Authorization: Bearer {{token}}
 Content-Type: application/json
 
+### 4. all users list   
+GET {{baseUrl}}/admin/users-list/
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
 ### 7. Make User Staff (Superuser only)
 POST {{baseUrl}}/admin/make-this-user-staff/
 Authorization: Bearer {{token}}
 Content-Type: application/json
 
 {
-    "phone": "09123456789",
+    "phone": "09000000001",
     "is_staff": true
 }

@@ -6,6 +6,11 @@ from django.utils import timezone
 
 
 class PurchaseSerializer(serializers.ModelSerializer):
+    user_name = serializers.CharField(source='user.full_name', read_only=True)
+    user_phone = serializers.CharField(source='user.phone', read_only=True)
+    package_title = serializers.CharField(source='package.title', read_only=True)
+    verified_by_name = serializers.CharField(source='verified_by.full_name', read_only=True)
+    
     class Meta:
         model = Purchase
         fields = '__all__'
@@ -39,9 +44,23 @@ class PurchaseSerializer(serializers.ModelSerializer):
 
 
 class WalletSerializer(serializers.ModelSerializer):
+    owner_name = serializers.CharField(source='owner.full_name', read_only=True)
+    owner_phone = serializers.CharField(source='owner.phone', read_only=True)
+    transactions_count = serializers.SerializerMethodField()
+    recent_transactions = serializers.SerializerMethodField()
+    
     class Meta:
         model = Wallet
-        fields = '__all__'
+        fields = ['id', 'owner', 'owner_name', 'owner_phone', 'balance', 'updated_at', 'transactions_count', 'recent_transactions']
+    
+    def get_transactions_count(self, obj):
+        """تعداد کل تراکنش‌های کیف پول"""
+        return obj.transactions.count()
+    
+    def get_recent_transactions(self, obj):
+        """آخرین 5 تراکنش کیف پول"""
+        recent_transactions = obj.transactions.order_by('-created_at')[:5]
+        return TransactionSerializer(recent_transactions, many=True).data
 
 
 class AdminWalletSerializer(serializers.ModelSerializer):

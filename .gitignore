@@ -10,3 +10,4 @@ future.txt
 *.idea
 *.xml
 .env
+test1.py

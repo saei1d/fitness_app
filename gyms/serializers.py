@@ -46,3 +46,13 @@ class GymSerializer(serializers.ModelSerializer):
         if latitude and longitude:
             validated_data["location"] = Point(float(longitude), float(latitude), srid=4326)
         return super().update(instance, validated_data)
+
+
+class GymImageBulkUploadRequestSerializer(serializers.Serializer):
+    gym = serializers.IntegerField(required=True)
+    images = serializers.ListField(
+        child=serializers.ImageField(), required=True
+    )
+    alt_texts = serializers.ListField(
+        child=serializers.CharField(allow_blank=True), required=False
+    )
