@@ -99,14 +99,24 @@ WSGI_APPLICATION = 'fitness.wsgi.application'
 #         'NAME': BASE_DIR / 'db.sqlite3',
 #     }
 # }
+# DATABASES = {
+#     'default': {
+#         'ENGINE': os.getenv('DB_ENGINE', 'django.contrib.gis.db.backends.postgis'),
+#         'NAME': os.getenv('DB_NAME', 'fitnessfpb_db'),
+#         'USER': os.getenv('DB_USER', 'postgres'),
+#         'PASSWORD': os.getenv('DB_PASSWORD', 'vBnYLAT7d15qwGNacxfp'),
+#         'HOST': os.getenv('DB_HOST', 'fitness-klt-service'),
+#         'PORT': os.getenv('DB_PORT', '5432'),
+#     }
+# }
 DATABASES = {
     'default': {
-        'ENGINE': os.getenv('DB_ENGINE', 'django.contrib.gis.db.backends.postgis'),
-        'NAME': os.getenv('DB_NAME', 'fitnessfpb_db'),
-        'USER': os.getenv('DB_USER', 'postgres'),
-        'PASSWORD': os.getenv('DB_PASSWORD', 'vBnYLAT7d15qwGNacxfp'),
-        'HOST': os.getenv('DB_HOST', 'fitness-klt-service'),
-        'PORT': os.getenv('DB_PORT', '5432'),
+        'ENGINE': 'django.contrib.gis.db.backends.postgis',
+        'NAME':'fitnessfpb_db',
+        'USER':'postgres',
+        'PASSWORD':'vBnYLAT7d15qwGNacxfp',
+        'HOST':'fitness-klt-service',
+        'PORT':'5432',
     }
 }
 
