@@ -77,3 +77,9 @@ Content-Type: application/json
     "phone": "09000000001",
     "is_staff": true
 }
+
+
+### 8.check auth
+GET {{baseUrl}}/auth/check-auth/
+Authorization: Bearer {{token}}
+Content-Type: application/json

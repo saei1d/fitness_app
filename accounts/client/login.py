@@ -100,3 +100,19 @@ class VerifyOTPView(APIView):
         }, status=status.HTTP_200_OK)
 
 
+@extend_schema(tags=['Authentication'])
+class CheckAuth(APIView):
+    def get(self, request):
+        if request.user.is_authenticated:
+            return Response({
+                "is_authenticated": True,
+                "user": {
+                    "id": request.user.id,
+                    "phone": request.user.phone,
+                    "full_name": request.user.full_name
+                }
+            }, status=status.HTTP_200_OK)
+        return Response({
+            "is_authenticated": False,
+            "detail": "Invalid or expired token"
+        }, status=status.HTTP_401_UNAUTHORIZED)
