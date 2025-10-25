@@ -102,11 +102,11 @@ WSGI_APPLICATION = 'fitness.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': os.getenv('DB_ENGINE', 'django.contrib.gis.db.backends.postgis'),
-        'NAME': os.getenv('DB_NAME', 'mydb'),
-        'USER': os.getenv('DB_USER', 'myuser'),
-        'PASSWORD': os.getenv('DB_PASSWORD', 'mypassword'),
-        'HOST': os.getenv('DB_HOST', 'db'),
-        'PORT': int(os.getenv('DB_PORT', '5432')),
+        'NAME': os.getenv('DB_NAME', 'fitnessfpb_db'),
+        'USER': os.getenv('DB_USER', 'postgres'),
+        'PASSWORD': os.getenv('DB_PASSWORD', 'vBnYLAT7d15qwGNacxfp'),
+        'HOST': os.getenv('DB_HOST', 'fitness-klt-service'),
+        'PORT': os.getenv('DB_PORT', '5432'),
     }
 }
 
