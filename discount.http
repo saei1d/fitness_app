@@ -2,7 +2,7 @@
 
 ### Variables
 @baseUrl = http://localhost:8000/api
-@token = your_jwt_token_here
+@token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzYyNTMzODU1LCJpYXQiOjE3NjE2Njk4NTUsImp0aSI6ImMwM2MyZDJiMTg1NDQ1ODFhODJmYTdjODhmMzUyOWIxIiwidXNlcl9pZCI6IjE1In0.OPpcE47Te7GniBKkAprLMGBOVJaoCdrwlqMG1JpAtMc
 
 ### 1. Get All Discount Codes
 GET {{baseUrl}}/discount-codes/
@@ -16,13 +16,13 @@ Content-Type: application/json
 {
     "code": "SUMMER2024",
     "discount_type": "percent",
-    "value": 20.00,
+    "value": 5,
     "club": 1,
-    "source_type": "club",
+    "source_type": "admin",
     "start_date": "2024-06-01T00:00:00Z",
     "end_date": "2024-08-31T23:59:59Z",
     "usage_limit": 100,
-    "per_user_limit": 2,
+    "per_user_limit": 1,
     "is_active": true
 }
 

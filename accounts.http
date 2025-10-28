@@ -2,7 +2,7 @@
 
 ### Variables
 @baseUrl = http://localhost:8000/api
-@token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzYxMzE2Nzc1LCJpYXQiOjE3NjEyMzAzNzUsImp0aSI6ImNhMTM4YWQwMWJiMjQ4ZDhiNjcwMjc3NzZjNmI2YjZmIiwidXNlcl9pZCI6IjYifQ.3V0B3nWvKdqj6PKH0g7Rsqec4K-3sNQKREIVhWYdPZQ
+@token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzYyNTMzODU1LCJpYXQiOjE3NjE2Njk4NTUsImp0aSI6ImMwM2MyZDJiMTg1NDQ1ODFhODJmYTdjODhmMzUyOWIxIiwidXNlcl9pZCI6IjE1In0.OPpcE47Te7GniBKkAprLMGBOVJaoCdrwlqMG1JpAtMc
 
 ### 1. Request OTP (Public)
 POST {{baseUrl}}/auth/request-otp/

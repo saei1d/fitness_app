@@ -2,7 +2,10 @@
 
 ### Variables
 @baseUrl = http://localhost:8000/api
-@token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzYxMzE2Nzc1LCJpYXQiOjE3NjEyMzAzNzUsImp0aSI6ImNhMTM4YWQwMWJiMjQ4ZDhiNjcwMjc3NzZjNmI2YjZmIiwidXNlcl9pZCI6IjYifQ.3V0B3nWvKdqj6PKH0g7Rsqec4K-3sNQKREIVhWYdPZQ
+@token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzYyNTMzNjY2LCJpYXQiOjE3NjE2Njk2NjYsImp0aSI6Ijk1ZjBkYWM2OTc0MzRmMTQ4MTA4M2MwMWNiMTY5NTYzIiwidXNlcl9pZCI6IjEzIn0.xkTWBGlnLKQ4XOZGJL4_4Mf6P6AEJspyly_hortqn90
+
+@baseUrlmain = http://fitness.runflare.run/api
+
 
 ### 1. Get All Gyms
 GET {{baseUrl}}/gym/gyms/
@@ -10,13 +13,13 @@ GET {{baseUrl}}/gym/gyms/
 
 
 ### 2. Create New Gym (Owner only)
-POST {{baseUrl}}/gym/gyms/
+POST {{baseUrlmain}}/gym/gyms/
 Authorization: Bearer {{token}}
 Content-Type: application/json
 
 {
-    "name": "gym 2",
-    "owner": 8,
+    "name": "salamm",
+    "owner": 13,
     "latitude":51.112121,
     "longitude":51.2121,
     "description": "A test gym for API testing",

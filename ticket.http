@@ -2,69 +2,58 @@
 
 ### Variables
 @baseUrl = http://localhost:8000/api
-@token = your_jwt_token_here
+@token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzYyNDQ0MzQ4LCJpYXQiOjE3NjE1ODAzNDksImp0aSI6ImM4ODRkZDg3NGJjYzQyMzNiZWViMjczYTY0YjhkOTg2IiwidXNlcl9pZCI6IjcifQ.XG5aPE49cpmzu0O6f7KX57CGhp2JP71hiTsR11AHcVI
 
-### 1. Get All Tickets
+### 1. Get All Tickets (Staff Only - Regular users see only their own)
 GET {{baseUrl}}/ticket/tickets/
 Authorization: Bearer {{token}}
 
-### 2. Create New Ticket
+### 2. Create New Ticket with Initial Message
 POST {{baseUrl}}/ticket/tickets/
 Authorization: Bearer {{token}}
 Content-Type: application/json
 
 {
     "subject": "Problem with gym equipment",
-    "status": "open"
+    "message": "The treadmill on the second floor is making strange noises and vibrating excessively. Please check it as soon as possible."
 }
 
-### 3. Get Ticket Details
+### 3. Get Ticket Details with Messages (Only own tickets for regular users)
 GET {{baseUrl}}/ticket/tickets/1/
 Authorization: Bearer {{token}}
 
-### 4. Update Ticket
-PUT {{baseUrl}}/ticket/tickets/1/
+### 4. Change Ticket Status (Regular users can only close open tickets, Staff can change any status)
+PATCH {{baseUrl}}/ticket/tickets/1/change_status/
 Authorization: Bearer {{token}}
 Content-Type: application/json
 
 {
-    "subject": "Updated ticket subject",
-    "status": "pending",
-    "admin": 2
+    "status": "closed"
 }
 
-### 5. Partial Update Ticket
-PATCH {{baseUrl}}/ticket/tickets/1/
-Authorization: Bearer {{token}}
-Content-Type: application/json
-
-{
-    "status": "resolved"
-}
-
-### 6. Delete Ticket
+### 5. Delete Ticket (Superuser Only)
 DELETE {{baseUrl}}/ticket/tickets/1/
 Authorization: Bearer {{token}}
 
-### 7. Get All Ticket Messages
+### 6. Get All Ticket Messages (Staff see all, Regular users see only their ticket messages)
 GET {{baseUrl}}/ticket/ticket-messages/
 Authorization: Bearer {{token}}
 
-### 8. Create New Ticket Message
+### 7. Create Additional Ticket Message
 POST {{baseUrl}}/ticket/ticket-messages/
 Authorization: Bearer {{token}}
 Content-Type: application/json
 
 {
     "ticket": 1,
-    "message": "I need help with the treadmill on the second floor"
+    "message": "I also noticed that the air conditioning is not working properly in that area."
 }
 
-### 9. Get Ticket Message Details
+### 8. Get Ticket Message Details
 GET {{baseUrl}}/ticket/ticket-messages/1/
 Authorization: Bearer {{token}}
 
-### 10. Update Ticket Message
+### 9. Update Ticket Message
 PUT {{baseUrl}}/ticket/ticket-messages/1/
 Authorization: Bearer {{token}}
 Content-Type: application/json
@@ -74,22 +63,77 @@ Content-Type: application/json
     "message": "Updated message content"
 }
 
-### 11. Delete Ticket Message
+### 10. Delete Ticket Message
 DELETE {{baseUrl}}/ticket/ticket-messages/1/
 Authorization: Bearer {{token}}
 
-### 12. Get Messages for Specific Ticket
+### 11. Get Messages for Specific Ticket
 GET {{baseUrl}}/ticket/ticket-messages/?ticket=1
 Authorization: Bearer {{token}}
 
-### 13. Get User's Tickets
+### 12. Get User's Own Tickets (Regular users automatically see only their own)
 GET {{baseUrl}}/ticket/tickets/?creator=1
 Authorization: Bearer {{token}}
 
-### 14. Get Assigned Tickets (Admin)
-GET {{baseUrl}}/ticket/tickets/?admin=2
-Authorization: Bearer {{token}}
-
-### 15. Filter Tickets by Status
+### 13. Filter Tickets by Status
 GET {{baseUrl}}/ticket/tickets/?status=open
 Authorization: Bearer {{token}}
+
+### 14. Test Status Change Restrictions
+### Regular user trying to change non-open ticket (should fail)
+PATCH {{baseUrl}}/ticket/tickets/1/change_status/
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+    "status": "pending"
+}
+
+### Regular user trying to change open ticket to closed (should succeed)
+PATCH {{baseUrl}}/ticket/tickets/1/change_status/
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+    "status": "closed"
+}
+
+### Staff user changing any status (should succeed)
+PATCH {{baseUrl}}/ticket/tickets/1/change_status/
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+    "status": "resolved"
+}
+
+### 15. Test Complete Ticket Flow
+### Create ticket with message
+POST {{baseUrl}}/ticket/tickets/
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+    "subject": "New Equipment Request",
+    "message": "We need new dumbbells for the weight training area. The current ones are worn out."
+}
+
+### Add more messages to the conversation
+POST {{baseUrl}}/ticket/ticket-messages/
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+    "ticket": 2,
+    "message": "What weight ranges do you need? We can order them next week."
+}
+
+### Staff response
+POST {{baseUrl}}/ticket/ticket-messages/
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+    "ticket": 2,
+    "message": "We need 5kg, 10kg, 15kg, and 20kg sets. About 4 pairs of each."
+}

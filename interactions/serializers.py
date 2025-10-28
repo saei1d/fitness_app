@@ -26,6 +26,8 @@ class ReviewSerializer(serializers.ModelSerializer):
             'reply_to',
             'replies',
             'is_reported',
+            'blocked',
+            'deleted',
         ]
         read_only_fields = [
             'id',
@@ -33,13 +35,15 @@ class ReviewSerializer(serializers.ModelSerializer):
             'created_at',
             'buyer',
             'is_reported',
-            'replies'
+            'replies',
+            'blocked',
+            'deleted',
         ]
 
     def get_replies(self, obj):
         """نمایش پاسخ‌های صاحب باشگاه"""
-        replies = obj.replies.all()
-        return ReviewSerializer(replies, many=True).data
+        replies = obj.replies.filter(blocked=False, deleted=False, user__is_banned_from_reviews=False)
+        return ReviewSerializer(replies, many=True, context=self.context).data
 
     def validate(self, data):
         """قوانین خاص قبل از ذخیره"""
@@ -57,7 +61,7 @@ class ReviewSerializer(serializers.ModelSerializer):
             has_purchased = hasattr(user, "purchases") and user.purchases.filter(package__gym=gym).exists()
 
             # اگر کاربر خرید نداشته و قبلاً کامنت داده، جلوی تکرار را بگیر
-            if not has_purchased and Review.objects.filter(user=user, gym=gym, reply_to__isnull=True).exists():
+            if not has_purchased and Review.objects.filter(user=user, gym=gym, reply_to__isnull=True, deleted=False).exists():
                 raise serializers.ValidationError("شما قبلاً برای این باشگاه نظر داده‌اید و امکان ثبت نظر مجدد ندارید.")
 
         # جلوگیری از کامنت اصلی توسط owner
@@ -114,6 +118,46 @@ class ReviewSerializer(serializers.ModelSerializer):
 
         return review
 
+
+class AdminReviewSerializer(serializers.ModelSerializer):
+    """Serializer مخصوص ادمین‌ها برای مدیریت نظرات"""
+    user_full_name = serializers.CharField(source='user.full_name', read_only=True)
+    user_phone = serializers.CharField(source='user.phone', read_only=True)
+    gym_name = serializers.CharField(source='gym.name', read_only=True)
+    replies = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Review
+        fields = [
+            'id',
+            'user',
+            'user_full_name',
+            'user_phone',
+            'gym',
+            'gym_name',
+            'rating',
+            'comment',
+            'created_at',
+            'buyer',
+            'reply_to',
+            'replies',
+            'is_reported',
+            'blocked',
+            'deleted',
+        ]
+        read_only_fields = [
+            'id',
+            'user',
+            'created_at',
+            'buyer',
+            'is_reported',
+            'replies',
+        ]
+
+    def get_replies(self, obj):
+        """نمایش تمام پاسخ‌ها برای ادمین"""
+        replies = obj.replies.all()
+        return AdminReviewSerializer(replies, many=True, context=self.context).data
 
 
 class FavoriteSerializer(serializers.ModelSerializer):
