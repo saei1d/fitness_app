@@ -67,6 +67,18 @@ class TicketViewSet(viewsets.ModelViewSet):
             status=status.HTTP_405_METHOD_NOT_ALLOWED
         )
 
+    @extend_schema(
+        summary='تغییر وضعیت تیکت',
+        description='تغییر وضعیت تیکت (کاربران عادی فقط می‌توانند باز را ببندند، ادمین‌ها همه وضعیت‌ها را می‌توانند تغییر دهند)',
+        request={
+            'type': 'object',
+            'properties': {
+                'status': {'type': 'string', 'description': 'وضعیت جدید تیکت'}
+            },
+            'required': ['status']
+        },
+        responses={200: TicketSerializer, 400: dict, 403: dict}
+    )
     @action(detail=True, methods=['patch'], permission_classes=[permissions.IsAuthenticated])
     def change_status(self, request, pk=None):
         """Allow status changes with restrictions"""

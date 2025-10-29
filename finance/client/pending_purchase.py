@@ -16,22 +16,27 @@ class CreatePendingPurchaseView(APIView):
         package = Package.objects.filter(id=package_id).first()
         if not package:
             return Response({'error': 'Package not found'}, status=404)
+        
+        # دریافت کد تخفیف از بادی (اختیاری)
+        discount_code = request.data.get('discount_code')
+
+        payload = {'package': package.id, 'payment_status': 'pending'}
+        if discount_code:
+            payload['discount_code'] = discount_code
 
         serializer = PurchaseSerializer(
-            data={'package': package.id, 'payment_status': 'pending'},
+            data=payload,
             context={'request': request}
         )
         if not serializer.is_valid():
             return Response(serializer.errors, status=400)
-
+    
         try:
             with transaction.atomic():
                 purchase = serializer.save()
 
-                trans = Transaction.objects.create(
-                    amount=package.price,
-                    purchase=purchase
-                )
+                # مبلغ تراکنش بر اساس final_amount ذخیره می‌شود
+                trans = Transaction.objects.create(amount=purchase.final_amount, purchase=purchase)
 
                 return Response({
                     'message': 'Pending purchase created',

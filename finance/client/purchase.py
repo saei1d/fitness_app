@@ -69,7 +69,7 @@ class FinalizePurchaseView(APIView):
                     wallet=None,
                     admin_wallet=admin_wallet,
                     purchase=purchase,
-                    amount=purchase.total_amount,
+                    amount=purchase.final_amount,
                     type='credit',
                     status='completed',
                     description=f"پرداخت خرید #{purchase.id} - کاربر: {purchase.user.phone}",
@@ -77,9 +77,9 @@ class FinalizePurchaseView(APIView):
                 )
 
                 # به‌روزرسانی موجودی ادمین
-                admin_wallet.balance += purchase.total_amount
+                admin_wallet.balance += purchase.final_amount
                 admin_wallet.save()
-
+                
                 return Response({
                     'message': 'Payment confirmed and transferred to admin wallet',
                     'buyer_code': buyer_code_genrate,

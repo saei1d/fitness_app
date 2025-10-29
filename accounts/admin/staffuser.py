@@ -1,13 +1,23 @@
 from accounts.imports import *
 
 
+@extend_schema(tags=['Admin'])
 class UserStaff(APIView):
     permission_classes = [IsAuthenticated]
 
     @extend_schema(
-        request=dict,
-        responses={200: dict},
-        description="تنها سوپریوزر می‌تواند وضعیت staff کاربر را تنظیم کند"
+        tags=['Admin'],
+        request={
+            'type': 'object',
+            'properties': {
+                'phone': {'type': 'string', 'description': 'شماره تلفن کاربر'},
+                'is_staff': {'type': 'boolean', 'description': 'تنظیم وضعیت staff'}
+            },
+            'required': ['phone']
+        },
+        responses={200: dict, 400: dict, 403: dict, 404: dict},
+        summary='تنظیم وضعیت Staff کاربر',
+        description='تنها سوپریوزر می‌تواند وضعیت staff کاربر را تنظیم کند'
     )
     def post(self, request):
         if not request.user.is_superuser:

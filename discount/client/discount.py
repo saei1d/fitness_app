@@ -10,20 +10,19 @@ class IsAdminOrOwnerPermission(permissions.BasePermission):
 
 
     def has_permission(self, request, view):
-        return True
-        # if not request.user or not request.user.is_authenticated:
-        #     return False
+        if not request.user or not request.user.is_authenticated:
+            return False
 
-        # # خواندن برای همه کاربران لاگین‌شده مجاز است
-        # if request.method in permissions.SAFE_METHODS:
-        #     return True
+        # خواندن برای همه کاربران لاگین‌شده مجاز است
+        if request.method in permissions.SAFE_METHODS:
+            return True
 
-        # # عملیات نوشتن فقط برای staff یا owner
-        # if request.user.is_staff:
-        #     return True
-        # if getattr(request.user, 'role', None) == 'owner':
-        #     return True
-        # return False
+        # عملیات نوشتن فقط برای staff یا owner
+        if request.user.is_staff:
+            return True
+        if getattr(request.user, 'role', None) == 'owner':
+            return True
+        return False
 
     def has_object_permission(self, request, view, obj):
         if not request.user or not request.user.is_authenticated:

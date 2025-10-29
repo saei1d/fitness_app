@@ -15,7 +15,25 @@ Authorization: Bearer {{token_customer}}
 Content-Type: application/json
 
 {
+    "discount_code": ""
+}
 
+### 1.1 Create Pending Purchase (with Club discount code)
+POST {{baseUrl}}/finance/pending/1/
+Authorization: Bearer {{token_customer}}
+Content-Type: application/json
+
+{
+    "discount_code": "CLUB50"  
+}
+
+### 1.2 Create Pending Purchase (with Admin discount code)
+POST {{baseUrl}}/finance/pending/1/
+Authorization: Bearer {{token_customer}}
+Content-Type: application/json
+
+{
+    "discount_code": "ADMIN5"  
 }
 
 ### 2. Finalize Purchase (After Payment)

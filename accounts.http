@@ -83,3 +83,13 @@ Content-Type: application/json
 GET {{baseUrl}}/auth/check-auth/
 Authorization: Bearer {{token}}
 Content-Type: application/json
+
+
+### 9. Enter Referral Code (Authenticated)
+POST {{baseUrl}}/auth/enter-referral-code/
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+    "referral_code": "ABC12"
+}

@@ -2,6 +2,7 @@ from decimal import Decimal
 from django.db import models
 from accounts.models import User
 from packages.models import Package
+from discount.models import DiscountCode
 
 
 class Purchase(models.Model):
@@ -30,7 +31,10 @@ class Purchase(models.Model):
     net_amount = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     verified_at = models.DateTimeField(null=True, blank=True)
     verified_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='verified_purchases')
-
+    discount_code = models.ForeignKey(DiscountCode, on_delete=models.SET_NULL, null=True, blank=True, related_name='discount_code')
+    final_amount = models.DecimalField(max_digits=10, decimal_places=2)
+    
+    
     def save(self, *args, **kwargs):
 
         if not self.total_amount:

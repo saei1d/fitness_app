@@ -34,3 +34,7 @@ class UserDetailSerializer(serializers.ModelSerializer):
             'is_active',
             'date_joined',
         ]
+        
+        
+class EnterReferralCodeSerializer(serializers.Serializer):
+    referral_code = serializers.CharField(max_length=20)

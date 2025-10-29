@@ -47,6 +47,11 @@ class ReviewViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
 
+    @extend_schema(
+        summary='گزارش نظر',
+        description='گزارش نظر توسط صاحب باشگاه',
+        responses={200: dict, 403: dict}
+    )
     @action(detail=True, methods=['post'])
     def report(self, request, pk=None):
         """صاحب باشگاه گزارش می‌دهد"""
@@ -65,6 +70,11 @@ class ReviewViewSet(viewsets.ModelViewSet):
         review.save(update_fields=['is_reported'])
         return Response({'detail': 'نظر با موفقیت گزارش شد.'})
 
+    @extend_schema(
+        summary='بلاک نظر',
+        description='بلاک نظر توسط ادمین',
+        responses={200: dict, 403: dict}
+    )
     @action(detail=True, methods=['patch'], permission_classes=[permissions.IsAuthenticated, IsStaffOrReadOnly])
     def block(self, request, pk=None):
         """ادمین نظر را بلاک می‌کند"""
@@ -78,6 +88,11 @@ class ReviewViewSet(viewsets.ModelViewSet):
         review.save(update_fields=['blocked'])
         return Response({'detail': 'نظر با موفقیت بلاک شد.'})
 
+    @extend_schema(
+        summary='رفع بلاک نظر',
+        description='رفع بلاک نظر توسط ادمین',
+        responses={200: dict, 403: dict}
+    )
     @action(detail=True, methods=['patch'], permission_classes=[permissions.IsAuthenticated, IsStaffOrReadOnly])
     def unblock(self, request, pk=None):
         """ادمین نظر را از بلاک خارج می‌کند"""
@@ -91,6 +106,11 @@ class ReviewViewSet(viewsets.ModelViewSet):
         review.save(update_fields=['blocked'])
         return Response({'detail': 'نظر با موفقیت از بلاک خارج شد.'})
 
+    @extend_schema(
+        summary='حذف نظر',
+        description='حذف نظر توسط ادمین',
+        responses={200: dict, 403: dict}
+    )
     @action(detail=True, methods=['patch'], permission_classes=[permissions.IsAuthenticated, IsStaffOrReadOnly])
     def delete_review(self, request, pk=None):
         """ادمین نظر را حذف می‌کند"""
@@ -104,6 +124,11 @@ class ReviewViewSet(viewsets.ModelViewSet):
         review.save(update_fields=['deleted'])
         return Response({'detail': 'نظر با موفقیت حذف شد.'})
 
+    @extend_schema(
+        summary='بازگردانی نظر',
+        description='بازگردانی نظر حذف شده توسط ادمین',
+        responses={200: dict, 403: dict}
+    )
     @action(detail=True, methods=['patch'], permission_classes=[permissions.IsAuthenticated, IsStaffOrReadOnly])
     def restore_review(self, request, pk=None):
         """ادمین نظر حذف شده را بازگردانی می‌کند"""
@@ -117,6 +142,11 @@ class ReviewViewSet(viewsets.ModelViewSet):
         review.save(update_fields=['deleted'])
         return Response({'detail': 'نظر با موفقیت بازگردانی شد.'})
 
+    @extend_schema(
+        summary='لیست نظرات بلاک شده',
+        description='نمایش نظرات بلاک شده (فقط ادمین)',
+        responses={200: AdminReviewSerializer(many=True), 403: dict}
+    )
     @action(detail=False, methods=['get'], permission_classes=[permissions.IsAuthenticated, IsStaffOrReadOnly])
     def blocked_reviews(self, request):
         """نمایش نظرات بلاک شده (فقط برای ادمین‌ها)"""
@@ -128,6 +158,11 @@ class ReviewViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(blocked_reviews, many=True)
         return Response(serializer.data)
 
+    @extend_schema(
+        summary='لیست نظرات کاربران بن‌شده',
+        description='نمایش نظرات کاربران بن‌شده (فقط ادمین)',
+        responses={200: AdminReviewSerializer(many=True), 403: dict}
+    )
     @action(detail=False, methods=['get'], permission_classes=[permissions.IsAuthenticated, IsStaffOrReadOnly])
     def banned_users_reviews(self, request):
         """نمایش نظرات کاربران بن‌شده (فقط برای ادمین‌ها)"""
@@ -139,6 +174,11 @@ class ReviewViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(banned_reviews, many=True)
         return Response(serializer.data)
 
+    @extend_schema(
+        summary='لیست نظرات حذف شده',
+        description='نمایش نظرات حذف شده (فقط ادمین)',
+        responses={200: ReviewSerializer(many=True), 403: dict}
+    )
     @action(detail=False, methods=['get'], permission_classes=[permissions.IsAuthenticated, IsStaffOrReadOnly])
     def deleted_reviews(self, request):
         """نمایش نظرات حذف شده (فقط برای ادمین‌ها)"""
@@ -150,6 +190,11 @@ class ReviewViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(deleted_reviews, many=True)
         return Response(serializer.data)
 
+    @extend_schema(
+        summary='لیست نظرات گزارش شده',
+        description='نمایش نظرات گزارش شده (فقط ادمین)',
+        responses={200: ReviewSerializer(many=True), 403: dict}
+    )
     @action(detail=False, methods=['get'], permission_classes=[permissions.IsAuthenticated, IsStaffOrReadOnly])
     def reported_reviews(self, request):
         """نمایش نظرات گزارش شده (فقط برای ادمین‌ها)"""

@@ -2,6 +2,7 @@ from rest_framework import permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.generics import ListCreateAPIView, RetrieveUpdateDestroyAPIView
+from drf_spectacular.utils import extend_schema
 from finance.models import Transaction, Wallet
 from finance.serializers import TransactionSerializer
 
@@ -43,9 +44,27 @@ class IsAdminOrOwnerReadOnly(permissions.BasePermission):
         return False
 
 
+@extend_schema(tags=['Transaction'])
 class TransactionListCreateView(ListCreateAPIView):
     serializer_class = TransactionSerializer
     permission_classes = [IsAdminOrOwnerReadOnly]
+
+    @extend_schema(
+        responses={200: TransactionSerializer(many=True)},
+        summary='لیست تراکنش‌ها',
+        description='نمایش لیست تراکنش‌ها (admin: همه، owner: فقط تراکنش‌های کیف پول خودش)'
+    )
+    def get(self, request, *args, **kwargs):
+        return super().get(request, *args, **kwargs)
+
+    @extend_schema(
+        request=TransactionSerializer,
+        responses={201: TransactionSerializer},
+        summary='ایجاد تراکنش',
+        description='ایجاد تراکنش جدید (فقط admin)'
+    )
+    def post(self, request, *args, **kwargs):
+        return super().post(request, *args, **kwargs)
 
     def get_queryset(self):
         user = self.request.user
@@ -73,10 +92,45 @@ class TransactionListCreateView(ListCreateAPIView):
         serializer.save()
 
 
+@extend_schema(tags=['Transaction'])
 class TransactionDetailView(RetrieveUpdateDestroyAPIView):
     serializer_class = TransactionSerializer
     permission_classes = [IsAdminOrOwnerReadOnly]
     lookup_field = 'pk'
+
+    @extend_schema(
+        responses={200: TransactionSerializer},
+        summary='جزئیات تراکنش',
+        description='نمایش جزئیات تراکنش خاص'
+    )
+    def get(self, request, *args, **kwargs):
+        return super().get(request, *args, **kwargs)
+
+    @extend_schema(
+        request=TransactionSerializer,
+        responses={200: TransactionSerializer},
+        summary='ویرایش تراکنش',
+        description='ویرایش تراکنش (فقط admin)'
+    )
+    def put(self, request, *args, **kwargs):
+        return super().put(request, *args, **kwargs)
+
+    @extend_schema(
+        request=TransactionSerializer,
+        responses={200: TransactionSerializer},
+        summary='ویرایش جزئی تراکنش',
+        description='ویرایش جزئی تراکنش (فقط admin)'
+    )
+    def patch(self, request, *args, **kwargs):
+        return super().patch(request, *args, **kwargs)
+
+    @extend_schema(
+        responses={204: None},
+        summary='حذف تراکنش',
+        description='حذف تراکنش (فقط admin)'
+    )
+    def delete(self, request, *args, **kwargs):
+        return super().delete(request, *args, **kwargs)
 
     def get_queryset(self):
         # برای object-level permission نیاز به queryset پایه داریم

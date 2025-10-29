@@ -6,12 +6,17 @@ from ..serializers import *
 from django.db import transaction
 
 
-
-
+@extend_schema(tags=['Admin Withdraw Request'])
 class AdminWithdrawRequestView(APIView):
     permission_classes = [permissions.IsAuthenticated]
     serializer_class = AdminWithdrawUpdateSerializer
 
+    @extend_schema(
+        request=AdminWithdrawUpdateSerializer,
+        responses={200: AdminWithdrawUpdateSerializer, 400: dict, 404: dict},
+        summary='به‌روزرسانی درخواست برداشت',
+        description='به‌روزرسانی وضعیت درخواست برداشت توسط admin (approve/reject/complete)'
+    )
     def patch(self, request, pk):
 
         try:
