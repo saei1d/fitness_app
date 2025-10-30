@@ -4,6 +4,7 @@ from drf_spectacular.utils import extend_schema
 from django.db import models
 from ..models import DiscountCode, DiscountUsage
 from ..serializers import DiscountCodeSerializer, DiscountUsageSerializer
+from drf_spectacular.utils import extend_schema, extend_schema_view
 
 
 class IsAdminOrOwnerPermission(permissions.BasePermission):
