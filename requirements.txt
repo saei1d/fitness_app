@@ -7,3 +7,4 @@ Django[gis]>=4.2
 psycopg2-binary>=2.9
 gunicorn
 django-cors-headers
+coolname
