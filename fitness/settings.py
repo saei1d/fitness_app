@@ -112,10 +112,10 @@ WSGI_APPLICATION = 'fitness.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.contrib.gis.db.backends.postgis',
-        'NAME':'fitnessfpb_db',
+        'NAME':'fitnessmqz_db',
         'USER':'postgres',
-        'PASSWORD':'vBnYLAT7d15qwGNacxfp',
-        'HOST':'fitness-klt-service',
+        'PASSWORD':'s8V5Gncgpzy1VsqKJGLl',
+        'HOST':'fitness-gzz-service',
         'PORT':'5432',
     }
 }
