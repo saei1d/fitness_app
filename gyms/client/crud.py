@@ -41,18 +41,7 @@ class GymListCreateView(generics.ListCreateAPIView):
         description="ادمین می‌تواند باشگاه جدیدی ایجاد کند. فیلد owner می‌تواند عدد (id) یا شماره موبایل ۱۲ رقمی باشد.",
         request=GymSerializer,
         responses=GymSerializer,
-        examples=[
-            {
-                "name": "باشگاه قهرمانان",
-                "address": "تهران، سعادت‌آباد",
-                "owner": 12
-            },
-            {
-                "name": "باشگاه قهرمانان",
-                "address": "تهران، سعادت‌آباد",
-                "owner": "989123456789"
-            }
-        ]
+
     )
     def post(self, request, *args, **kwargs):
         return self.create(request, *args, **kwargs)
