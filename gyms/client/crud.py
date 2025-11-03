@@ -52,7 +52,7 @@ class GymListCreateView(generics.ListCreateAPIView):
             raise ValueError("owner field is required to assign an owner.")
 
         # اگر طولش 12 بود یعنی شمارشه، بر اساس phone پیدا کن
-        if isinstance(owner_value, str) and len(owner_value) == 12:
+        if isinstance(owner_value, str) and len(owner_value) == 11:
             try:
                 owner = User.objects.get(phone=owner_value)
             except User.DoesNotExist:
