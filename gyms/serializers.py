@@ -2,7 +2,7 @@ from rest_framework import serializers
 from .models import GymImage, Gym
 from django.contrib.gis.geos import Point
 from .models import Gym
-from accounts.serializers import UserSerializer  # اگه چنین سریالایزری داری
+from accounts.serializers import UserDetailSerializer  # اگه چنین سریالایزری داری
 from accounts.models import User
 
 
@@ -30,7 +30,7 @@ class GymImageSerializer(serializers.ModelSerializer):
 class GymSerializer(serializers.ModelSerializer):
     # owner به صورت رشته میاد (id یا شماره موبایل)
     owner = serializers.CharField(write_only=True)
-    owner_data = UserSerializer(source='owner', read_only=True)
+    owner_data = UserDetailSerializer(source='owner', read_only=True)
 
     latitude = serializers.FloatField(write_only=True)
     longitude = serializers.FloatField(write_only=True)
