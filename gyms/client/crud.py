@@ -10,12 +10,13 @@ from ..models import Gym
 from ..serializers import *
 from rest_framework import status, permissions
 from rest_framework import generics, permissions
-from drf_spectacular.utils import extend_schema
 from ..models import Gym
 from finance.models import Wallet
 from ..serializers import GymSerializer
 from rest_framework.pagination import PageNumberPagination
 from accounts.models import User
+from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiTypes
+
 
 class DefaultPagination(PageNumberPagination):
     page_size = 10
@@ -23,7 +24,21 @@ class DefaultPagination(PageNumberPagination):
     max_page_size = 50
 
 
-@extend_schema(tags=['Gym'])
+
+@extend_schema(
+    tags=['Gym'],
+    request=GymSerializer,
+    responses=GymSerializer,
+    parameters=[
+        OpenApiParameter(
+            name='owner',
+            type=OpenApiTypes.STR,
+            description='ID عددی کاربر یا شماره موبایل ۱۲ رقمی (مثلاً: "12" یا "989123456789")',
+            required=True,
+            location=OpenApiParameter.QUERY
+        )
+    ],
+)
 class GymListCreateView(generics.ListCreateAPIView):
     queryset = Gym.objects.all().order_by('-average_rating')
     serializer_class = GymSerializer
@@ -36,14 +51,21 @@ class GymListCreateView(generics.ListCreateAPIView):
 
     def perform_create(self, serializer):
         # فقط ادمین اینجا میاد
-        owner_id = self.request.data.get('owner')
-        if not owner_id:
+        owner_value = self.request.data.get('owner')
+        if not owner_value:
             raise ValueError("owner field is required to assign an owner.")
 
-        try:
-            owner = User.objects.get(id=owner_id)
-        except User.DoesNotExist:
-            raise ValueError(f"No user found with phone number: {phone}")
+        # اگر طولش 12 بود یعنی شمارشه، بر اساس phone پیدا کن
+        if isinstance(owner_value, str) and len(owner_value) == 12:
+            try:
+                owner = User.objects.get(phone=owner_value)
+            except User.DoesNotExist:
+                raise ValueError(f"No user found with phone number: {owner_value}")
+        else:
+            try:
+                owner = User.objects.get(id=owner_value)
+            except User.DoesNotExist:
+                raise ValueError(f"No user found with id: {owner_value}")
 
         gym = serializer.save(owner=owner)
 
@@ -54,6 +76,7 @@ class GymListCreateView(generics.ListCreateAPIView):
         Wallet.objects.get_or_create(owner=owner)
 
         return gym
+
 
 
 @extend_schema(tags=['Gym'])
