@@ -29,6 +29,10 @@ class TopGymsView(APIView):
 
 
 
+from collections import defaultdict
+from django.db.models import Q
+import random
+
 @extend_schema(
     tags=['Home'],
     summary='Sport group packages',
@@ -42,25 +46,53 @@ class SportGroupPackagesView(APIView):
         if not sport:
             return Response({'detail': 'sport query param is required (e.g., بدنسازی, پیلاتس, یوگا).'}, status=400)
 
-        groups = (
+        # فیلتر روی group packages (عنوان و توضیحات و همچنین پکیج‌ها)
+        groups_qs = (
             GroupPackage.objects
-            .filter(title__icontains=sport)
+            .filter(
+                Q(title__icontains=sport) |
+                Q(description__icontains=sport) |
+                Q(packages__title__icontains=sport) |
+                Q(packages__description__icontains=sport)
+            )
+            .distinct()
             .select_related('gym')
             .prefetch_related('packages')
-            .order_by('?')[:10]
         )
 
-        # گروه‌ها را به تفکیک gym جمع می‌کنیم
-        gym_packages_map = defaultdict(list)
+        # اگر رندوم می‌خوایم و دیتابیس بزرگه: بهتره در پایتون رندوم کنیم
+        groups = list(groups_qs)
+        if not groups:
+            return Response([])  # یا می‌تونی fallback بذاری
+
+        random.shuffle(groups)
+        groups = groups[:10]  # محدودسازی بعد از shuffle در پایتون امن‌تر است
+
+        # جمع‌آوری پکیج‌ها بر اساس gym_id (مقاوم در برابر gym به صورت id یا آبجکت)
+        gym_packages_map = defaultdict(list)  # key = gym_id, value = list of package instances
+        gym_ids = set()
         for group in groups:
+            # اگر select_related('gym') انجام شده، group.gym ممکن است آبجکت باشد
+            gym_id = getattr(group, 'gym_id', None) or (getattr(group, 'gym', None) and getattr(group.gym, 'id', None))
+            if gym_id is None:
+                continue
+            gym_ids.add(gym_id)
+            # استفاده از related name یا attribute برای گرفتن پکیج‌های گروه
             for package in group.packages.all():
-                gym_packages_map[group.gym].append(package)
+                gym_packages_map[gym_id].append(package)
+
+        # واکشی همه‌ی Gymها یک‌جا (برای جلوگیری از N+1)
+        gyms = Gym.objects.filter(id__in=gym_ids)
 
         gyms_data = []
-        for gym, packages in gym_packages_map.items():
-            gym_data = GymSerializer(gym, context={'request': request}).data
-            packages_data = PackageSerializer(packages, many=True).data
-            gym_data['packages'] = packages_data  # 👈 اضافه می‌کنیم
+        gym_by_id = {g.id: g for g in gyms}
+        for gid in gym_ids:
+            gym_obj = gym_by_id.get(gid)
+            if not gym_obj:
+                continue
+            gym_data = GymSerializer(gym_obj, context={'request': request}).data
+            packages = gym_packages_map.get(gid, [])
+            gym_data['packages'] = PackageSerializer(packages, many=True).data
             gyms_data.append(gym_data)
 
         return Response(gyms_data)
