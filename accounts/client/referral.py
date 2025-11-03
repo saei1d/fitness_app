@@ -119,7 +119,7 @@ class EnterReferralCodeView(APIView):
         
         # message_referrer = f"به دلیل معرفی {new_user_name}، کد تخفیف 5 درصد شما: {referrer_discount_code}"
         # send_sms_referral(referrer.phone, message_referrer)
-
+        print('hello')
         return Response({
             'success': True,
             'message': 'کد معرف با موفقیت ثبت شد.',
