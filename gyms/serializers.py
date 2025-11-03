@@ -50,7 +50,7 @@ class GymSerializer(serializers.ModelSerializer):
             request = self.context.get('request')
             if request:
                 return request.build_absolute_uri(obj.banner.url)
-        return "http://fitness.runflare.run/media/gyms/banners/pexels-koolshooters-8534438.jpg"
+        return None  # اگر برای فرانت نیاز نباشد
 
     def create(self, validated_data):
         latitude = validated_data.pop("latitude")
