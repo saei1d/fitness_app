@@ -25,20 +25,7 @@ class DefaultPagination(PageNumberPagination):
 
 
 
-@extend_schema(
-    tags=['Gym'],
-    request=GymSerializer,
-    responses=GymSerializer,
-    parameters=[
-        OpenApiParameter(
-            name='owner',
-            type=OpenApiTypes.STR,
-            description='ID عددی کاربر یا شماره موبایل ۱۲ رقمی (مثلاً: "12" یا "989123456789")',
-            required=True,
-            location=OpenApiParameter.QUERY
-        )
-    ],
-)
+@extend_schema(tags=['Gym'])
 class GymListCreateView(generics.ListCreateAPIView):
     queryset = Gym.objects.all().order_by('-average_rating')
     serializer_class = GymSerializer
@@ -49,8 +36,28 @@ class GymListCreateView(generics.ListCreateAPIView):
             return [permissions.IsAdminUser()]
         return [permissions.AllowAny()]
 
+    @extend_schema(
+        summary="ایجاد باشگاه جدید",
+        description="ادمین می‌تواند باشگاه جدیدی ایجاد کند. فیلد owner می‌تواند عدد (id) یا شماره موبایل ۱۲ رقمی باشد.",
+        request=GymSerializer,
+        responses=GymSerializer,
+        examples=[
+            {
+                "name": "باشگاه قهرمانان",
+                "address": "تهران، سعادت‌آباد",
+                "owner": 12
+            },
+            {
+                "name": "باشگاه قهرمانان",
+                "address": "تهران، سعادت‌آباد",
+                "owner": "989123456789"
+            }
+        ]
+    )
+    def post(self, request, *args, **kwargs):
+        return self.create(request, *args, **kwargs)
+
     def perform_create(self, serializer):
-        # فقط ادمین اینجا میاد
         owner_value = self.request.data.get('owner')
         if not owner_value:
             raise ValueError("owner field is required to assign an owner.")
