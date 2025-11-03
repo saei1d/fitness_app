@@ -34,6 +34,8 @@ class GymSerializer(serializers.ModelSerializer):
 
     latitude = serializers.FloatField(write_only=True)
     longitude = serializers.FloatField(write_only=True)
+    
+    banner = serializers.SerializerMethodField()
 
     class Meta:
         model = Gym
@@ -42,6 +44,13 @@ class GymSerializer(serializers.ModelSerializer):
             "working_hours", "banner", "latitude", "longitude",
             "comments", "average_rating"
         ]
+    
+    def get_banner(self, obj):
+        if obj.banner and hasattr(obj.banner, 'url'):
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.banner.url)
+        return None
 
     def create(self, validated_data):
         latitude = validated_data.pop("latitude")
