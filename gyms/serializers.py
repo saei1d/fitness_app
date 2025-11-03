@@ -46,11 +46,14 @@ class GymSerializer(serializers.ModelSerializer):
         ]
     
     def get_banner(self, obj):
+        print(f"Banner: {obj.banner}")  # دیباگ
+        print(f"Has url: {hasattr(obj.banner, 'url') if obj.banner else False}")  # دیباگ
         if obj.banner and hasattr(obj.banner, 'url'):
             request = self.context.get('request')
+            print(f"Request: {request}")  # دیباگ
             if request:
                 return request.build_absolute_uri(obj.banner.url)
-        return None  # اگر برای فرانت نیاز نباشد
+        return None
 
     def create(self, validated_data):
         latitude = validated_data.pop("latitude")

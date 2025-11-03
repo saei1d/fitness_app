@@ -5,6 +5,7 @@ from gyms.models import Gym
 from packages.models import GroupPackage, Package
 from gyms.serializers import GymSerializer
 from packages.serializers import PackageSerializer
+from collections import defaultdict
 
 
 class GroupPackageWithPackagesSerializer(serializers.ModelSerializer):
@@ -27,10 +28,11 @@ class TopGymsView(APIView):
         return Response(data)
 
 
+
 @extend_schema(
     tags=['Home'],
     summary='Sport group packages',
-    description='بازگرداندن گروه‌های پکیج مرتبط با ورزش خواسته‌شده (بدنسازی/پیلاتس/یوگا) به‌صورت رندوم همراه با پکیج‌های زیرمجموعه'
+    description='بازگرداندن باشگاه‌های مرتبط با ورزش خواسته‌شده به‌صورت رندوم همراه با پکیج‌هایشان'
 )
 class SportGroupPackagesView(APIView):
     permission_classes = [permissions.AllowAny]
@@ -40,7 +42,6 @@ class SportGroupPackagesView(APIView):
         if not sport:
             return Response({'detail': 'sport query param is required (e.g., بدنسازی, پیلاتس, یوگا).'}, status=400)
 
-        # انتخاب رندوم بین باشگاه‌ها با استفاده از order_by('?') و محدودسازی
         groups = (
             GroupPackage.objects
             .filter(title__icontains=sport)
@@ -49,9 +50,20 @@ class SportGroupPackagesView(APIView):
             .order_by('?')[:10]
         )
 
-        serializer = GroupPackageWithPackagesSerializer(groups, many=True)
-        return Response(serializer.data)
+        # گروه‌ها را به تفکیک gym جمع می‌کنیم
+        gym_packages_map = defaultdict(list)
+        for group in groups:
+            for package in group.packages.all():
+                gym_packages_map[group.gym].append(package)
 
+        gyms_data = []
+        for gym, packages in gym_packages_map.items():
+            gym_data = GymSerializer(gym, context={'request': request}).data
+            packages_data = PackageSerializer(packages, many=True).data
+            gym_data['packages'] = packages_data  # 👈 اضافه می‌کنیم
+            gyms_data.append(gym_data)
+
+        return Response(gyms_data)
 
 @extend_schema(
     tags=['Home'],
