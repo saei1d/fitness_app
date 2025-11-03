@@ -23,7 +23,7 @@ class TopGymsView(APIView):
 
     def get(self, request):
         gyms = Gym.objects.all().order_by('-average_rating')[:10]
-        data = GymSerializer(gyms, many=True).data
+        data = GymSerializer(gyms, many=True, context={'request': request}).data
         return Response(data)
 
 
