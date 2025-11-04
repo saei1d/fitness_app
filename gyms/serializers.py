@@ -28,14 +28,10 @@ class GymImageSerializer(serializers.ModelSerializer):
 
 
 class GymSerializer(serializers.ModelSerializer):
-    # owner به صورت رشته میاد (id یا شماره موبایل)
     owner = serializers.CharField(write_only=True)
     owner_data = UserDetailSerializer(source='owner', read_only=True)
-
     latitude = serializers.FloatField(write_only=True)
     longitude = serializers.FloatField(write_only=True)
-    
-    banner = serializers.SerializerMethodField()
 
     class Meta:
         model = Gym
@@ -44,16 +40,16 @@ class GymSerializer(serializers.ModelSerializer):
             "working_hours", "banner", "latitude", "longitude",
             "comments", "average_rating"
         ]
-    
-    def get_banner(self, obj):
-        print(f"Banner: {obj.banner}")  # دیباگ
-        print(f"Has url: {hasattr(obj.banner, 'url') if obj.banner else False}")  # دیباگ
-        if obj.banner and hasattr(obj.banner, 'url'):
-            request = self.context.get('request')
-            print(f"Request: {request}")  # دیباگ
-            if request:
-                return request.build_absolute_uri(obj.banner.url)
-        return None
+
+    def to_representation(self, instance):
+        rep = super().to_representation(instance)
+        request = self.context.get('request')
+        if instance.banner and hasattr(instance.banner, 'url'):
+            rep['banner'] = request.build_absolute_uri(instance.banner.url) if request else instance.banner.url
+        else:
+            rep['banner'] = None
+        return rep
+
 
     def create(self, validated_data):
         latitude = validated_data.pop("latitude")
