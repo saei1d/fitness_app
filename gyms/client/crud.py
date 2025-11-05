@@ -16,6 +16,15 @@ from ..serializers import GymSerializer
 from rest_framework.pagination import PageNumberPagination
 from accounts.models import User
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiTypes
+from rest_framework.views import APIView
+from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework.response import Response
+from rest_framework import status
+from django.shortcuts import get_object_or_404
+from gyms.models import Gym
+from ..models import GymImage
+from ..serializers import GymImageFlexibleSerializer, GymImageSerializer
+
 
 
 class DefaultPagination(PageNumberPagination):
@@ -90,37 +99,35 @@ class GymDetailView(generics.RetrieveUpdateDestroyAPIView):
 
 
 
+class GymImageUploadView(APIView):
+    parser_classes = [MultiPartParser, FormParser]
 
-@extend_schema(
-    tags=["GymImage"],
-    request=GymImageBulkUploadRequestSerializer,
-    responses=GymImageSerializer(many=True),
-)
-class GymImageBulkUploadView(generics.GenericAPIView):
-    permission_classes = [permissions.IsAuthenticated]
-    serializer_class = GymImageBulkUploadRequestSerializer  # 👈 اضافه شد
-
-    def post(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
+    def post(self, request):
+        serializer = GymImageFlexibleSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
 
-        gym_id = serializer.validated_data["gym"]
-        images = serializer.validated_data["images"]
-        alt_texts = serializer.validated_data.get("alt_texts", [])
+        gym = get_object_or_404(Gym, id=data["gym"])
 
-        if len(alt_texts) < len(images):
-            alt_texts += [""] * (len(images) - len(alt_texts))
+        # تشخیص حالت تکی یا چندتایی
+        uploaded_images = []
 
-        gym_images = []
-        for image, alt_text in zip(images, alt_texts):
-            gym_image = GymImage.objects.create(
-                gym_id=gym_id,
-                image=image,
-                alt_text=alt_text
+        if "images" in data:
+            # حالت چندتایی
+            alt_texts = data.get("alt_texts", [""] * len(data["images"]))
+            for image, alt_text in zip(data["images"], alt_texts):
+                obj = GymImage.objects.create(gym=gym, image=image, alt_text=alt_text)
+                uploaded_images.append(obj)
+        else:
+            # حالت تکی
+            obj = GymImage.objects.create(
+                gym=gym,
+                image=data["image"],
+                alt_text=data.get("alt_text", "")
             )
-            gym_images.append(gym_image)
+            uploaded_images.append(obj)
 
         return Response(
-            GymImageSerializer(gym_images, many=True).data,
+            GymImageSerializer(uploaded_images, many=True, context={"request": request}).data,
             status=status.HTTP_201_CREATED
         )

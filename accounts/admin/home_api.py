@@ -6,7 +6,12 @@ from packages.models import GroupPackage, Package
 from gyms.serializers import GymSerializer
 from packages.serializers import PackageSerializer
 from collections import defaultdict
-
+from django.db.models import Subquery, OuterRef, Min
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import permissions
+from gyms.models import Gym
+from packages.models import Package
 
 class GroupPackageWithPackagesSerializer(serializers.ModelSerializer):
     gym = GymSerializer(read_only=True)
@@ -23,7 +28,17 @@ class TopGymsView(APIView):
     permission_classes = [permissions.AllowAny]
 
     def get(self, request):
-        gyms = Gym.objects.all().order_by('-average_rating')[:10]
+        # ساب‌کوئری برای پیدا کردن کمترین قیمت پکیج هر باشگاه
+        cheapest_package = Package.objects.filter(
+            group_package__gym=OuterRef('pk')
+        ).order_by('price').values('price')[:1]
+
+        gyms = (
+            Gym.objects
+            .annotate(price=Subquery(cheapest_package))  # فیلد price به هر Gym اضافه میشه
+            .order_by('-average_rating')[:10]
+        )
+
         data = GymSerializer(gyms, many=True, context={'request': request}).data
         return Response(data)
 

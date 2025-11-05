@@ -4,7 +4,10 @@ from django.core.validators import MinValueValidator, MaxValueValidator
 from django.contrib.gis.db import models as gis_models
 from django.contrib.gis.geos import Point
 from accounts.models import User
-
+import os
+from django.db import models
+from django.utils.text import slugify
+from gyms.models import Gym
 
 class Gym(gis_models.Model):
     owner = models.ForeignKey(User, on_delete=models.CASCADE)
@@ -36,9 +39,21 @@ class Gym(gis_models.Model):
         return self.location.x if self.location else None
 
 
+
+
+
+def gym_image_upload_path(instance, filename):
+    """
+    مسیر داینامیک برای ذخیره عکس‌های هر باشگاه
+    مثال: media/gyms/images/باشگاه-دریا/photo1.jpg
+    """
+    gym_name = slugify(instance.gym.name, allow_unicode=True)
+    return os.path.join("gyms", "images", gym_name, filename)
+
+
 class GymImage(models.Model):
     gym = models.ForeignKey(Gym, on_delete=models.CASCADE, related_name="images")
-    image = models.ImageField(upload_to="gyms/images/")
+    image = models.ImageField(upload_to=gym_image_upload_path)
     alt_text = models.CharField(max_length=255, blank=True)
     order = models.PositiveSmallIntegerField(default=0)
     uploaded_at = models.DateTimeField(auto_now_add=True)
