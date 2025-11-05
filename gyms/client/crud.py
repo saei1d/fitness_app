@@ -115,6 +115,6 @@ class GymImageUploadView(APIView):
             uploaded_images.append(obj)
 
         return Response(
-            GymImageSerializer(uploaded_images, many=True, context={"request": request}).data,
+            GymImageFlexibleSerializer(uploaded_images, many=True, context={"request": request}).data,
             status=status.HTTP_201_CREATED
         )
