@@ -38,5 +38,5 @@ class Favorite(models.Model):
         unique_together = ("user", "gym")
 
     def __str__(self):
-        return f"{self.user.username} ❤️ {self.gym.name}"
+        return f"{self.user.phone} ❤️ {self.gym.name}"
 
