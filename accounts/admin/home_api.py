@@ -12,6 +12,9 @@ from rest_framework.response import Response
 from rest_framework import permissions
 from gyms.models import Gym
 from packages.models import Package
+from django.db.models import Q
+import random
+
 
 class GroupPackageWithPackagesSerializer(serializers.ModelSerializer):
     gym = GymSerializer(read_only=True)
@@ -44,9 +47,6 @@ class TopGymsView(APIView):
 
 
 
-from collections import defaultdict
-from django.db.models import Q
-import random
 
 @extend_schema(
     tags=['Home'],

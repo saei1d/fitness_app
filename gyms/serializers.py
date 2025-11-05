@@ -3,7 +3,8 @@ from .models import GymImage, Gym
 from django.contrib.gis.geos import Point
 from .models import Gym
 from accounts.serializers import UserDetailSerializer
-
+from django.utils import timezone
+from discount.models import *
 
 class GymImageSerializer(serializers.ModelSerializer):
     image = serializers.ImageField(use_url=True)
@@ -36,19 +37,38 @@ class GymImageFlexibleSerializer(serializers.Serializer):
     
 class GymSerializer(serializers.ModelSerializer):
     price = serializers.DecimalField(max_digits=10, decimal_places=2, required=False)
-    owner = serializers.CharField(write_only=True)
+    max_discount = serializers.SerializerMethodField()  # فیلد جدید برای بیشترین تخفیف    owner = serializers.CharField(write_only=True)
     owner_data = UserDetailSerializer(source='owner', read_only=True)
     latitude = serializers.FloatField(write_only=True)
     longitude = serializers.FloatField(write_only=True)
+    images = serializers.SerializerMethodField()
+
 
     class Meta:
         model = Gym
         fields = [
             "id", "owner", "owner_data", "name", "description", "address",
             "working_hours", "banner", "latitude", "longitude",
-            "comments", "average_rating", "price"
+            "comments", "average_rating", "price","max_discount","images"
         ]
 
+    def get_images(self, obj):
+        request = self.context.get('request')
+        images = obj.gymimage_set.all().order_by('order', 'uploaded_at')  # مرتب‌سازی بر اساس ترتیب
+        image_urls = []
+        for img in images:
+            if img.image and hasattr(img.image, 'url'):
+                url = img.image.url
+                if request:
+                    url = request.build_absolute_uri(url)
+                image_urls.append({
+                    "id": img.id,
+                    "url": url,
+                    "alt_text": img.alt_text or "",
+                    "order": img.order
+                })
+        return image_urls
+    
     def to_representation(self, instance):
         rep = super().to_representation(instance)
         request = self.context.get('request')
@@ -58,7 +78,42 @@ class GymSerializer(serializers.ModelSerializer):
             rep['banner'] = None
         return rep
 
+    def get_max_discount(self, obj):
+        # دریافت تاریخ فعلی
+        now = timezone.now()
 
+        # فیلتر کردن کدهای تخفیف فعال و معتبر برای این باشگاه
+        discounts = DiscountCode.objects.filter(
+            club=obj,  # مرتبط با این باشگاه
+            is_active=True,  # کد فعال باشد
+            start_date__lte=now,  # شروع اعتبار قبل از حالا
+            end_date__gte=now,  # پایان اعتبار بعد از حالا
+            used_count__lt=models.F('usage_limit')  # تعداد استفاده کمتر از حد مجاز
+        ).exclude(usage_limit__isnull=True)  # کدهایی که محدودیت استفاده دارند
+
+        if not discounts.exists():
+            return None  # اگر تخفیفی نبود، null برگردون
+
+        # پیدا کردن بیشترین تخفیف
+        max_discount = None
+        max_value = 0
+
+        for discount in discounts:
+            # برای تخفیف درصدی، مقدار رو به عنوان درصد در نظر می‌گیریم
+            # برای تخفیف مبلغی، مستقیماً مقدار رو مقایسه می‌کنیم
+            current_value = float(discount.value) if discount.discount_type == 'amount' else float(discount.value)
+            
+            if current_value > max_value:
+                max_value = current_value
+                max_discount = {
+                    'code': discount.code,
+                    'type': discount.discount_type,
+                    'value': float(discount.value),  # تبدیل به float برای JSON
+                    'start_date': discount.start_date,
+                    'end_date': discount.end_date
+                }
+
+        return max_discount
     def create(self, validated_data):
         latitude = validated_data.pop("latitude")
         longitude = validated_data.pop("longitude")
