@@ -2,14 +2,7 @@ from rest_framework import serializers
 from .models import GymImage, Gym
 from django.contrib.gis.geos import Point
 from .models import Gym
-from accounts.serializers import UserDetailSerializer  # اگه چنین سریالایزری داری
-from accounts.models import User
-
-from rest_framework import serializers
-from .models import GymImage
-
-from rest_framework import serializers
-from .models import GymImage
+from accounts.serializers import UserDetailSerializer
 
 
 

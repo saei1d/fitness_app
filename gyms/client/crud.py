@@ -1,29 +1,19 @@
 from drf_spectacular.utils import extend_schema
-from rest_framework import generics
-from rest_framework.response import Response
-from rest_framework import generics, permissions, status, serializers
 from rest_framework.response import Response
 from finance.models import Wallet
 from ..models import GymImage
 from ..serializers import GymImageSerializer
 from ..models import Gym
 from ..serializers import *
-from rest_framework import status, permissions
-from rest_framework import generics, permissions
-from ..models import Gym
+from rest_framework import status, permissions ,generics
 from finance.models import Wallet
-from ..serializers import GymSerializer
 from rest_framework.pagination import PageNumberPagination
 from accounts.models import User
-from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiTypes
 from rest_framework.views import APIView
 from rest_framework.parsers import MultiPartParser, FormParser
-from rest_framework.response import Response
-from rest_framework import status
 from django.shortcuts import get_object_or_404
-from gyms.models import Gym
 from ..models import GymImage
-from ..serializers import GymImageFlexibleSerializer, GymImageSerializer
+
 
 
 
