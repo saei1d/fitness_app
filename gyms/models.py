@@ -1,11 +1,8 @@
 from django.conf import settings
 from django.db import models
-from django.core.validators import MinValueValidator, MaxValueValidator
 from django.contrib.gis.db import models as gis_models
-from django.contrib.gis.geos import Point
 from accounts.models import User
 import os
-from django.db import models
 from django.utils.text import slugify
 from gyms.models import Gym
 
