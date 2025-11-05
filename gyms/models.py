@@ -4,7 +4,6 @@ from django.contrib.gis.db import models as gis_models
 from accounts.models import User
 import os
 from django.utils.text import slugify
-from gyms.models import Gym
 
 class Gym(gis_models.Model):
     owner = models.ForeignKey(User, on_delete=models.CASCADE)
