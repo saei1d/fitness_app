@@ -202,3 +202,7 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
 CSRF_TRUSTED_ORIGINS = ['*']
 
+CSRF_COOKIE_SECURE = True  # فقط از کوکی‌ها در HTTPS استفاده می‌شود
+SESSION_COOKIE_SECURE = True  # برای امنیت بیشتر
+CSRF_COOKIE_HTTPONLY = False  # در صورت نیاز به دسترسی جاوااسکریپت به کوکی
+CORS_ALLOW_CREDENTIALS = True
