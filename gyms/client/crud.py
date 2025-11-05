@@ -127,7 +127,7 @@ class GymImageViewSet(ViewSet):
 
     @action(detail=True, methods=["delete"], url_path="delete")
     def delete_image(self, request, pk=None):
-        image = get_object_or_404(GymImage, id=pk)``
+        image = get_object_or_404(GymImage, id=pk)
         # اختیاری: بررسی دسترسی
         # if image.gym.owner != request.user:
         #     return Response({"error": "شما اجازه حذف این تصویر را ندارید."}, status=status.HTTP_403_FORBIDDEN)
