@@ -200,7 +200,7 @@ MEDIA_URL = "/media/"
 STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
-CSRF_TRUSTED_ORIGINS = ['*']
+CSRF_TRUSTED_ORIGINS = ["https://fitness.runflare.run"]
 
 CSRF_COOKIE_SECURE = True  # فقط از کوکی‌ها در HTTPS استفاده می‌شود
 SESSION_COOKIE_SECURE = True  # برای امنیت بیشتر
