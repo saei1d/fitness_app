@@ -1,9 +1,7 @@
 from drf_spectacular.utils import extend_schema
 from rest_framework.response import Response
 from finance.models import Wallet
-from ..models import GymImage
-from ..serializers import GymImageSerializer
-from ..models import Gym
+from ..models import *
 from ..serializers import *
 from rest_framework import status, permissions ,generics
 from finance.models import Wallet
@@ -12,7 +10,6 @@ from accounts.models import User
 from rest_framework.views import APIView
 from rest_framework.parsers import MultiPartParser, FormParser
 from django.shortcuts import get_object_or_404
-from ..models import GymImage
 
 
 
