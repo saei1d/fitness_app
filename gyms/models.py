@@ -39,7 +39,7 @@ class Gym(gis_models.Model):
 
 
 def gym_image_upload_path(instance, filename):
-    gym_id = instance.gym.id
+    gym_id = str(instance.gym.id)
     return os.path.join("gyms", "images", gym_id, filename)
 
 
