@@ -7,9 +7,12 @@ from rest_framework import status, permissions ,generics
 from finance.models import Wallet
 from rest_framework.pagination import PageNumberPagination
 from accounts.models import User
-from rest_framework.views import APIView
 from rest_framework.parsers import MultiPartParser, FormParser
 from django.shortcuts import get_object_or_404
+from rest_framework.viewsets import ViewSet
+from rest_framework.decorators import action
+from drf_yasg.utils import swagger_auto_schema
+from drf_yasg import openapi
 
 
 
@@ -85,28 +88,52 @@ class GymDetailView(generics.RetrieveUpdateDestroyAPIView):
 
 
 
-
-class GymImageUploadView(APIView):
+class GymImageViewSet(ViewSet):
     parser_classes = [MultiPartParser, FormParser]
 
-    def post(self, request):
+    @swagger_auto_schema(
+        operation_description="دریافت لیست تصاویر یک باشگاه با شناسه مشخص",
+        responses={
+            200: GymImageSerializer(many=True),
+            404: openapi.Response("باشگاه یافت نشد")
+        },
+        manual_parameters=[
+            openapi.Parameter(
+                'gym_id', openapi.IN_PATH, description="شناسه باشگاه", type=openapi.TYPE_INTEGER
+            )
+        ]
+    )
+    @action(detail=False, methods=["get"], url_path="gym/(?P<gym_id>\d+)/images")
+    def list_images(self, request, gym_id=None):
+        gym = get_object_or_404(Gym, id=gym_id)
+        images = GymImage.objects.filter(gym=gym)
+        serializer = GymImageSerializer(images, many=True, context={"request": request})
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    @swagger_auto_schema(
+        operation_description="آپلود تصویر یا تصاویر برای یک باشگاه (تکی یا چندتایی)",
+        request_body=GymImageFlexibleSerializer,
+        responses={
+            201: GymImageSerializer(many=True),
+            400: openapi.Response("داده‌های ورودی نامعتبر"),
+            404: openapi.Response("باشگاه یافت نشد")
+        }
+    )
+    @action(detail=False, methods=["post"], url_path="upload")
+    def upload_image(self, request):
         serializer = GymImageFlexibleSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
 
         gym = get_object_or_404(Gym, id=data["gym"])
-
-        # تشخیص حالت تکی یا چندتایی
         uploaded_images = []
 
         if "images" in data:
-            # حالت چندتایی
             alt_texts = data.get("alt_texts", [""] * len(data["images"]))
             for image, alt_text in zip(data["images"], alt_texts):
                 obj = GymImage.objects.create(gym=gym, image=image, alt_text=alt_text)
                 uploaded_images.append(obj)
         else:
-            # حالت تکی
             obj = GymImage.objects.create(
                 gym=gym,
                 image=data["image"],
@@ -115,6 +142,23 @@ class GymImageUploadView(APIView):
             uploaded_images.append(obj)
 
         return Response(
-            GymImageFlexibleSerializer(uploaded_images, many=True, context={"request": request}).data,
+            GymImageSerializer(uploaded_images, many=True, context={"request": request}).data,
             status=status.HTTP_201_CREATED
         )
+
+    @swagger_auto_schema(
+        operation_description="حذف یک تصویر خاص با شناسه",
+        responses={
+            204: openapi.Response("تصویر با موفقیت حذف شد"),
+            404: openapi.Response("تصویر یافت نشد")
+        }
+    )
+    @action(detail=True, methods=["delete"], url_path="delete")
+    def delete_image(self, request, pk=None):
+        image = get_object_or_404(GymImage, id=pk)
+        # اختیاری: بررسی دسترسی
+        # if image.gym.owner != request.user:
+        #     return Response({"error": "شما اجازه حذف این تصویر را ندارید."}, status=status.HTTP_403_FORBIDDEN)
+        
+        image.delete()
+        return Response({"message": "تصویر با موفقیت حذف شد."}, status=status.HTTP_204_NO_CONTENT)

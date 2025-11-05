@@ -5,29 +5,35 @@ from .models import Gym
 from accounts.serializers import UserDetailSerializer
 
 
+class GymImageSerializer(serializers.ModelSerializer):
+    image = serializers.ImageField(use_url=True)
 
+    class Meta:
+        model = GymImage
+        fields = ["id", "image", "alt_text", "order", "uploaded_at"]
+
+# سریالایزر برای آپلود تصاویر (تکی یا چندتایی)
 class GymImageFlexibleSerializer(serializers.Serializer):
-    """
-    Serializer که هم فایل تکی بگیره، هم چندتایی.
-    """
-    gym = serializers.IntegerField(required=True)
+    gym = serializers.IntegerField(required=True, help_text="شناسه باشگاه")
     images = serializers.ListField(
-        child=serializers.ImageField(), required=False
+        child=serializers.ImageField(), required=False, help_text="لیست تصاویر برای آپلود چندتایی"
     )
-    image = serializers.ImageField(required=False)
+    image = serializers.ImageField(required=False, help_text="تصویر تکی")
     alt_texts = serializers.ListField(
-        child=serializers.CharField(allow_blank=True), required=False
+        child=serializers.CharField(allow_blank=True), required=False, help_text="لیست متن‌های جایگزین برای تصاویر چندتایی"
     )
-    alt_text = serializers.CharField(required=False, allow_blank=True)
+    alt_text = serializers.CharField(required=False, allow_blank=True, help_text="متن جایگزین برای تصویر تکی")
 
     def validate(self, attrs):
-        # باید یا image یا images وجود داشته باشه
         if not attrs.get("image") and not attrs.get("images"):
             raise serializers.ValidationError("حداقل یک تصویر لازم است.")
+        gym_id = attrs.get("gym")
+        if not Gym.objects.filter(id=gym_id).exists():
+            raise serializers.ValidationError("باشگاه موردنظر وجود ندارد.")
         return attrs
-
-
-
+    
+    
+    
 class GymSerializer(serializers.ModelSerializer):
     price = serializers.DecimalField(max_digits=10, decimal_places=2, required=False)
     owner = serializers.CharField(write_only=True)
