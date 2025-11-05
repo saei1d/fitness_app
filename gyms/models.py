@@ -39,12 +39,8 @@ class Gym(gis_models.Model):
 
 
 def gym_image_upload_path(instance, filename):
-    """
-    مسیر داینامیک برای ذخیره عکس‌های هر باشگاه
-    مثال: media/gyms/images/باشگاه-دریا/photo1.jpg
-    """
-    gym_name = slugify(instance.gym.name, allow_unicode=True)
-    return os.path.join("gyms", "images", gym_name, filename)
+    gym_id = instance.gym.id
+    return os.path.join("gyms", "images", gym_id, filename)
 
 
 class GymImage(models.Model):
