@@ -54,7 +54,7 @@ class GymSerializer(serializers.ModelSerializer):
 
     def get_images(self, obj):
         request = self.context.get('request')
-        images = obj.gymimage_set.all().order_by('order', 'uploaded_at')  # مرتب‌سازی بر اساس ترتیب
+        images = obj.images.all().order_by('order', 'uploaded_at')  # استفاده از related_name='images'
         image_urls = []
         for img in images:
             if img.image and hasattr(img.image, 'url'):
