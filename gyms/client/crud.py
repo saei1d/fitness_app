@@ -12,7 +12,6 @@ from django.shortcuts import get_object_or_404
 from rest_framework.viewsets import ViewSet
 from rest_framework.decorators import action
 from drf_yasg.utils import swagger_auto_schema
-from drf_yasg import openapi
 
 
 
@@ -88,21 +87,11 @@ class GymDetailView(generics.RetrieveUpdateDestroyAPIView):
 
 
 
+
+@extend_schema(tags=['Gym_images'])
 class GymImageViewSet(ViewSet):
     parser_classes = [MultiPartParser, FormParser]
 
-    @swagger_auto_schema(
-        operation_description="دریافت لیست تصاویر یک باشگاه با شناسه مشخص",
-        responses={
-            200: GymImageSerializer(many=True),
-            404: openapi.Response("باشگاه یافت نشد")
-        },
-        manual_parameters=[
-            openapi.Parameter(
-                'gym_id', openapi.IN_PATH, description="شناسه باشگاه", type=openapi.TYPE_INTEGER
-            )
-        ]
-    )
     @action(detail=False, methods=["get"], url_path="gym/(?P<gym_id>\d+)/images")
     def list_images(self, request, gym_id=None):
         gym = get_object_or_404(Gym, id=gym_id)
@@ -110,15 +99,6 @@ class GymImageViewSet(ViewSet):
         serializer = GymImageSerializer(images, many=True, context={"request": request})
         return Response(serializer.data, status=status.HTTP_200_OK)
 
-    @swagger_auto_schema(
-        operation_description="آپلود تصویر یا تصاویر برای یک باشگاه (تکی یا چندتایی)",
-        request_body=GymImageFlexibleSerializer,
-        responses={
-            201: GymImageSerializer(many=True),
-            400: openapi.Response("داده‌های ورودی نامعتبر"),
-            404: openapi.Response("باشگاه یافت نشد")
-        }
-    )
     @action(detail=False, methods=["post"], url_path="upload")
     def upload_image(self, request):
         serializer = GymImageFlexibleSerializer(data=request.data)
@@ -146,13 +126,6 @@ class GymImageViewSet(ViewSet):
             status=status.HTTP_201_CREATED
         )
 
-    @swagger_auto_schema(
-        operation_description="حذف یک تصویر خاص با شناسه",
-        responses={
-            204: openapi.Response("تصویر با موفقیت حذف شد"),
-            404: openapi.Response("تصویر یافت نشد")
-        }
-    )
     @action(detail=True, methods=["delete"], url_path="delete")
     def delete_image(self, request, pk=None):
         image = get_object_or_404(GymImage, id=pk)
