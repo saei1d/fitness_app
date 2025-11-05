@@ -9,6 +9,8 @@ class EnterReferralCodeSerializer(serializers.Serializer):
     referral_code = serializers.CharField(max_length=20)
 
 
+print('mmd')
+
 def generate_unique_discount_code(name, existing_codes):
     """ساخت کد تخفیف با coolname + دو رقم رندوم و یکتا."""
     base = '-'.join(generate())
