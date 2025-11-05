@@ -8,7 +8,7 @@ class UserManager(BaseUserManager):
         if not phone:
             raise ValueError("Phone must be set")
         user = self.model(phone=phone, **extra_fields)
-
+        user.set_password(password)  # تنظیم رمز عبور
         user.save(using=self._db)
         return user
 

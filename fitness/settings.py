@@ -206,3 +206,4 @@ CSRF_COOKIE_SECURE = True  # فقط از کوکی‌ها در HTTPS استفاد
 SESSION_COOKIE_SECURE = True  # برای امنیت بیشتر
 CSRF_COOKIE_HTTPONLY = False  # در صورت نیاز به دسترسی جاوااسکریپت به کوکی
 CORS_ALLOW_CREDENTIALS = True
+SECURE_SSL_REDIRECT = True  # هدایت خودکار HTTP به HTTPS
