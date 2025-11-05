@@ -11,7 +11,6 @@ from rest_framework.parsers import MultiPartParser, FormParser
 from django.shortcuts import get_object_or_404
 from rest_framework.viewsets import ViewSet
 from rest_framework.decorators import action
-from drf_yasg.utils import swagger_auto_schema
 
 
 
