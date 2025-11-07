@@ -199,6 +199,7 @@ MEDIA_URL = "/media/"
 
 STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+STATICFILES_DIRS = [BASE_DIR / 'static']
 
 CSRF_TRUSTED_ORIGINS = ["https://fitness.runflare.run"]
 
