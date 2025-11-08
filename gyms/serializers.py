@@ -5,6 +5,8 @@ from .models import Gym
 from accounts.serializers import UserDetailSerializer
 from django.utils import timezone
 from discount.models import *
+from packages.serializers import PackageSerializer
+from django.db import models
 
 class GymImageSerializer(serializers.ModelSerializer):
     image = serializers.ImageField(use_url=True)
@@ -42,6 +44,7 @@ class GymSerializer(serializers.ModelSerializer):
     latitude = serializers.FloatField(write_only=True)
     longitude = serializers.FloatField(write_only=True)
     images = serializers.SerializerMethodField()
+    package = serializers.SerializerMethodField()
 
 
     class Meta:
@@ -49,7 +52,7 @@ class GymSerializer(serializers.ModelSerializer):
         fields = [
             "id", "owner", "owner_data", "name", "description", "address",
             "working_hours", "banner", "latitude", "longitude",
-            "comments", "average_rating", "price","max_discount","images"
+            "comments", "average_rating", "price","max_discount","images", "package"
         ]
 
     def get_images(self, obj):
@@ -68,6 +71,21 @@ class GymSerializer(serializers.ModelSerializer):
                     "order": img.order
                 })
         return image_urls
+    
+    def get_package(self, obj):
+        """برگرداندن تمام پکیج‌های باشگاه"""
+        all_packages = []
+        # گرفتن تمام GroupPackage های این باشگاه
+        group_packages = obj.group_packages.all().prefetch_related('packages')
+        
+        for group_package in group_packages:
+            # گرفتن تمام پکیج‌های هر گروه
+            packages = group_package.packages.all()
+            for package in packages:
+                all_packages.append(package)
+        
+        # سریالایز کردن تمام پکیج‌ها
+        return PackageSerializer(all_packages, many=True).data
     
     def to_representation(self, instance):
         rep = super().to_representation(instance)
