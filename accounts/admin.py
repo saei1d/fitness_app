@@ -1,15 +1,12 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
-from django.contrib.auth import get_user_model
+from .models import User, OTP
 
-User = get_user_model()
-
+# Unregister the default User if it's already registered
 try:
     admin.site.unregister(User)
 except admin.sites.NotRegistered:
     pass
-
-from .models import User, OTP
 
 @admin.register(User)
 class UserAdmin(BaseUserAdmin):
