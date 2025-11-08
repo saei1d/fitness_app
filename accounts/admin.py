@@ -3,7 +3,11 @@ from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from .models import  OTP
 from django.contrib.auth import get_user_model
 
+admin.site.unregister(get_user_model())
+admin.site.register(get_user_model())
+
 User = get_user_model()
+
 
 @admin.register(User)
 class UserAdmin(BaseUserAdmin):
