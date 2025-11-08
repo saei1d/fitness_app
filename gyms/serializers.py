@@ -47,7 +47,7 @@ class GymSerializer(serializers.ModelSerializer):
     longitude_input = serializers.FloatField(write_only=True, required=False)
     images = serializers.SerializerMethodField()
     package = serializers.SerializerMethodField()
-    distance_meters = serializers.SerializerMethodField(read_only=True,null=True,blank=True)
+    distance_meters = serializers.SerializerMethodField(read_only=True)
 
 
 
