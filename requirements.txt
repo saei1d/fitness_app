@@ -9,3 +9,4 @@ gunicorn
 django-cors-headers
 coolname
 whitenoise
+django-jazzmin

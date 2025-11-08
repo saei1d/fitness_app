@@ -38,6 +38,7 @@ AUTH_USER_MODEL = 'accounts.User'
 # Application definition
 
 INSTALLED_APPS = [
+    'jazzmin',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -207,3 +208,104 @@ CSRF_COOKIE_SECURE = True  # فقط از کوکی‌ها در HTTPS استفاد
 SESSION_COOKIE_SECURE = True  # برای امنیت بیشتر
 CSRF_COOKIE_HTTPONLY = False  # در صورت نیاز به دسترسی جاوااسکریپت به کوکی
 CORS_ALLOW_CREDENTIALS = True
+
+# Jazzmin Settings
+JAZZMIN_SETTINGS = {
+    "site_title": "پشتیبانی فیت تیکت",
+    "site_header": "پشتیبانی فیت تیکت",
+    "site_brand": "پشتیبانی فیت تیکت",
+    "site_logo": None,
+    "login_logo": None,
+    "login_logo_dark": None,
+    "site_logo_classes": "img-circle",
+    "site_icon": None,
+    "welcome_sign": "خوش آمدید به پنل مدیریت پشتیبانی فیت تیکت",
+    "copyright": "پشتیبانی فیت تیکت",
+    "search_model": ["accounts.User", "gyms.Gym", "finance.Purchase", "ticket.Ticket"],
+    "user_avatar": None,
+    "topmenu_links": [
+        {"name": "خانه", "url": "admin:index", "permissions": ["auth.view_user"]},
+        {"name": "وب‌سایت", "url": "/", "new_window": True},
+    ],
+    "usermenu_links": [
+        {"name": "پشتیبانی", "url": "https://github.com/farridav/django-jazzmin/issues", "new_window": True},
+    ],
+    "show_sidebar": True,
+    "navigation_expanded": True,
+    "hide_apps": [],
+    "hide_models": [],
+    "order_with_respect_to": ["accounts", "gyms", "finance", "packages", "ticket", "interactions", "discount"],
+    "custom_links": {
+        "accounts": [{
+            "name": "گزارشات کاربران",
+            "url": "admin:accounts_user_changelist",
+            "icon": "fas fa-users",
+            "permissions": ["accounts.view_user"]
+        }]
+    },
+    "icons": {
+        "auth": "fas fa-users-cog",
+        "auth.user": "fas fa-user",
+        "auth.Group": "fas fa-users",
+        "accounts.User": "fas fa-user-friends",
+        "accounts.OTP": "fas fa-key",
+        "gyms.Gym": "fas fa-dumbbell",
+        "gyms.GymImage": "fas fa-images",
+        "finance.Purchase": "fas fa-shopping-cart",
+        "finance.Wallet": "fas fa-wallet",
+        "finance.AdminWallet": "fas fa-coins",
+        "finance.Transaction": "fas fa-exchange-alt",
+        "finance.WithdrawRequest": "fas fa-money-bill-wave",
+        "packages.Package": "fas fa-box",
+        "packages.GroupPackage": "fas fa-layer-group",
+        "ticket.Ticket": "fas fa-ticket-alt",
+        "interactions.Review": "fas fa-star",
+        "interactions.Favorite": "fas fa-heart",
+        "discount.DiscountCode": "fas fa-tag",
+    },
+    "default_icon_parents": "fas fa-chevron-circle-right",
+    "default_icon_children": "fas fa-circle",
+    "related_modal_active": False,
+    "custom_css": None,
+    "custom_js": None,
+    "use_google_fonts_cdn": True,
+    "show_ui_builder": False,
+    "changeform_format": "horizontal_tabs",
+    "changeform_format_overrides": {
+        "auth.user": "collapsible",
+        "auth.group": "vertical_tabs",
+    },
+    "language_chooser": False,
+}
+
+JAZZMIN_UI_TWEAKS = {
+    "navbar_small_text": False,
+    "footer_small_text": False,
+    "body_small_text": False,
+    "brand_small_text": False,
+    "brand_colour": "navbar-primary",
+    "accent": "accent-primary",
+    "navbar": "navbar-dark",
+    "no_navbar_border": False,
+    "navbar_fixed": True,
+    "layout_boxed": False,
+    "footer_fixed": False,
+    "sidebar_fixed": True,
+    "sidebar": "sidebar-dark-primary",
+    "sidebar_nav_small_text": False,
+    "sidebar_disable_expand": False,
+    "sidebar_nav_child_indent": False,
+    "sidebar_nav_compact_style": False,
+    "sidebar_nav_legacy_style": False,
+    "sidebar_nav_flat_style": False,
+    "theme": "default",
+    "dark_mode_theme": None,
+    "button_classes": {
+        "primary": "btn-primary",
+        "secondary": "btn-secondary",
+        "info": "btn-info",
+        "warning": "btn-warning",
+        "danger": "btn-danger",
+        "success": "btn-success"
+    }
+}
