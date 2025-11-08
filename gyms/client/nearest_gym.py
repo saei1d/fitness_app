@@ -1,54 +1,40 @@
-import json
-
 from drf_spectacular.utils import extend_schema
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework import status
+from rest_framework import status, permissions
 from django.contrib.gis.db.models.functions import Distance
 from django.contrib.gis.geos import Point
 from ..models import Gym
 from ..serializers import GymSerializer
-from rest_framework import status, permissions
 
 
 @extend_schema(tags=['nearest_gym'])
 class NearestGymsView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.AllowAny]
 
     @extend_schema(
         request=GymSerializer,
-        responses={200: dict},
+        responses={200: GymSerializer(many=True)},
         description="فقط lat , lon کاربر را ارسال کنید"
     )
     def post(self, request, *args, **kwargs):
         try:
-            # Get data from request (DRF automatically parses JSON)
+            # دریافت مختصات کاربر از بدنه درخواست
             latitude = float(request.data.get('latitude'))
             longitude = float(request.data.get('longitude'))
 
-            # Create a Point object for the user's location
+            # ساخت نقطه جغرافیایی برای موقعیت کاربر
             user_location = Point(longitude, latitude, srid=4326)
 
-            # Query the 5 nearest gyms using PostGIS Distance function
+            # پیدا کردن نزدیک‌ترین باشگاه‌ها
             nearest_gyms = Gym.objects.annotate(
                 distance=Distance('location', user_location)
             ).order_by('distance')[:5]
 
-            # Prepare response data
-            gyms_data = [
-                {
-                    'id': gym.id,
-                    'name': gym.name,
-                    'latitude': gym.latitude,
-                    'longitude': gym.longitude,
-                    'address': gym.address,
-                    'distance_meters': gym.distance.m,  # Distance in meters
-                    'banner_url': gym.banner.url if gym.banner else None,
-                }
-                for gym in nearest_gyms
-            ]
+            # سریالایز کردن باشگاه‌ها (فاصله درون Serializer محاسبه می‌شود)
+            serializer = GymSerializer(nearest_gyms, many=True, context={'request': request})
 
-            return Response({'gyms': gyms_data}, status=status.HTTP_200_OK)
+            return Response({'gyms': serializer.data}, status=status.HTTP_200_OK)
 
         except (ValueError, TypeError):
             return Response(

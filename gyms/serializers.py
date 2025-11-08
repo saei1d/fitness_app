@@ -47,6 +47,8 @@ class GymSerializer(serializers.ModelSerializer):
     longitude_input = serializers.FloatField(write_only=True, required=False)
     images = serializers.SerializerMethodField()
     package = serializers.SerializerMethodField()
+    distance_meters = serializers.SerializerMethodField(read_only=True,null=True,blank=True)
+
 
 
     class Meta:
@@ -55,7 +57,7 @@ class GymSerializer(serializers.ModelSerializer):
             "id", "owner", "owner_data", "name", "description", "address",
             "working_hours", "banner", "latitude", "longitude",
             "latitude_input", "longitude_input",
-            "comments", "average_rating", "price","max_discount","images", "package"
+            "comments", "average_rating", "price","max_discount","images", "package","distance_meters"
         ]
 
     def get_images(self, obj):
@@ -82,6 +84,11 @@ class GymSerializer(serializers.ModelSerializer):
     def get_longitude(self, obj):
         """برگرداندن طول جغرافیایی از location"""
         return float(obj.longitude) if obj.longitude else None
+    
+    def get_distance_meters(self, obj):
+        if hasattr(obj, 'distance') and obj.distance:
+            return round(obj.distance.m, 2)  # دو رقم اعشار برای نمایش تمیزتر
+        return None
     
     def get_package(self, obj):
         """برگرداندن تمام پکیج‌های باشگاه"""
