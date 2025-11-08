@@ -54,6 +54,7 @@ class GymSerializer(serializers.ModelSerializer):
         fields = [
             "id", "owner", "owner_data", "name", "description", "address",
             "working_hours", "banner", "latitude", "longitude",
+            "latitude_input", "longitude_input",
             "comments", "average_rating", "price","max_discount","images", "package"
         ]
 
@@ -143,15 +144,15 @@ class GymSerializer(serializers.ModelSerializer):
 
         return max_discount
     def create(self, validated_data):
-        latitude = validated_data.pop("latitude_input", None) or validated_data.pop("latitude", None)
-        longitude = validated_data.pop("longitude_input", None) or validated_data.pop("longitude", None)
+        latitude = validated_data.pop("latitude_input", None)
+        longitude = validated_data.pop("longitude_input", None)
         if latitude and longitude:
             validated_data["location"] = Point(float(longitude), float(latitude), srid=4326)
         return super().create(validated_data)
 
     def update(self, instance, validated_data):
-        latitude = validated_data.pop("latitude_input", None) or validated_data.pop("latitude", None)
-        longitude = validated_data.pop("longitude_input", None) or validated_data.pop("longitude", None)
+        latitude = validated_data.pop("latitude_input", None)
+        longitude = validated_data.pop("longitude_input", None)
         if latitude and longitude:
             validated_data["location"] = Point(float(longitude), float(latitude), srid=4326)
         return super().update(instance, validated_data)
