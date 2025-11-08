@@ -41,8 +41,10 @@ class GymSerializer(serializers.ModelSerializer):
     price = serializers.DecimalField(max_digits=10, decimal_places=2, required=False)
     max_discount = serializers.SerializerMethodField()  # فیلد جدید برای بیشترین تخفیف    owner = serializers.CharField(write_only=True)
     owner_data = UserDetailSerializer(source='owner', read_only=True)
-    latitude = serializers.FloatField(write_only=True)
-    longitude = serializers.FloatField(write_only=True)
+    latitude = serializers.SerializerMethodField()
+    longitude = serializers.SerializerMethodField()
+    latitude_input = serializers.FloatField(write_only=True, required=False)
+    longitude_input = serializers.FloatField(write_only=True, required=False)
     images = serializers.SerializerMethodField()
     package = serializers.SerializerMethodField()
 
@@ -71,6 +73,14 @@ class GymSerializer(serializers.ModelSerializer):
                     "order": img.order
                 })
         return image_urls
+    
+    def get_latitude(self, obj):
+        """برگرداندن عرض جغرافیایی از location"""
+        return float(obj.latitude) if obj.latitude else None
+    
+    def get_longitude(self, obj):
+        """برگرداندن طول جغرافیایی از location"""
+        return float(obj.longitude) if obj.longitude else None
     
     def get_package(self, obj):
         """برگرداندن تمام پکیج‌های باشگاه"""
@@ -133,14 +143,15 @@ class GymSerializer(serializers.ModelSerializer):
 
         return max_discount
     def create(self, validated_data):
-        latitude = validated_data.pop("latitude")
-        longitude = validated_data.pop("longitude")
-        validated_data["location"] = Point(float(longitude), float(latitude), srid=4326)
+        latitude = validated_data.pop("latitude_input", None) or validated_data.pop("latitude", None)
+        longitude = validated_data.pop("longitude_input", None) or validated_data.pop("longitude", None)
+        if latitude and longitude:
+            validated_data["location"] = Point(float(longitude), float(latitude), srid=4326)
         return super().create(validated_data)
 
     def update(self, instance, validated_data):
-        latitude = validated_data.pop("latitude", None)
-        longitude = validated_data.pop("longitude", None)
+        latitude = validated_data.pop("latitude_input", None) or validated_data.pop("latitude", None)
+        longitude = validated_data.pop("longitude_input", None) or validated_data.pop("longitude", None)
         if latitude and longitude:
             validated_data["location"] = Point(float(longitude), float(latitude), srid=4326)
         return super().update(instance, validated_data)
