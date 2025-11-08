@@ -229,6 +229,7 @@ JAZZMIN_SETTINGS = {
     ],
     "usermenu_links": [
         {"name": "پشتیبانی", "url": "https://github.com/farridav/django-jazzmin/issues", "new_window": True},
+        {"name": "تغییر تم", "model": "auth.user"},
     ],
     "show_sidebar": True,
     "navigation_expanded": True,
@@ -298,8 +299,8 @@ JAZZMIN_UI_TWEAKS = {
     "sidebar_nav_compact_style": False,
     "sidebar_nav_legacy_style": False,
     "sidebar_nav_flat_style": False,
-    "theme": "default",
-    "dark_mode_theme": None,
+    "theme": "darkly",
+    "dark_mode_theme": "darkly",
     "button_classes": {
         "primary": "btn-primary",
         "secondary": "btn-secondary",

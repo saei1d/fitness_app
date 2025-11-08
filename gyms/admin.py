@@ -1,6 +1,7 @@
 from django.contrib import admin
-from django.contrib.gis import admin as gis_admin
 from django.utils.safestring import mark_safe
+from django.contrib.gis.geos import Point
+from django import forms
 from .models import Gym, GymImage
 
 
@@ -11,8 +12,45 @@ class GymImageInline(admin.TabularInline):
     ordering = ("order",)
 
 
+class GymAdminForm(forms.ModelForm):
+    """فرم برای ورود latitude و longitude"""
+    latitude_input = forms.FloatField(
+        label="عرض جغرافیایی (Latitude)",
+        required=True,
+        help_text="مثال: 35.6892"
+    )
+    longitude_input = forms.FloatField(
+        label="طول جغرافیایی (Longitude)",
+        required=True,
+        help_text="مثال: 51.3890"
+    )
+    
+    class Meta:
+        model = Gym
+        exclude = ('location',)  # location را از فرم حذف می‌کنیم
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance and self.instance.pk and self.instance.location:
+            self.fields['latitude_input'].initial = self.instance.latitude
+            self.fields['longitude_input'].initial = self.instance.longitude
+    
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        latitude = self.cleaned_data.get('latitude_input')
+        longitude = self.cleaned_data.get('longitude_input')
+        
+        if latitude is not None and longitude is not None:
+            instance.location = Point(float(longitude), float(latitude), srid=4326)
+        
+        if commit:
+            instance.save()
+        return instance
+
+
 @admin.register(Gym)
-class GymAdmin(gis_admin.GISModelAdmin):
+class GymAdmin(admin.ModelAdmin):
+    form = GymAdminForm
     list_display = ("id", "name", "owner", "address", "average_rating", "comments", "created_at", "updated_at")
     list_filter = ("created_at", "updated_at", "average_rating")
     search_fields = ("name", "owner__phone", "address", "description")
@@ -20,18 +58,13 @@ class GymAdmin(gis_admin.GISModelAdmin):
     filter_horizontal = ()
     inlines = [GymImageInline]
     
-    # تنظیمات نقشه برای location
-    default_lat = 35.6892
-    default_lon = 51.3890
-    default_zoom = 10
-    
     fieldsets = (
         ("اطلاعات اصلی", {
             "fields": ("name", "owner", "description", "address")
         }),
         ("موقعیت جغرافیایی", {
-            "fields": ("location", "latitude_display", "longitude_display"),
-            "description": "برای انتخاب موقعیت روی نقشه کلیک کنید یا مختصات را در فیلد location وارد کنید"
+            "fields": ("latitude_input", "longitude_input", "latitude_display", "longitude_display"),
+            "description": "لطفاً مختصات جغرافیایی را وارد کنید (مثال: Latitude: 35.6892, Longitude: 51.3890)"
         }),
         ("اطلاعات اضافی", {
             "fields": ("working_hours", "banner", "average_rating", "comments")
@@ -46,14 +79,14 @@ class GymAdmin(gis_admin.GISModelAdmin):
         if obj.location:
             return f"{obj.latitude:.6f}"
         return "-"
-    latitude_display.short_description = "عرض جغرافیایی"
+    latitude_display.short_description = "عرض جغرافیایی (خواندنی)"
     
     def longitude_display(self, obj):
         """نمایش طول جغرافیایی"""
         if obj.location:
             return f"{obj.longitude:.6f}"
         return "-"
-    longitude_display.short_description = "طول جغرافیایی"
+    longitude_display.short_description = "طول جغرافیایی (خواندنی)"
 
 
 @admin.register(GymImage)
