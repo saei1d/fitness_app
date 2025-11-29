@@ -18,6 +18,7 @@ class Package(models.Model):
     price = models.DecimalField(max_digits=10, decimal_places=2)
     duration = models.IntegerField(help_text="Duration in days")
     commission_rate = models.FloatField(help_text="Commission rate 0.05 is 5 percent", default=0.05)
+    sessions = models.IntegerField(default=0, help_text="Number of sessions")
 
 
 

@@ -1,4 +1,6 @@
 from accounts.imports import *
+import requests
+
 OTP_TTL_SECONDS = 300
 
 
@@ -13,8 +15,23 @@ def generate_referral_code(existing_codes):
 
 
 def send_sms_fake(phone, code):
-    print(f"[FAKE SMS] To: {phone}, OTP: {code}")
+    
+    url = "https://console.melipayamak.com/api/send/simple/dd954405f51f40ea916b67915980c25c"
 
+    payload = {
+        "username": "989377766572",
+        "password": "db48cc32-87b4-4198-ae06-07851e9eb8f6",
+        "text": f"کد زیر \n {code} \n برای ورود به وبسایت فیت تیکت میباشد",
+        "to": {phone}
+    }
+
+    try:
+        response = requests.post(url, json=payload)
+        response.raise_for_status()
+        return response.json()  # اگر پاسخ JSON باشد
+    except Exception as e:
+        return {"error": str(e)}
+    
 
 @extend_schema(tags=['Authentication'])
 class RequestOTPView(APIView):
@@ -41,10 +58,10 @@ class RequestOTPView(APIView):
 
         user, created = User.objects.get_or_create(phone=phone)
 
-        send_sms_fake(phone, code)
+        rep = send_sms_fake(phone, code)
 
         return Response({
-            "detail": f'OTP sent {code}',
+            "response": rep,
             "is_new_user": created
         }, status=status.HTTP_200_OK)
 
