@@ -11,5 +11,5 @@ class GroupPackageSerializer(serializers.ModelSerializer):
 class PackageSerializer(serializers.ModelSerializer):
     class Meta:
         model = Package
-        fields = ['id', 'group_package', 'title', 'description', 'gender', 'price', 'duration', 'commission_rate']
+        fields = ['id', 'group_package', 'title', 'description', 'gender', 'price', 'duration', 'commission_rate','sessions']
 
