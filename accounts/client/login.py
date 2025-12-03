@@ -21,8 +21,10 @@ def send_sms_fake(phone, code):
     payload = {
         "username": "989377766572",
         "password": "db48cc32-87b4-4198-ae06-07851e9eb8f6",
+        "from":"50002710016357",
         "text": f"کد زیر \n {code} \n برای ورود به وبسایت فیت تیکت میباشد",
         "to": phone
+        
     }
 
     try:
