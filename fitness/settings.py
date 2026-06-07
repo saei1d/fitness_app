@@ -14,13 +14,25 @@ from pathlib import Path
 from datetime import timedelta
 import os
 
+from dotenv import load_dotenv
+
 def _get_bool(value: str, default: bool = False) -> bool:
     if value is None:
         return default
     return value.strip().lower() in ['1', 'true', 'yes', 'on']
 
+
+def _get_list(value: str, default=None):
+    if default is None:
+        default = []
+    if not value:
+        return default
+    return [item.strip() for item in value.split(',') if item.strip()]
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+load_dotenv(BASE_DIR / '.env')
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
@@ -95,30 +107,14 @@ WSGI_APPLICATION = 'fitness.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.sqlite3',
-#         'NAME': BASE_DIR / 'db.sqlite3',
-#     }
-# }
-# DATABASES = {
-#     'default': {
-#         'ENGINE': os.getenv('DB_ENGINE', 'django.contrib.gis.db.backends.postgis'),
-#         'NAME': os.getenv('DB_NAME', 'fitnessfpb_db'),
-#         'USER': os.getenv('DB_USER', 'postgres'),
-#         'PASSWORD': os.getenv('DB_PASSWORD', 'vBnYLAT7d15qwGNacxfp'),
-#         'HOST': os.getenv('DB_HOST', 'fitness-klt-service'),
-#         'PORT': os.getenv('DB_PORT', '5432'),
-#     }
-# }
 DATABASES = {
     'default': {
-        'ENGINE': 'django.contrib.gis.db.backends.postgis',
-        'NAME':'fittickewvf_db',
-        'USER':'postgres',
-        'PASSWORD':'yY3wm7ZLHcMnvmbMz6Pr',
-        'HOST':'fitticket-ygy-service',
-        'PORT':'5432',
+        'ENGINE': os.getenv('DB_ENGINE', 'django.contrib.gis.db.backends.postgis'),
+        'NAME': os.getenv('DB_NAME', 'fitness_db'),
+        'USER': os.getenv('DB_USER', 'postgres'),
+        'PASSWORD': os.getenv('DB_PASSWORD', ''),
+        'HOST': os.getenv('DB_HOST', 'localhost'),
+        'PORT': os.getenv('DB_PORT', '5432'),
     }
 }
 
@@ -185,29 +181,33 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+STATICFILES_DIRS = [BASE_DIR / 'static']
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_ALL_ORIGINS = _get_bool(os.getenv('CORS_ALLOW_ALL_ORIGINS', 'True'))
+CORS_ALLOWED_ORIGINS = _get_list(os.getenv('CORS_ALLOWED_ORIGINS', ''))
 
 MEDIA_ROOT = os.path.join(BASE_DIR, "media")
-
 MEDIA_URL = "/media/"
 
-STATIC_URL = '/static/'
-STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
-STATICFILES_DIRS = [BASE_DIR / 'static']
+CSRF_TRUSTED_ORIGINS = _get_list(os.getenv('CSRF_TRUSTED_ORIGINS', ''))
 
-CSRF_TRUSTED_ORIGINS = ["https://fitness.runflare.run","https://fit-ticket.runflare.run"]
-
-CSRF_COOKIE_SECURE = True  # فقط از کوکی‌ها در HTTPS استفاده می‌شود
-SESSION_COOKIE_SECURE = True  # برای امنیت بیشتر
-CSRF_COOKIE_HTTPONLY = False  # در صورت نیاز به دسترسی جاوااسکریپت به کوکی
+CSRF_COOKIE_SECURE = _get_bool(os.getenv('CSRF_COOKIE_SECURE', 'False'))
+SESSION_COOKIE_SECURE = _get_bool(os.getenv('SESSION_COOKIE_SECURE', 'False'))
+CSRF_COOKIE_HTTPONLY = False
 CORS_ALLOW_CREDENTIALS = True
+
+# Melipayamak SMS
+MELIPAYAMAK_API_KEY = os.getenv('MELIPAYAMAK_API_KEY', '')
+MELIPAYAMAK_USERNAME = os.getenv('MELIPAYAMAK_USERNAME', '')
+MELIPAYAMAK_PASSWORD = os.getenv('MELIPAYAMAK_PASSWORD', '')
+MELIPAYAMAK_FROM = os.getenv('MELIPAYAMAK_FROM', '')
 
 # Jazzmin Settings
 JAZZMIN_SETTINGS = {

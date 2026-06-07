@@ -11,17 +11,40 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      POSTGRES_DB: mydb
-      POSTGRES_USER: myuser
-      POSTGRES_PASSWORD: mypassword
-      DATABASE_URL: postgres://myuser:mypassword@db:5432/mydb
-      DJANGO_SETTINGS_MODULE: fitness.settings
-      SECRET_KEY: testsecretkey
+      SECRET_KEY: test-secret-key-for-ci-only
       DEBUG: "False"
+      ALLOWED_HOSTS: localhost,127.0.0.1
+      DB_ENGINE: django.contrib.gis.db.backends.postgis
+      DB_NAME: fitness_db
+      DB_USER: postgres
+      DB_PASSWORD: testpassword
+      DB_HOST: db
+      DB_PORT: "5432"
+      POSTGRES_DB: fitness_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: testpassword
+      DJANGO_SETTINGS_MODULE: fitness.settings
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Create .env file
+        run: |
+          cat > .env <<EOF
+          SECRET_KEY=${SECRET_KEY}
+          DEBUG=${DEBUG}
+          ALLOWED_HOSTS=${ALLOWED_HOSTS}
+          DB_ENGINE=${DB_ENGINE}
+          DB_NAME=${DB_NAME}
+          DB_USER=${DB_USER}
+          DB_PASSWORD=${DB_PASSWORD}
+          DB_HOST=${DB_HOST}
+          DB_PORT=${DB_PORT}
+          POSTGRES_DB=${POSTGRES_DB}
+          POSTGRES_USER=${POSTGRES_USER}
+          POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+          EOF
 
       - name: Build and start services
         run: docker compose up -d --build

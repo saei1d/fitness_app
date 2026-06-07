@@ -15,16 +15,14 @@ def generate_referral_code(existing_codes):
 
 
 def send_sms_fake(phone, code):
-    
-    url = "https://console.melipayamak.com/api/send/simple/dd954405f51f40ea916b67915980c25c"
+    url = f"https://console.melipayamak.com/api/send/simple/{settings.MELIPAYAMAK_API_KEY}"
 
     payload = {
-        "username": "989377766572",
-        "password": "db48cc32-87b4-4198-ae06-07851e9eb8f6",
-        "from":"50002710016357",
+        "username": settings.MELIPAYAMAK_USERNAME,
+        "password": settings.MELIPAYAMAK_PASSWORD,
+        "from": settings.MELIPAYAMAK_FROM,
         "text": f"کد زیر \n {code} \n برای ورود به وبسایت فیت تیکت میباشد",
         "to": phone
-        
     }
 
     try:
