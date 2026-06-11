@@ -14,8 +14,16 @@ api_v1_patterns = [
     path('', include('ticket.urls')),
     path('', include('discount.urls')),
     path('schema/', SpectacularAPIView.as_view(), name='schema'),
-    path('docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
-    path('redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),
+    path(
+        'docs/',
+        SpectacularSwaggerView.as_view(url_name='api-v1:schema'),
+        name='swagger-ui'
+    ),
+    path(
+        'redoc/',
+        SpectacularRedocView.as_view(url_name='api-v1:schema'),
+        name='redoc'
+    ),
     path('token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
 ]
