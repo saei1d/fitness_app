@@ -1,5 +1,6 @@
-from django.urls import path , include
+from django.urls import include, path
 
 urlpatterns = [
-    path('package/', include('packages.client.urls')),
+    path('', include('packages.client.urls')),
+    path('package/', include('packages.client.urls')),  # legacy alias
 ]

@@ -3,7 +3,7 @@ from rest_framework.response import Response
 from finance.models import Wallet
 from ..models import *
 from ..serializers import *
-from rest_framework import status, permissions ,generics
+from rest_framework import status, permissions, generics
 from finance.models import Wallet
 from rest_framework.pagination import PageNumberPagination
 from accounts.models import User
@@ -11,8 +11,19 @@ from rest_framework.parsers import MultiPartParser, FormParser
 from django.shortcuts import get_object_or_404
 from rest_framework.viewsets import ViewSet
 from rest_framework.decorators import action
+from rest_framework.exceptions import PermissionDenied, ValidationError
 
 
+
+
+class IsAdminOrGymOwner(permissions.BasePermission):
+    def has_permission(self, request, view):
+        if view.action == 'list_images':
+            return True
+        return request.user and request.user.is_authenticated
+
+    def has_gym_permission(self, request, gym):
+        return request.user.is_staff or gym.owner_id == request.user.id
 
 
 class DefaultPagination(PageNumberPagination):
@@ -46,19 +57,19 @@ class GymListCreateView(generics.ListCreateAPIView):
     def perform_create(self, serializer):
         owner_value = self.request.data.get('owner')
         if not owner_value:
-            raise ValueError("owner field is required to assign an owner.")
+            raise ValidationError("owner field is required to assign an owner.")
 
         # اگر طولش 12 بود یعنی شمارشه، بر اساس phone پیدا کن
         if isinstance(owner_value, str) and len(owner_value) == 11:
             try:
                 owner = User.objects.get(phone=owner_value)
             except User.DoesNotExist:
-                raise ValueError(f"No user found with phone number: {owner_value}")
+                raise ValidationError(f"No user found with phone number: {owner_value}")
         else:
             try:
                 owner = User.objects.get(id=owner_value)
             except User.DoesNotExist:
-                raise ValueError(f"No user found with id: {owner_value}")
+                raise ValidationError(f"No user found with id: {owner_value}")
 
         gym = serializer.save(owner=owner)
 
@@ -90,8 +101,9 @@ class GymDetailView(generics.RetrieveUpdateDestroyAPIView):
 @extend_schema(tags=['Gym_images'])
 class GymImageViewSet(ViewSet):
     parser_classes = [MultiPartParser, FormParser]
+    permission_classes = [IsAdminOrGymOwner]
 
-    @action(detail=False, methods=["get"], url_path="gym/(?P<gym_id>\d+)/images")
+    @action(detail=False, methods=["get"], url_path=r"gym/(?P<gym_id>\d+)/images")
     def list_images(self, request, gym_id=None):
         gym = get_object_or_404(Gym, id=gym_id)
         images = GymImage.objects.filter(gym=gym)
@@ -105,6 +117,9 @@ class GymImageViewSet(ViewSet):
         data = serializer.validated_data
 
         gym = get_object_or_404(Gym, id=data["gym"])
+        permission = IsAdminOrGymOwner()
+        if not permission.has_gym_permission(request, gym):
+            raise PermissionDenied("You can only upload images for your own gym.")
         uploaded_images = []
 
         if "images" in data:
@@ -127,10 +142,10 @@ class GymImageViewSet(ViewSet):
 
     @action(detail=True, methods=["delete"], url_path="delete")
     def delete_image(self, request, pk=None):
-        image = get_object_or_404(GymImage, id=pk)
-        # اختیاری: بررسی دسترسی
-        # if image.gym.owner != request.user:
-        #     return Response({"error": "شما اجازه حذف این تصویر را ندارید."}, status=status.HTTP_403_FORBIDDEN)
-        
+        image = get_object_or_404(GymImage.objects.select_related('gym'), id=pk)
+        permission = IsAdminOrGymOwner()
+        if not permission.has_gym_permission(request, image.gym):
+            raise PermissionDenied("You can only delete images for your own gym.")
+
         image.delete()
         return Response({"message": "تصویر با موفقیت حذف شد."}, status=status.HTTP_204_NO_CONTENT)

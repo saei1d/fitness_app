@@ -33,12 +33,14 @@ class IsAdminOrOwnerPermission(permissions.BasePermission):
         if request.user.is_staff:
             return True
 
+        discount = getattr(obj, 'discount', obj)
+
         # owner فقط به کدهای باشگاه خودش دسترسی دارد
         if request.user.role == 'owner':
             # کدهای admin بدون باشگاه برای owner قابل دسترسی/ویرایش نیست
-            if obj.source_type == 'admin':
+            if discount.source_type == 'admin':
                 return False
-            if obj.club and obj.club.owner == request.user:
+            if discount.club and discount.club.owner == request.user:
                 return True
 
         return False

@@ -38,7 +38,7 @@ class GymImageFlexibleSerializer(serializers.Serializer):
     
     
 class GymSerializer(serializers.ModelSerializer):
-    price = serializers.DecimalField(max_digits=10, decimal_places=2, required=False)
+    price = serializers.SerializerMethodField()
     max_discount = serializers.SerializerMethodField()  # فیلد جدید برای بیشترین تخفیف    owner = serializers.CharField(write_only=True)
     owner_data = UserDetailSerializer(source='owner', read_only=True)
     latitude = serializers.SerializerMethodField()
@@ -59,6 +59,10 @@ class GymSerializer(serializers.ModelSerializer):
             "latitude_input", "longitude_input",
             "comments", "average_rating", "price","max_discount","images", "package","distance_meters"
         ]
+
+    def get_price(self, obj):
+        prices = [package.price for group in obj.group_packages.all().prefetch_related('packages') for package in group.packages.all()]
+        return min(prices) if prices else None
 
     def get_images(self, obj):
         request = self.context.get('request')
@@ -120,12 +124,14 @@ class GymSerializer(serializers.ModelSerializer):
 
         # فیلتر کردن کدهای تخفیف فعال و معتبر برای این باشگاه
         discounts = DiscountCode.objects.filter(
-            club=obj,  # مرتبط با این باشگاه
-            is_active=True,  # کد فعال باشد
-            start_date__lte=now,  # شروع اعتبار قبل از حالا
-            end_date__gte=now,  # پایان اعتبار بعد از حالا
-            used_count__lt=models.F('usage_limit')  # تعداد استفاده کمتر از حد مجاز
-        ).exclude(usage_limit__isnull=True)  # کدهایی که محدودیت استفاده دارند
+            club=obj,
+            is_active=True,
+        ).filter(
+            models.Q(start_date__isnull=True) | models.Q(start_date__lte=now),
+            models.Q(end_date__isnull=True) | models.Q(end_date__gte=now),
+        ).filter(
+            models.Q(usage_limit__isnull=True) | models.Q(used_count__lt=models.F('usage_limit'))
+        )
 
         if not discounts.exists():
             return None  # اگر تخفیفی نبود، null برگردون
@@ -153,13 +159,13 @@ class GymSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         latitude = validated_data.pop("latitude_input", None)
         longitude = validated_data.pop("longitude_input", None)
-        if latitude and longitude:
+        if latitude is not None and longitude is not None:
             validated_data["location"] = Point(float(longitude), float(latitude), srid=4326)
         return super().create(validated_data)
 
     def update(self, instance, validated_data):
         latitude = validated_data.pop("latitude_input", None)
         longitude = validated_data.pop("longitude_input", None)
-        if latitude and longitude:
+        if latitude is not None and longitude is not None:
             validated_data["location"] = Point(float(longitude), float(latitude), srid=4326)
         return super().update(instance, validated_data)

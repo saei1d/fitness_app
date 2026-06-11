@@ -36,7 +36,10 @@ class TicketSerializer(serializers.ModelSerializer):
 
 class TicketMessageSerializer(serializers.ModelSerializer):
     author = serializers.PrimaryKeyRelatedField(read_only=True)
-    author_name = serializers.CharField(source='author.username', read_only=True)
+    author_name = serializers.SerializerMethodField()
+
+    def get_author_name(self, obj):
+        return obj.author.full_name or obj.author.phone
 
     class Meta:
         model = TicketMessage
@@ -62,10 +65,18 @@ class TicketMessageSerializer(serializers.ModelSerializer):
 
 class TicketDetailSerializer(serializers.ModelSerializer):
     creator = serializers.PrimaryKeyRelatedField(read_only=True)
-    creator_name = serializers.CharField(source='creator.username', read_only=True)
+    creator_name = serializers.SerializerMethodField()
     admin = serializers.PrimaryKeyRelatedField(queryset=get_user_model().objects.all(), allow_null=True, required=False)
-    admin_name = serializers.CharField(source='admin.username', read_only=True)
+    admin_name = serializers.SerializerMethodField()
     messages = TicketMessageSerializer(many=True, read_only=True)
+
+    def get_creator_name(self, obj):
+        return obj.creator.full_name or obj.creator.phone
+
+    def get_admin_name(self, obj):
+        if not obj.admin:
+            return None
+        return obj.admin.full_name or obj.admin.phone
 
     class Meta:
         model = Ticket

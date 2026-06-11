@@ -12,7 +12,8 @@ def update_gym_rating(sender, instance, **kwargs):
     reviews = Review.objects.filter(
         gym=gym,
         reply_to__isnull=True,
-        blocked=False
+        blocked=False,
+        deleted=False,
     )
 
     data = reviews.aggregate(

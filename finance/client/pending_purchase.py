@@ -35,8 +35,14 @@ class CreatePendingPurchaseView(APIView):
             with transaction.atomic():
                 purchase = serializer.save()
 
-                # مبلغ تراکنش بر اساس final_amount ذخیره می‌شود
-                trans = Transaction.objects.create(amount=purchase.final_amount, purchase=purchase)
+                # تراکنش اولیه به‌عنوان ledger پرداخت در انتظار ثبت می‌شود.
+                trans = Transaction.objects.create(
+                    amount=purchase.final_amount,
+                    purchase=purchase,
+                    type='credit',
+                    status='pending',
+                    description=f'Pending payment for purchase #{purchase.id}',
+                )
 
                 return Response({
                     'message': 'Pending purchase created',
@@ -45,4 +51,4 @@ class CreatePendingPurchaseView(APIView):
                 }, status=201)
 
         except Exception as e:
-            return Response({'error': str(e)}, status=500)
+            return Response({'error': str(e)}, status=400)

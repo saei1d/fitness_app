@@ -2,14 +2,12 @@ from accounts.imports import *
 from django.db import transaction
 from discount.models import DiscountCode
 from rest_framework import serializers
-import string
+from decimal import Decimal
 from coolname import generate
 
 class EnterReferralCodeSerializer(serializers.Serializer):
     referral_code = serializers.CharField(max_length=20)
 
-
-print('mmd')
 
 def generate_unique_discount_code(name, existing_codes):
     """ساخت کد تخفیف با coolname + دو رقم رندوم و یکتا."""
@@ -99,7 +97,7 @@ class EnterReferralCodeView(APIView):
         discount_new_user = DiscountCode.objects.create(
             code=new_user_discount_code,
             discount_type='percent',
-            value=5.00,
+            value=Decimal('5.00'),
             club=None,
             source_type='admin',
             is_active=True
@@ -109,7 +107,7 @@ class EnterReferralCodeView(APIView):
         discount_referrer = DiscountCode.objects.create(
             code=referrer_discount_code,
             discount_type='percent',
-            value=5.00,
+            value=Decimal('5.00'),
             club=None,
             source_type='admin',
             is_active=True
@@ -121,7 +119,6 @@ class EnterReferralCodeView(APIView):
         
         # message_referrer = f"به دلیل معرفی {new_user_name}، کد تخفیف 5 درصد شما: {referrer_discount_code}"
         # send_sms_referral(referrer.phone, message_referrer)
-        print('hello')
         return Response({
             'success': True,
             'message': 'کد معرف با موفقیت ثبت شد.',

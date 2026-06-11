@@ -4,16 +4,6 @@ import requests
 OTP_TTL_SECONDS = 300
 
 
-def generate_referral_code(existing_codes):
-    random_code = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(5))
-
-    while random_code in existing_codes:
-        random_code = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(5))
-
-    print(f"Referral Code Generated: {random_code}")
-    return random_code
-
-
 def send_sms_fake(phone, code):
     url = f"https://console.melipayamak.com/api/send/simple/{settings.MELIPAYAMAK_API_KEY}"
 
@@ -26,7 +16,7 @@ def send_sms_fake(phone, code):
     }
 
     try:
-        response = requests.post(url, json=payload)
+        response = requests.post(url, json=payload, timeout=10)
         response.raise_for_status()
         return response.json()  # اگر پاسخ JSON باشد
     except Exception as e:
@@ -96,7 +86,7 @@ class VerifyOTPView(APIView):
         user, created = User.objects.get_or_create(phone=phone)
 
         user.is_phone_verified = True
-        user.save()
+        user.save(update_fields=['is_phone_verified', 'referral_code'])
 
         refresh = RefreshToken.for_user(user)
         access = str(refresh.access_token)
@@ -112,7 +102,8 @@ class VerifyOTPView(APIView):
                 "phone": user.phone,
                 "full_name": user.full_name,
                 "birthdate": user.birthdate,
-                "is_phone_verified": user.is_phone_verified
+                "is_phone_verified": user.is_phone_verified,
+                "referral_code": user.referral_code
             }
         }, status=status.HTTP_200_OK)
 

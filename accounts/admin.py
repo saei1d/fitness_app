@@ -10,15 +10,15 @@ except admin.sites.NotRegistered:
 
 @admin.register(User)
 class UserAdmin(BaseUserAdmin):
-    list_display = ("id", "phone", "full_name", "role", "is_staff", "is_active", "is_banned_from_reviews", "date_joined")
-    list_filter = ("role", "is_staff", "is_active", "is_banned_from_reviews", "date_joined")
+    list_display = ("id", "phone", "full_name", "role", "is_staff", "is_active", "is_phone_verified", "is_banned_from_reviews", "date_joined")
+    list_filter = ("role", "is_staff", "is_active", "is_phone_verified", "is_banned_from_reviews", "date_joined")
     search_fields = ("phone", "full_name", "referral_code")
     ordering = ("-date_joined",)
     readonly_fields = ("date_joined", "last_login")
     
     fieldsets = (
         (None, {"fields": ("phone", "password")}),
-        ("اطلاعات شخصی", {"fields": ("full_name", "birthdate", "role", "referral_code", "referred_by")}),
+        ("اطلاعات شخصی", {"fields": ("full_name", "birthdate", "role", "is_phone_verified", "referral_code", "referred_by")}),
         ("دسترسی‌ها", {"fields": ("is_active", "is_staff", "is_superuser", "groups", "user_permissions")}),
         ("تنظیمات", {"fields": ("is_banned_from_reviews",)}),
         ("تاریخ‌ها", {"fields": ("last_login", "date_joined")}),

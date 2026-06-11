@@ -140,12 +140,16 @@ class TransactionDetailView(RetrieveUpdateDestroyAPIView):
         user = self.request.user
         if not user.is_staff:
             raise permissions.PermissionDenied("Only admin can update transactions")
+        if serializer.instance.status == 'completed':
+            raise permissions.PermissionDenied("Completed transactions are immutable")
         serializer.save()
 
     def perform_destroy(self, instance):
         user = self.request.user
         if not user.is_staff:
             raise permissions.PermissionDenied("Only admin can delete transactions")
+        if instance.status == 'completed':
+            raise permissions.PermissionDenied("Completed transactions are immutable")
         instance.delete()
 
 

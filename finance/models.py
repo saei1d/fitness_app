@@ -21,7 +21,7 @@ class Purchase(models.Model):
     
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='purchases')
     package = models.ForeignKey(Package, on_delete=models.CASCADE, related_name='purchases')
-    buyer_code = models.CharField(max_length=100, null=True, blank=True)
+    buyer_code = models.CharField(max_length=100, null=True, blank=True, unique=True)
     purchase_date = models.DateTimeField(auto_now_add=True)
     expire_date = models.DateTimeField(null=True, blank=True)
     payment_status = models.CharField(max_length=20, choices=PAYMENT_STATUS_CHOICES, default='pending')
@@ -39,9 +39,9 @@ class Purchase(models.Model):
 
         if not self.total_amount:
             self.total_amount = self.package.price
-        if not self.commission_amount:
-            self.commission_amount = self.total_amount * Decimal(self.package.commission_rate)
-        if not self.net_amount:
+        if self.commission_amount is None:
+            self.commission_amount = self.total_amount * Decimal(str(self.package.commission_rate))
+        if self.net_amount is None:
             self.net_amount = self.total_amount - self.commission_amount
         super().save(*args, **kwargs)
 
