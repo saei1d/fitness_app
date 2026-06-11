@@ -40,7 +40,7 @@ load_dotenv(BASE_DIR / '.env')
 
 # SECURITY WARNING: keep the secret key used in production secret!
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = _get_bool(os.getenv('DEBUG', 'False'))
+DEBUG = _get_bool(os.getenv('DEBUG', 'True'))
 
 SECRET_KEY = os.getenv('SECRET_KEY')
 if not SECRET_KEY:
