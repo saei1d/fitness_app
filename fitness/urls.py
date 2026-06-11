@@ -30,7 +30,7 @@ api_v1_patterns = [
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('api/v1/', include((api_v1_patterns, 'api-v1'))),
+    path('api/', include((api_v1_patterns, 'api-v1'))),
 
     # Legacy aliases kept temporarily for frontend compatibility.
     path('api/', include((api_v1_patterns, 'api-legacy'))),
