@@ -15,6 +15,7 @@ from datetime import timedelta
 import os
 
 from dotenv import load_dotenv
+from django.core.exceptions import ImproperlyConfigured
 
 def _get_bool(value: str, default: bool = False) -> bool:
     if value is None:
@@ -38,12 +39,19 @@ load_dotenv(BASE_DIR / '.env')
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.getenv('SECRET_KEY', 'change-me-in-development')
-
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = _get_bool(os.getenv('DEBUG', 'True'))
+DEBUG = _get_bool(os.getenv('DEBUG', 'False'))
 
-ALLOWED_HOSTS = [h.strip() for h in os.getenv('ALLOWED_HOSTS', '*').split(',') if h.strip()]
+SECRET_KEY = os.getenv('SECRET_KEY')
+if not SECRET_KEY:
+    if DEBUG:
+        SECRET_KEY = 'dev-insecure-change-me'
+    else:
+        raise ImproperlyConfigured('SECRET_KEY must be set when DEBUG is False.')
+
+ALLOWED_HOSTS = _get_list(os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1' if DEBUG else ''))
+if not DEBUG and not ALLOWED_HOSTS:
+    raise ImproperlyConfigured('ALLOWED_HOSTS must be set when DEBUG is False.')
 
 AUTH_USER_MODEL = 'accounts.User'
 
@@ -73,6 +81,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     "whitenoise.middleware.WhiteNoiseMiddleware",
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -80,8 +89,6 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'corsheaders.middleware.CorsMiddleware',
-    'django.middleware.common.CommonMiddleware',
 ]
 
 ROOT_URLCONF = 'fitness.urls'
@@ -125,8 +132,6 @@ REST_FRAMEWORK = {
     ),
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.IsAuthenticated',
-        'rest_framework.permissions.AllowAny',
-
     ),
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
 
@@ -190,7 +195,7 @@ STATICFILES_DIRS = [BASE_DIR / 'static']
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-CORS_ALLOW_ALL_ORIGINS = _get_bool(os.getenv('CORS_ALLOW_ALL_ORIGINS', 'True'))
+CORS_ALLOW_ALL_ORIGINS = _get_bool(os.getenv('CORS_ALLOW_ALL_ORIGINS', 'False'))
 CORS_ALLOWED_ORIGINS = _get_list(os.getenv('CORS_ALLOWED_ORIGINS', ''))
 
 MEDIA_ROOT = os.path.join(BASE_DIR, "media")
@@ -198,10 +203,17 @@ MEDIA_URL = "/media/"
 
 CSRF_TRUSTED_ORIGINS = _get_list(os.getenv('CSRF_TRUSTED_ORIGINS', ''))
 
-CSRF_COOKIE_SECURE = _get_bool(os.getenv('CSRF_COOKIE_SECURE', 'False'))
-SESSION_COOKIE_SECURE = _get_bool(os.getenv('SESSION_COOKIE_SECURE', 'False'))
+CSRF_COOKIE_SECURE = _get_bool(os.getenv('CSRF_COOKIE_SECURE', str(not DEBUG)))
+SESSION_COOKIE_SECURE = _get_bool(os.getenv('SESSION_COOKIE_SECURE', str(not DEBUG)))
 CSRF_COOKIE_HTTPONLY = False
-CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_CREDENTIALS = not CORS_ALLOW_ALL_ORIGINS
+
+SECURE_SSL_REDIRECT = _get_bool(os.getenv('SECURE_SSL_REDIRECT', 'False'))
+SECURE_HSTS_SECONDS = int(os.getenv('SECURE_HSTS_SECONDS', '0' if DEBUG else '31536000'))
+SECURE_HSTS_INCLUDE_SUBDOMAINS = _get_bool(os.getenv('SECURE_HSTS_INCLUDE_SUBDOMAINS', str(not DEBUG)))
+SECURE_HSTS_PRELOAD = _get_bool(os.getenv('SECURE_HSTS_PRELOAD', str(not DEBUG)))
+SECURE_CONTENT_TYPE_NOSNIFF = True
+SESSION_COOKIE_HTTPONLY = True
 
 # Melipayamak SMS
 MELIPAYAMAK_API_KEY = os.getenv('MELIPAYAMAK_API_KEY', '')

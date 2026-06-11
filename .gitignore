@@ -11,7 +11,6 @@ future.txt
 *.xml
 .env
 test1.py
-# Ignore Django migration files
-*/migrations/*.py
+# Keep Django migration files versioned; ignore only compiled files.
 */migrations/*.pyc
 !*/migrations/__init__.py

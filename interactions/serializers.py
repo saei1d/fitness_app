@@ -58,7 +58,7 @@ class ReviewSerializer(serializers.ModelSerializer):
         # جلوگیری از ثبت چند نظر برای یک باشگاه
         if not reply_to:
             # بررسی خرید کاربر از باشگاه
-            has_purchased = hasattr(user, "purchases") and user.purchases.filter(package__gym=gym).exists()
+            has_purchased = hasattr(user, "purchases") and user.purchases.filter(package__group_package__gym=gym, payment_status='paid').exists()
 
             # اگر کاربر خرید نداشته و قبلاً کامنت داده، جلوی تکرار را بگیر
             if not has_purchased and Review.objects.filter(user=user, gym=gym, reply_to__isnull=True, deleted=False).exists():
@@ -107,16 +107,10 @@ class ReviewSerializer(serializers.ModelSerializer):
         validated_data['user'] = user
 
         # بررسی سابقه خرید (فرض بر اینکه از مدل دیگری مثل Purchase استفاده می‌کنی)
-        has_purchased = hasattr(user, "purchases") and user.purchases.filter(package__gym=gym).exists()
+        has_purchased = hasattr(user, "purchases") and user.purchases.filter(package__group_package__gym=gym, payment_status='paid').exists()
         validated_data['buyer'] = has_purchased
 
-        review = super().create(validated_data)
-
-        # افزایش شمارنده‌ی کامنت‌های gym
-        gym.comments += 1
-        gym.save(update_fields=['comments'])
-
-        return review
+        return super().create(validated_data)
 
 
 class AdminReviewSerializer(serializers.ModelSerializer):

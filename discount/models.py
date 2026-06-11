@@ -47,23 +47,23 @@ class DiscountCode(models.Model):
         return self.code
 
 
-    # def is_valid(self):
-    #     """بررسی اعتبار کلی کد تخفیف"""
-    #     now = timezone.now()
-    #     if not self.is_active:
-    #         return False
-    #     if self.start_date and self.start_date > now:
-    #         return False
-    #     if self.end_date and self.end_date < now:
-    #         return False
-    #     if self.usage_limit and self.used_count >= self.usage_limit:
-    #         return False
-    #     return True
+    def is_valid(self, now=None):
+        """بررسی اعتبار کلی کد تخفیف."""
+        now = now or timezone.now()
+        if not self.is_active:
+            return False
+        if self.start_date and self.start_date > now:
+            return False
+        if self.end_date and self.end_date < now:
+            return False
+        if self.usage_limit is not None and self.used_count >= self.usage_limit:
+            return False
+        return True
 
     def can_user_use(self, user):
         """بررسی اینکه کاربر خاصی مجاز به استفاده از این کد هست یا نه"""
-        # if not self.is_valid():
-        #     return False
+        if not self.is_valid():
+            return False
         if self.per_user_limit is None:
             return True
         user_usage_count = DiscountUsage.objects.filter(user=user, discount=self).count()
@@ -77,7 +77,7 @@ class DiscountUsage(models.Model):
     used_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        unique_together = ('discount', 'user')
+        indexes = [models.Index(fields=['discount', 'user'])]
         verbose_name = "استفاده از کد تخفیف"
         verbose_name_plural = "استفاده‌های کاربران از کد تخفیف"
 

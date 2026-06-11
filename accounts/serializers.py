@@ -27,6 +27,7 @@ class UserDetailSerializer(serializers.ModelSerializer):
             'full_name',
             'birthdate',
             'role',
+            'is_phone_verified',
             'is_staff',
             'is_superuser',
             'referral_code',

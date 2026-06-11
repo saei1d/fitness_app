@@ -1,5 +1,8 @@
 from decimal import Decimal
 
+from django.db import transaction
+from django.db.models import F
+
 from finance.models import Purchase, Wallet, AdminWallet, Transaction, WithdrawRequest
 from rest_framework import serializers
 from django.utils import timezone
@@ -33,19 +36,13 @@ class PurchaseSerializer(serializers.ModelSerializer):
             if not discount:
                 raise serializers.ValidationError({"discount_code": "کد تخفیف یافت نشد"})
 
-            if not discount.is_active:
-                raise serializers.ValidationError({"discount_code": "کد تخفیف غیرفعال است"})
-
-            now = timezone.now()
-            if discount.start_date and discount.start_date > now:
-                raise serializers.ValidationError({"discount_code": "کد تخفیف هنوز فعال نشده"})
-            if discount.end_date and discount.end_date < now:
-                raise serializers.ValidationError({"discount_code": "کد تخفیف منقضی شده"})
-
-            if discount.usage_limit and discount.used_count >= discount.usage_limit:
-                raise serializers.ValidationError({"discount_code": "حداکثر تعداد استفاده از این کد تمام شده"})
+            if not discount.is_valid():
+                raise serializers.ValidationError({"discount_code": "کد تخفیف معتبر نیست یا ظرفیت آن تمام شده است"})
 
             user = self.context['request'].user
+            gym = package.group_package.gym
+            if discount.club and discount.club_id != gym.id:
+                raise serializers.ValidationError({"discount_code": "این کد برای باشگاه انتخاب‌شده معتبر نیست"})
             if not discount.can_user_use(user):
                 raise serializers.ValidationError({"discount_code": "شما مجاز به استفاده از این کد نیستید"})
 
@@ -65,6 +62,10 @@ class PurchaseSerializer(serializers.ModelSerializer):
 
         # کد تخفیف (اگر معتبر بود از validate تزریق شده)
         discount_code_obj = validated_data.pop('discount_code_obj', None)
+        if discount_code_obj:
+            discount_code_obj = DiscountCode.objects.select_for_update().get(pk=discount_code_obj.pk)
+            if not discount_code_obj.is_valid() or not discount_code_obj.can_user_use(user):
+                raise serializers.ValidationError({"discount_code": "کد تخفیف دیگر قابل استفاده نیست"})
 
         # محاسبه مقدار تخفیف با توجه به نوع و محدودیت‌ها
         discount_amount = Decimal('0')
@@ -94,15 +95,15 @@ class PurchaseSerializer(serializers.ModelSerializer):
 
         # اعمال تخفیف بر سهم‌ها بر اساس منبع تخفیف
         if discount_code_obj and discount_code_obj.source_type == 'admin':
-            # تخفیف از سهم ادمین کسر می‌شود تا سقف سهم ادمین
+            # تخفیف از سهم ادمین کسر می‌شود و سهم باشگاه ثابت می‌ماند.
             commission_amount = admin_commission_before_discount - min(discount_amount, admin_commission_before_discount)
             if commission_amount < 0:
                 commission_amount = Decimal('0')
-            net_amount = total_amount - commission_amount
+            net_amount = total_amount - admin_commission_before_discount
         else:
-            # تخفیف باشگاه از سهم باشگاه کسر می‌شود؛ کمیسیون ادمین ثابت می‌ماند
+            # تخفیف باشگاه از سهم باشگاه کسر می‌شود؛ کمیسیون ادمین ثابت می‌ماند.
             commission_amount = admin_commission_before_discount
-            net_amount = total_amount - commission_amount - discount_amount
+            net_amount = final_amount - commission_amount
             if net_amount < 0:
                 net_amount = Decimal('0')
 
@@ -115,6 +116,10 @@ class PurchaseSerializer(serializers.ModelSerializer):
             net_amount=net_amount,
             final_amount=final_amount
         )
+        if discount_code_obj:
+            DiscountCode.objects.filter(pk=discount_code_obj.pk).update(used_count=F('used_count') + 1)
+            from discount.models import DiscountUsage
+            DiscountUsage.objects.create(discount=discount_code_obj, user=user)
         return purchase
 
 
