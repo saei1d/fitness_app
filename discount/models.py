@@ -77,12 +77,6 @@ class DiscountUsage(models.Model):
     used_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        indexes = [
-            models.Index(
-                fields=["discount", "user"],
-                name="discount_usage_idx",
-            )
-        ]
         verbose_name = "استفاده از کد تخفیف"
         verbose_name_plural = "استفاده‌های کاربران از کد تخفیف"
 
