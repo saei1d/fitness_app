@@ -12,3 +12,4 @@ coolname
 whitenoise
 django-jazzmin
 requests
+zarinpal-py-sdk==0.1.4
