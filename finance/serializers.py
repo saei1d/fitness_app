@@ -20,7 +20,18 @@ class PurchaseSerializer(serializers.ModelSerializer):
     class Meta:
         model = Purchase
         fields = '__all__'
-        read_only_fields = ['user', 'total_amount', 'commission_amount', 'net_amount', 'buyer_code', 'verified_at', 'verified_by', 'final_amount']
+        read_only_fields = [
+            'user',
+            'total_amount',
+            'commission_amount',
+            'net_amount',
+            'buyer_code',
+            'payment_authority',
+            'payment_reference_id',
+            'verified_at',
+            'verified_by',
+            'final_amount',
+        ]
 
     def validate(self, data):
         package = data.get('package')

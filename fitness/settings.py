@@ -75,6 +75,7 @@ INSTALLED_APPS = [
     'packages',
     'ticket',
     'discount',
+    'notifications',
     'corsheaders',
 ]
 
@@ -221,6 +222,12 @@ MELIPAYAMAK_USERNAME = os.getenv('MELIPAYAMAK_USERNAME', '')
 MELIPAYAMAK_PASSWORD = os.getenv('MELIPAYAMAK_PASSWORD', '')
 MELIPAYAMAK_FROM = os.getenv('MELIPAYAMAK_FROM', '')
 
+# Payment gateway
+PAYMENT_GATEWAY_MERCHANT_ID = os.getenv('PAYMENT_GATEWAY_MERCHANT_ID', '')
+PAYMENT_GATEWAY_SANDBOX = _get_bool(os.getenv('PAYMENT_GATEWAY_SANDBOX', 'False'))
+PAYMENT_GATEWAY_SUCCESS_REDIRECT_URL = os.getenv('PAYMENT_GATEWAY_SUCCESS_REDIRECT_URL', '')
+PAYMENT_GATEWAY_FAILURE_REDIRECT_URL = os.getenv('PAYMENT_GATEWAY_FAILURE_REDIRECT_URL', '')
+
 # Jazzmin Settings
 JAZZMIN_SETTINGS = {
     "site_title": "پشتیبانی فیت تیکت",
@@ -322,3 +329,22 @@ JAZZMIN_UI_TWEAKS = {
         "success": "btn-success"
     }
 }
+
+# ---------------------------------------------------------------------------
+# Notifications — Scheduled Task (Plan Expiry)
+# ---------------------------------------------------------------------------
+# To enable the daily plan-expiry notifications, choose ONE of the options:
+#
+# Option A — django-crontab (add 'django_crontab' to INSTALLED_APPS):
+#   INSTALLED_APPS += ['django_crontab']
+#   CRONJOBS = [
+#       ('0 6 * * *', 'notifications.tasks.send_plan_expiry_notifications'),
+#   ]
+#
+# Option B — Celery beat (if Celery is already configured):
+#   from celery.schedules import crontab
+#   app.conf.beat_schedule['plan-expiry-notifications'] = {
+#       'task': 'notifications.tasks.send_plan_expiry_notifications_task',
+#       'schedule': crontab(hour=6, minute=0),
+#   }
+# ---------------------------------------------------------------------------

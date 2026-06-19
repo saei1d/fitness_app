@@ -19,6 +19,14 @@ Useful documentation endpoints:
 - Use `docker-compose.yml` for production-style gunicorn execution and `docker-compose.dev.yml` for local runserver development.
 - Django migration files are versioned and should be applied during deployment with `python manage.py migrate`.
 
+## Payment flow
+
+- `POST /api/v1/pending/<package_id>/` creates a pending purchase and returns `payment_url` plus `authority`.
+- The frontend should redirect the user to `payment_url`.
+- The gateway callback is handled by `GET /api/v1/payment/callback/`.
+- On successful payment, the purchase moves to `paid`, the admin wallet receives the full payment, and the buyer gets a `buyer_code`.
+- When the gym owner scans the code and confirms the purchase, the platform commission stays in the admin wallet and the gym share moves to the owner's wallet.
+
 ## Local checks
 
 ```bash

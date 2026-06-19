@@ -13,6 +13,7 @@ api_v1_patterns = [
     path('', include('interactions.urls')),
     path('', include('ticket.urls')),
     path('', include('discount.urls')),
+    path('', include('notifications.urls')),
     path('schema/', SpectacularAPIView.as_view(), name='schema'),
     path(
         'docs/',

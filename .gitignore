@@ -14,3 +14,4 @@ test1.py
 # Keep Django migration files versioned; ignore only compiled files.
 */migrations/*.pyc
 !*/migrations/__init__.py
+.kiro

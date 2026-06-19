@@ -22,6 +22,8 @@ class Purchase(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='purchases')
     package = models.ForeignKey(Package, on_delete=models.CASCADE, related_name='purchases')
     buyer_code = models.CharField(max_length=100, null=True, blank=True, unique=True)
+    payment_authority = models.CharField(max_length=128, null=True, blank=True, unique=True)
+    payment_reference_id = models.CharField(max_length=128, null=True, blank=True)
     purchase_date = models.DateTimeField(auto_now_add=True)
     expire_date = models.DateTimeField(null=True, blank=True)
     payment_status = models.CharField(max_length=20, choices=PAYMENT_STATUS_CHOICES, default='pending')
