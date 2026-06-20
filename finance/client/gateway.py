@@ -44,8 +44,11 @@ def _normalize_amount(amount: Any) -> int:
     multiplier = Decimal(str(getattr(settings, 'PAYMENT_GATEWAY_AMOUNT_MULTIPLIER', 1)))
     value = (value * multiplier).quantize(Decimal('1'), rounding=ROUND_HALF_UP)
     value = int(value)
-    if value <= 0:
-        raise PaymentGatewayError('Payment amount must be greater than zero')
+    if value < 10000:
+        raise PaymentGatewayError(
+            f'Payment amount must be at least 10000 for ZarinPal SDK; current amount is {value}. '
+            'If your stored prices are in toman, set PAYMENT_GATEWAY_AMOUNT_MULTIPLIER=10.'
+        )
     return value
 
 
