@@ -1,5 +1,6 @@
 from decimal import Decimal
 
+from django.conf import settings
 from django.db import transaction
 from django.urls import reverse
 from drf_spectacular.utils import extend_schema
@@ -60,7 +61,11 @@ class CreatePendingPurchaseView(APIView):
                     'transaction': TransactionSerializer(trans).data,
                 }, status=201)
 
-            callback_url = request.build_absolute_uri(reverse('api-v1:payment-callback'))
+            callback_base_url = getattr(settings, 'PAYMENT_GATEWAY_CALLBACK_BASE_URL', '').strip()
+            if callback_base_url:
+                callback_url = f"{callback_base_url.rstrip('/')}{reverse('api-v1:payment-callback')}"
+            else:
+                callback_url = request.build_absolute_uri(reverse('api-v1:payment-callback'))
             gateway_result = request_payment(
                 amount=purchase.final_amount,
                 description=f'Payment for purchase #{purchase.id}',
