@@ -1,6 +1,5 @@
 from dataclasses import dataclass
 from decimal import Decimal, ROUND_HALF_UP
-from functools import lru_cache
 from typing import Any
 
 from django.conf import settings
@@ -25,7 +24,6 @@ class PaymentVerificationResult:
     raw_response: dict[str, Any]
 
 
-@lru_cache(maxsize=1)
 def get_zarinpal_client() -> ZarinPal:
     merchant_id = getattr(settings, 'PAYMENT_GATEWAY_MERCHANT_ID', '').strip()
     if not merchant_id:
