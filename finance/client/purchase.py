@@ -74,6 +74,36 @@ def _mark_payment_failed(*, purchase, transaction_obj, reason):
     transaction_obj.save(update_fields=['status', 'description'])
 
 
+def _redirect_payload(purchase, outcome, reference_id=None):
+    payload = {'status': outcome}
+    if purchase is None:
+        return payload
+
+    package = getattr(purchase, 'package', None)
+    gym = None
+    try:
+        gym = purchase.package.group_package.gym
+    except Exception:
+        gym = None
+
+    payload.update({
+        'purchase_id': purchase.pk,
+        'buyer_code': purchase.buyer_code or '',
+        'payment_status': purchase.payment_status,
+        'verification_status': purchase.verification_status,
+        'final_amount': str(purchase.final_amount),
+        'total_amount': str(purchase.total_amount),
+        'commission_amount': str(purchase.commission_amount or ''),
+        'net_amount': str(purchase.net_amount or ''),
+        'reference_id': reference_id or purchase.payment_reference_id or '',
+        'package_id': package.pk if package else '',
+        'package_title': package.title if package else '',
+        'gym_id': gym.pk if gym else '',
+        'gym_name': gym.name if gym else '',
+    })
+    return payload
+
+
 def verify_payment_gateway(transaction_obj, request):
     """Backward-compatible payment verification hook.
 
@@ -220,10 +250,7 @@ class PaymentCallbackView(APIView):
             return Response({'error': str(exc)}, status=500)
 
     def _respond(self, purchase, outcome, reference_id=None):
-        payload = {
-            'status': outcome,
-            'reference_id': reference_id,
-        }
+        payload = _redirect_payload(purchase, outcome, reference_id)
         if purchase is not None:
             payload['purchase'] = PurchaseSerializer(purchase).data
 
@@ -234,11 +261,7 @@ class PaymentCallbackView(APIView):
             redirect_url = getattr(settings, 'PAYMENT_GATEWAY_FAILURE_REDIRECT_URL', '')
 
         if redirect_url:
-            query = {'status': outcome}
-            if reference_id is not None:
-                query['reference_id'] = reference_id
-            if purchase is not None:
-                query['purchase_id'] = purchase.pk
+            query = {key: value for key, value in payload.items() if value not in (None, '')}
 
             parsed = urlparse(redirect_url)
             existing_query = dict(parse_qsl(parsed.query))
@@ -321,3 +344,4 @@ class VerifyPurchaseView(APIView):
             return Response({'error': 'Admin wallet not found'}, status=500)
         except Exception as exc:
             return Response({'error': str(exc)}, status=500)
+
