@@ -1,4 +1,5 @@
 import random
+from datetime import timedelta
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
 from django.db import transaction
@@ -312,7 +313,9 @@ class VerifyPurchaseView(APIView):
                 purchase.verification_status = 'verified'
                 purchase.verified_at = timezone.now()
                 purchase.verified_by = request.user
-                purchase.save(update_fields=['verification_status', 'verified_at', 'verified_by'])
+                if purchase.expire_date is None:
+                    purchase.expire_date = timezone.now() + timedelta(days=purchase.package.duration)
+                purchase.save(update_fields=['verification_status', 'verified_at', 'verified_by', 'expire_date'])
 
                 Transaction.objects.create(
                     wallet=wallet,

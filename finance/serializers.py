@@ -1,4 +1,5 @@
 from decimal import Decimal
+from datetime import timedelta
 
 from django.db import transaction
 from django.db.models import F
@@ -249,3 +250,173 @@ class AdminWithdrawUpdateSerializer(serializers.ModelSerializer):
             instance.completed_at = timezone.now()
         instance.save()
         return instance
+
+
+class GymMemberSerializer(serializers.Serializer):
+    purchase_id = serializers.IntegerField()
+    user_id = serializers.IntegerField()
+    user_name = serializers.CharField()
+    user_phone = serializers.CharField()
+    gym_id = serializers.IntegerField()
+    gym_name = serializers.CharField()
+    package_id = serializers.IntegerField()
+    package_title = serializers.CharField()
+    payment_status = serializers.CharField()
+    verification_status = serializers.CharField()
+    membership_status = serializers.CharField()
+    is_active = serializers.BooleanField()
+    total_amount = serializers.DecimalField(max_digits=10, decimal_places=2)
+    final_amount = serializers.DecimalField(max_digits=10, decimal_places=2)
+    purchase_date = serializers.DateTimeField()
+    verified_at = serializers.DateTimeField(allow_null=True)
+    expire_date = serializers.DateTimeField(allow_null=True)
+    days_left = serializers.IntegerField(allow_null=True)
+
+    def to_representation(self, instance):
+        now = self.context.get('now') or timezone.now()
+        purchase = instance
+        gym = purchase.package.group_package.gym
+        expire_date = purchase.expire_date
+        is_active = (
+            purchase.payment_status == 'paid'
+            and purchase.verification_status == 'verified'
+            and expire_date is not None
+            and expire_date >= now
+        )
+        membership_status = 'active' if is_active else 'inactive'
+        days_left = None
+        if expire_date is not None:
+            delta = expire_date - now
+            days_left = max(int(delta.total_seconds() // 86400), 0)
+
+        return {
+            'purchase_id': purchase.id,
+            'user_id': purchase.user_id,
+            'user_name': purchase.user.full_name or '',
+            'user_phone': purchase.user.phone,
+            'gym_id': gym.id,
+            'gym_name': gym.name,
+            'package_id': purchase.package_id,
+            'package_title': purchase.package.title,
+            'payment_status': purchase.payment_status,
+            'verification_status': purchase.verification_status,
+            'membership_status': membership_status,
+            'is_active': is_active,
+            'total_amount': str(purchase.total_amount),
+            'final_amount': str(purchase.final_amount),
+            'purchase_date': purchase.purchase_date,
+            'verified_at': purchase.verified_at,
+            'expire_date': expire_date,
+            'days_left': days_left,
+        }
+
+
+class PurchaseHistorySerializer(serializers.Serializer):
+    purchase_id = serializers.IntegerField()
+    buyer_code = serializers.CharField(allow_blank=True)
+    user_id = serializers.IntegerField()
+    user_name = serializers.CharField()
+    user_phone = serializers.CharField()
+    gym_id = serializers.IntegerField()
+    gym_name = serializers.CharField()
+    package_id = serializers.IntegerField()
+    package_title = serializers.CharField()
+    package_duration = serializers.IntegerField()
+    payment_status = serializers.CharField()
+    verification_status = serializers.CharField()
+    membership_status = serializers.CharField()
+    is_active = serializers.BooleanField()
+    purchase_date = serializers.DateTimeField()
+    start_date = serializers.DateTimeField(allow_null=True)
+    end_date = serializers.DateTimeField(allow_null=True)
+    verified_at = serializers.DateTimeField(allow_null=True)
+    verified_by_name = serializers.CharField(allow_blank=True, allow_null=True)
+    discount_code = serializers.CharField(allow_blank=True, allow_null=True)
+    discount_type = serializers.CharField(allow_blank=True, allow_null=True)
+    discount_value = serializers.DecimalField(max_digits=10, decimal_places=2, allow_null=True)
+    discount_source_type = serializers.CharField(allow_blank=True, allow_null=True)
+    discount_amount = serializers.DecimalField(max_digits=10, decimal_places=2)
+    discount_percentage = serializers.DecimalField(max_digits=6, decimal_places=2)
+    total_amount = serializers.DecimalField(max_digits=10, decimal_places=2)
+    commission_amount = serializers.DecimalField(max_digits=10, decimal_places=2)
+    net_amount = serializers.DecimalField(max_digits=10, decimal_places=2)
+    final_amount = serializers.DecimalField(max_digits=10, decimal_places=2)
+    days_left = serializers.IntegerField(allow_null=True)
+
+    def to_representation(self, instance):
+        now = self.context.get('now') or timezone.now()
+        purchase = instance
+        gym = purchase.package.group_package.gym
+        discount = purchase.discount_code
+
+        start_date = purchase.verified_at if purchase.verification_status == 'verified' else None
+        if start_date is None and purchase.payment_status == 'paid':
+            start_date = purchase.purchase_date
+
+        end_date = purchase.expire_date
+        if end_date is None and start_date is not None:
+            end_date = start_date + timedelta(days=purchase.package.duration)
+
+        is_active = (
+            purchase.payment_status == 'paid'
+            and purchase.verification_status == 'verified'
+            and end_date is not None
+            and end_date >= now
+        )
+
+        if purchase.payment_status == 'failed':
+            membership_status = 'failed_payment'
+        elif purchase.payment_status != 'paid':
+            membership_status = 'pending_payment'
+        elif purchase.verification_status == 'rejected':
+            membership_status = 'rejected'
+        elif purchase.verification_status != 'verified':
+            membership_status = 'pending_verification'
+        elif is_active:
+            membership_status = 'active'
+        else:
+            membership_status = 'expired'
+
+        discount_amount = purchase.total_amount - purchase.final_amount
+        discount_percentage = Decimal('0')
+        if purchase.total_amount and purchase.total_amount > 0:
+            discount_percentage = (discount_amount / purchase.total_amount) * Decimal('100')
+
+        days_left = None
+        if end_date is not None:
+            days_left = max(int((end_date - now).total_seconds() // 86400), 0)
+
+        return {
+            'purchase_id': purchase.id,
+            'buyer_code': purchase.buyer_code or '',
+            'user_id': purchase.user_id,
+            'user_name': purchase.user.full_name or '',
+            'user_phone': purchase.user.phone,
+            'gym_id': gym.id,
+            'gym_name': gym.name,
+            'package_id': purchase.package_id,
+            'package_title': purchase.package.title,
+            'package_duration': purchase.package.duration,
+            'payment_status': purchase.payment_status,
+            'verification_status': purchase.verification_status,
+            'membership_status': membership_status,
+            'is_active': is_active,
+            'purchase_date': purchase.purchase_date,
+            'start_date': start_date,
+            'end_date': end_date,
+            'verified_at': purchase.verified_at,
+            'verified_by_name': (
+                purchase.verified_by.full_name if purchase.verified_by else None
+            ),
+            'discount_code': discount.code if discount else None,
+            'discount_type': discount.discount_type if discount else None,
+            'discount_value': discount.value if discount else None,
+            'discount_source_type': discount.source_type if discount else None,
+            'discount_amount': discount_amount,
+            'discount_percentage': discount_percentage.quantize(Decimal('1.00')),
+            'total_amount': purchase.total_amount,
+            'commission_amount': purchase.commission_amount or Decimal('0'),
+            'net_amount': purchase.net_amount or Decimal('0'),
+            'final_amount': purchase.final_amount,
+            'days_left': days_left,
+        }

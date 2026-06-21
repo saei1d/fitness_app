@@ -150,8 +150,16 @@ class PurchaseAdmin(admin.ModelAdmin):
     actions = ["mark_as_verified", "mark_as_rejected"]
     
     def mark_as_verified(self, request, queryset):
+        from datetime import timedelta
         from django.utils import timezone
-        queryset.update(verification_status='verified', verified_at=timezone.now(), verified_by=request.user)
+
+        for purchase in queryset:
+            purchase.verification_status = 'verified'
+            purchase.verified_at = timezone.now()
+            purchase.verified_by = request.user
+            if purchase.expire_date is None and purchase.package_id:
+                purchase.expire_date = timezone.now() + timedelta(days=purchase.package.duration)
+            purchase.save(update_fields=['verification_status', 'verified_at', 'verified_by', 'expire_date'])
     mark_as_verified.short_description = "علامت‌گذاری به عنوان تأیید شده"
     
     def mark_as_rejected(self, request, queryset):

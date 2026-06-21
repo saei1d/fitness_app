@@ -1,5 +1,6 @@
 from rest_framework import viewsets, permissions, status
-from django.db import models
+from django.db.models import Q
+from django.utils.dateparse import parse_datetime
 from drf_spectacular.utils import extend_schema
 from rest_framework.response import Response
 from rest_framework.decorators import action
@@ -40,10 +41,77 @@ class TicketViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
+        queryset = Ticket.objects.select_related('creator', 'admin').prefetch_related('messages__author')
+
         if user.is_staff:
-            return Ticket.objects.all().select_related('creator', 'admin').prefetch_related('messages__author')
-        # Regular users can only see their own tickets
-        return Ticket.objects.filter(creator=user).select_related('creator', 'admin').prefetch_related('messages__author')
+            pass
+        else:
+            queryset = queryset.filter(creator=user)
+
+        status_param = self.request.query_params.get('status')
+        if status_param:
+            queryset = queryset.filter(status=status_param)
+
+        subject = self.request.query_params.get('subject')
+        if subject:
+            queryset = queryset.filter(subject__icontains=subject)
+
+        creator_phone = self.request.query_params.get('creator_phone')
+        if creator_phone:
+            queryset = queryset.filter(creator__phone__icontains=creator_phone)
+
+        creator_name = self.request.query_params.get('creator_name')
+        if creator_name:
+            queryset = queryset.filter(creator__full_name__icontains=creator_name)
+
+        admin_id = self.request.query_params.get('admin_id')
+        if admin_id:
+            queryset = queryset.filter(admin_id=admin_id)
+
+        search = self.request.query_params.get('search')
+        if search:
+            queryset = queryset.filter(
+                Q(subject__icontains=search)
+                | Q(creator__phone__icontains=search)
+                | Q(creator__full_name__icontains=search)
+                | Q(messages__message__icontains=search)
+            )
+
+        created_from = self.request.query_params.get('created_from')
+        if created_from:
+            dt = parse_datetime(created_from)
+            if dt:
+                queryset = queryset.filter(created_at__gte=dt)
+
+        created_to = self.request.query_params.get('created_to')
+        if created_to:
+            dt = parse_datetime(created_to)
+            if dt:
+                queryset = queryset.filter(created_at__lte=dt)
+
+        updated_from = self.request.query_params.get('updated_from')
+        if updated_from:
+            dt = parse_datetime(updated_from)
+            if dt:
+                queryset = queryset.filter(updated_at__gte=dt)
+
+        updated_to = self.request.query_params.get('updated_to')
+        if updated_to:
+            dt = parse_datetime(updated_to)
+            if dt:
+                queryset = queryset.filter(updated_at__lte=dt)
+
+        ordering = self.request.query_params.get('ordering', '-created_at')
+        allowed_ordering = {
+            'created_at', '-created_at',
+            'updated_at', '-updated_at',
+            'status', '-status',
+            'subject', '-subject',
+        }
+        if ordering not in allowed_ordering:
+            ordering = '-created_at'
+
+        return queryset.distinct().order_by(ordering)
 
     def get_serializer_class(self):
         if self.action == 'retrieve':
