@@ -199,7 +199,12 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 CORS_ALLOW_ALL_ORIGINS = _get_bool(os.getenv('CORS_ALLOW_ALL_ORIGINS', 'False'))
 CORS_ALLOWED_ORIGINS = _get_list(os.getenv('CORS_ALLOWED_ORIGINS', ''))
 
-MEDIA_ROOT = os.path.join(BASE_DIR, "media")
+# In production we keep uploads under the collected static tree so the
+# container can mount a persistent volume at /app/staticfiles/media.
+MEDIA_ROOT = os.getenv(
+    "MEDIA_ROOT",
+    os.path.join(BASE_DIR, "media") if DEBUG else os.path.join(BASE_DIR, "staticfiles", "media"),
+)
 MEDIA_URL = "/media/"
 
 CSRF_TRUSTED_ORIGINS = _get_list(os.getenv('CSRF_TRUSTED_ORIGINS', ''))
