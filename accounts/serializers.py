@@ -82,5 +82,15 @@ class CheckAuthResponseSerializer(serializers.Serializer):
     user = serializers.JSONField(required=False)
 
 
+class MakeUserStaffRequestSerializer(serializers.Serializer):
+    phone = serializers.CharField()
+    is_staff = serializers.BooleanField(required=False, default=True)
+
+
+class MakeUserStaffResponseSerializer(serializers.Serializer):
+    phone = serializers.CharField()
+    is_staff = serializers.BooleanField()
+
+
 class EnterReferralCodeSerializer(serializers.Serializer):
     referral_code = serializers.CharField(max_length=20)
