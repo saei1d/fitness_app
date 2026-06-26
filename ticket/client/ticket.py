@@ -34,7 +34,7 @@ class IsSuperUserOrReadOnly(permissions.BasePermission):
         return request.user and request.user.is_authenticated
 
 
-@extend_schema(tags=['Ticket'])
+@extend_schema(tags=['Support Requests'])
 class TicketViewSet(viewsets.ModelViewSet):
     serializer_class = TicketSerializer
     permission_classes = [permissions.IsAuthenticated, IsTicketCreatorOrStaff, IsSuperUserOrReadOnly]
@@ -147,7 +147,7 @@ class TicketViewSet(viewsets.ModelViewSet):
         },
         responses={200: TicketSerializer, 400: dict, 403: dict}
     )
-    @action(detail=True, methods=['patch'], permission_classes=[permissions.IsAuthenticated])
+    @action(detail=True, methods=['patch'], permission_classes=[permissions.IsAuthenticated], url_path='status')
     def change_status(self, request, pk=None):
         """Allow status changes with restrictions"""
         ticket = self.get_object()
@@ -187,7 +187,7 @@ class TicketViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
 
-@extend_schema(tags=['TicketMessage'])
+@extend_schema(tags=['Support Replies'])
 class TicketMessageViewSet(viewsets.ModelViewSet):
     serializer_class = TicketMessageSerializer
     permission_classes = [permissions.IsAuthenticated]

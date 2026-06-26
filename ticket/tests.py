@@ -24,7 +24,7 @@ class TicketListFilterTests(TestCase):
 
     def test_staff_can_filter_by_status(self):
         self.client.force_authenticate(self.staff)
-        response = self.client.get('/api/tickets/', {'status': Ticket.Status.OPEN})
+        response = self.client.get('/api/support-requests/', {'status': Ticket.Status.OPEN})
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(response.data), 1)
@@ -32,7 +32,7 @@ class TicketListFilterTests(TestCase):
 
     def test_staff_can_search_across_subject_and_messages(self):
         self.client.force_authenticate(self.staff)
-        response = self.client.get('/api/tickets/', {'search': 'membership'})
+        response = self.client.get('/api/support-requests/', {'search': 'membership'})
 
         self.assertEqual(response.status_code, 200)
         subjects = {item['subject'] for item in response.data}

@@ -2,7 +2,9 @@ from django.contrib import admin
 from django.utils.safestring import mark_safe
 from django.contrib.gis.geos import Point
 from django import forms
+from django.db import transaction
 from .models import Gym, GymImage
+from .services import promote_gym_owner
 
 
 class GymImageInline(admin.TabularInline):
@@ -87,6 +89,12 @@ class GymAdmin(admin.ModelAdmin):
             return f"{obj.longitude:.6f}"
         return "-"
     longitude_display.short_description = "طول جغرافیایی (خواندنی)"
+
+    def save_model(self, request, obj, form, change):
+        with transaction.atomic():
+            super().save_model(request, obj, form, change)
+            if obj.owner_id:
+                promote_gym_owner(obj.owner)
 
 
 @admin.register(GymImage)

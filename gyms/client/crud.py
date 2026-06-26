@@ -1,24 +1,23 @@
-from drf_spectacular.utils import extend_schema
-from rest_framework.response import Response
-from finance.models import Wallet
-from ..models import *
-from ..serializers import *
-from rest_framework import status, permissions, generics
-from finance.models import Wallet
-from rest_framework.pagination import PageNumberPagination
-from accounts.models import User
-from rest_framework.parsers import MultiPartParser, FormParser
 from django.shortcuts import get_object_or_404
-from rest_framework.viewsets import ViewSet
+from django.db import transaction
+from drf_spectacular.utils import extend_schema
+from rest_framework import generics, permissions, status
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied, ValidationError
+from rest_framework.pagination import PageNumberPagination
+from rest_framework.parsers import FormParser, MultiPartParser
+from rest_framework.response import Response
+from rest_framework.viewsets import ViewSet
 
+from gyms.services import promote_gym_owner, resolve_gym_owner
 
+from ..models import Gym, GymImage
+from ..serializers import GymImageFlexibleSerializer, GymImageSerializer, GymSerializer
 
 
 class IsAdminOrGymOwner(permissions.BasePermission):
     def has_permission(self, request, view):
-        if view.action == 'list_images':
+        if getattr(view, "action", None) == "list_images":
             return True
         return request.user and request.user.is_authenticated
 
@@ -28,77 +27,58 @@ class IsAdminOrGymOwner(permissions.BasePermission):
 
 class DefaultPagination(PageNumberPagination):
     page_size = 10
-    page_size_query_param = 'page_size'
+    page_size_query_param = "page_size"
     max_page_size = 50
 
 
-
-@extend_schema(tags=['Gym'])
+@extend_schema(tags=["Gym"])
 class GymListCreateView(generics.ListCreateAPIView):
-    queryset = Gym.objects.all().order_by('-average_rating')
+    queryset = Gym.objects.all().order_by("-average_rating")
     serializer_class = GymSerializer
     pagination_class = DefaultPagination
 
     def get_permissions(self):
-        if self.request.method == 'POST':
+        if self.request.method == "POST":
             return [permissions.IsAdminUser()]
         return [permissions.AllowAny()]
 
     @extend_schema(
         summary="ایجاد باشگاه جدید",
-        description="ادمین می‌تواند باشگاه جدیدی ایجاد کند. فیلد owner می‌تواند عدد (id) یا شماره موبایل ۱۲ رقمی باشد.",
+        description=(
+            "ادمین می‌تواند باشگاه جدیدی ایجاد کند. فیلد owner می‌تواند "
+            "شناسه کاربر یا شماره موبایل باشد."
+        ),
         request=GymSerializer,
         responses=GymSerializer,
-
     )
     def post(self, request, *args, **kwargs):
         return self.create(request, *args, **kwargs)
 
     def perform_create(self, serializer):
-        owner_value = self.request.data.get('owner')
-        if not owner_value:
-            raise ValidationError("owner field is required to assign an owner.")
+        owner_value = self.request.data.get("owner")
+        try:
+            owner = resolve_gym_owner(owner_value)
+        except ValueError as exc:
+            raise ValidationError(str(exc)) from exc
 
-        # اگر طولش 12 بود یعنی شمارشه، بر اساس phone پیدا کن
-        if isinstance(owner_value, str) and len(owner_value) == 11:
-            try:
-                owner = User.objects.get(phone=owner_value)
-            except User.DoesNotExist:
-                raise ValidationError(f"No user found with phone number: {owner_value}")
-        else:
-            try:
-                owner = User.objects.get(id=owner_value)
-            except User.DoesNotExist:
-                raise ValidationError(f"No user found with id: {owner_value}")
-
-        gym = serializer.save(owner=owner)
-
-        if owner.role != 'owner':
-            owner.role = 'owner'
-            owner.save(update_fields=['role'])
-
-        Wallet.objects.get_or_create(owner=owner)
-
-        return gym
+        with transaction.atomic():
+            gym = serializer.save(owner=owner)
+            promote_gym_owner(owner)
+            return gym
 
 
-
-@extend_schema(tags=['Gym'])
+@extend_schema(tags=["Gym"])
 class GymDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Gym.objects.all()
     serializer_class = GymSerializer
 
     def get_permissions(self):
-        if self.request.method in ['DELETE', 'PUT', 'PATCH']:
-            # فقط ادمین می‌تونه حذف یا ویرایش کنه
+        if self.request.method in ["DELETE", "PUT", "PATCH"]:
             return [permissions.IsAdminUser()]
-        # برای مشاهده جزئیات نیازی به لاگین نیست
         return [permissions.AllowAny()]
 
 
-
-
-@extend_schema(tags=['Gym_images'])
+@extend_schema(tags=["Gym_images"])
 class GymImageViewSet(ViewSet):
     parser_classes = [MultiPartParser, FormParser]
     permission_classes = [IsAdminOrGymOwner]
@@ -120,6 +100,7 @@ class GymImageViewSet(ViewSet):
         permission = IsAdminOrGymOwner()
         if not permission.has_gym_permission(request, gym):
             raise PermissionDenied("You can only upload images for your own gym.")
+
         uploaded_images = []
 
         if "images" in data:
@@ -131,18 +112,18 @@ class GymImageViewSet(ViewSet):
             obj = GymImage.objects.create(
                 gym=gym,
                 image=data["image"],
-                alt_text=data.get("alt_text", "")
+                alt_text=data.get("alt_text", ""),
             )
             uploaded_images.append(obj)
 
         return Response(
             GymImageSerializer(uploaded_images, many=True, context={"request": request}).data,
-            status=status.HTTP_201_CREATED
+            status=status.HTTP_201_CREATED,
         )
 
     @action(detail=True, methods=["delete"], url_path="delete")
     def delete_image(self, request, pk=None):
-        image = get_object_or_404(GymImage.objects.select_related('gym'), id=pk)
+        image = get_object_or_404(GymImage.objects.select_related("gym"), id=pk)
         permission = IsAdminOrGymOwner()
         if not permission.has_gym_permission(request, image.gym):
             raise PermissionDenied("You can only delete images for your own gym.")
