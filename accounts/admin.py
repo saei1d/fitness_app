@@ -18,7 +18,7 @@ class UserAdmin(BaseUserAdmin):
     
     fieldsets = (
         (None, {"fields": ("phone", "password")}),
-        ("اطلاعات شخصی", {"fields": ("full_name", "birthdate", "role", "is_phone_verified", "referral_code", "referred_by")}),
+        ("اطلاعات شخصی", {"fields": ("full_name", "birthdate", "avatar", "role", "is_phone_verified", "referral_code", "referred_by")}),
         ("دسترسی‌ها", {"fields": ("is_active", "is_staff", "is_superuser", "groups", "user_permissions")}),
         ("تنظیمات", {"fields": ("is_banned_from_reviews",)}),
         ("تاریخ‌ها", {"fields": ("last_login", "date_joined")}),
@@ -27,7 +27,7 @@ class UserAdmin(BaseUserAdmin):
     add_fieldsets = (
         (None, {
             "classes": ("wide",),
-            "fields": ("phone", "password1", "password2", "full_name", "role", "is_staff", "is_active"),
+            "fields": ("phone", "password1", "password2", "full_name", "avatar", "role", "is_staff", "is_active"),
         }),
     )
     

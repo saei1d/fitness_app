@@ -13,12 +13,32 @@ class VerifyOTPSerializer(serializers.Serializer):
     code = serializers.CharField()
 
 class EditProfileSerializer(serializers.ModelSerializer):
+    avatar_url = serializers.SerializerMethodField(read_only=True)
+
     class Meta:
         model = User
-        fields = ['full_name', 'birthdate']  
+        fields = ['full_name', 'birthdate', 'avatar', 'avatar_url']
+        extra_kwargs = {
+            'avatar': {'required': False, 'allow_null': True, 'write_only': True},
+        }
+
+    def get_avatar_url(self, obj):
+        if not obj.avatar:
+            return None
+        request = self.context.get('request')
+        url = obj.avatar.url
+        return request.build_absolute_uri(url) if request else url
+
+    def update(self, instance, validated_data):
+        new_avatar = validated_data.get('avatar')
+        if new_avatar and instance.avatar:
+            instance.avatar.delete(save=False)
+        return super().update(instance, validated_data)
 
 
 class UserDetailSerializer(serializers.ModelSerializer):
+    avatar_url = serializers.SerializerMethodField(read_only=True)
+
     class Meta:
         model = User
         fields = [
@@ -34,7 +54,15 @@ class UserDetailSerializer(serializers.ModelSerializer):
             'referred_by',
             'is_active',
             'date_joined',
+            'avatar_url',
         ]
+
+    def get_avatar_url(self, obj):
+        if not obj.avatar:
+            return None
+        request = self.context.get('request')
+        url = obj.avatar.url
+        return request.build_absolute_uri(url) if request else url
         
         
 class EnterReferralCodeSerializer(serializers.Serializer):

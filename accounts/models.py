@@ -48,6 +48,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     is_phone_verified = models.BooleanField(default=False)
     date_joined = models.DateTimeField(default=timezone.now)
     role = models.CharField(max_length=20, choices=ROLES_CHOICES, default='customer')
+    avatar = models.ImageField(upload_to='accounts/avatars/', null=True, blank=True)
     referral_code = models.CharField(max_length=20, unique=True, blank=True)
     referred_by = models.CharField(max_length=20, blank=True, null=True)
     is_banned_from_reviews = models.BooleanField(default=False)
