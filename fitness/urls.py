@@ -2,6 +2,8 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path
+from django.urls import re_path
+from django.views.static import serve as static_serve
 from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, SpectacularSwaggerView
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
@@ -35,6 +37,16 @@ urlpatterns = [
 
     # Legacy aliases kept temporarily for frontend compatibility.
     path('api/', include((api_v1_patterns, 'api-legacy'))),
+]
+
+# Django's static() helper is a no-op when DEBUG=False, so add an explicit
+# media route for environments without a separate web server.
+urlpatterns += [
+    re_path(
+        r'^media/(?P<path>.*)$',
+        static_serve,
+        {'document_root': settings.MEDIA_ROOT},
+    ),
 ]
 
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
