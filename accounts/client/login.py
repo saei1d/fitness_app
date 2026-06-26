@@ -110,6 +110,10 @@ class VerifyOTPView(APIView):
 
 @extend_schema(tags=['Authentication'])
 class CheckAuth(APIView):
+    @extend_schema(
+        responses={200: CheckAuthResponseSerializer, 401: CheckAuthResponseSerializer},
+        description="Check current auth state"
+    )
     def get(self, request):
         if request.user.is_authenticated:
             return Response({

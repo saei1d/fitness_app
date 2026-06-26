@@ -34,9 +34,6 @@ api_v1_patterns = [
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/', include((api_v1_patterns, 'api-v1'))),
-
-    # Legacy aliases kept temporarily for frontend compatibility.
-    path('api/', include((api_v1_patterns, 'api-legacy'))),
 ]
 
 # Django's static() helper is a no-op when DEBUG=False, so add an explicit

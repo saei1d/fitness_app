@@ -2,6 +2,7 @@ from rest_framework import serializers
 from .models import User, OTP
 from datetime import datetime
 from django.utils import timezone
+from drf_spectacular.utils import extend_schema_field, OpenApiTypes
 
 
 class RequestOTPSerializer(serializers.Serializer):
@@ -22,6 +23,7 @@ class EditProfileSerializer(serializers.ModelSerializer):
             'avatar': {'required': False, 'allow_null': True, 'write_only': True},
         }
 
+    @extend_schema_field(OpenApiTypes.URI)
     def get_avatar_url(self, obj):
         if not obj.avatar:
             return None
@@ -57,13 +59,28 @@ class UserDetailSerializer(serializers.ModelSerializer):
             'avatar_url',
         ]
 
+    @extend_schema_field(OpenApiTypes.URI)
     def get_avatar_url(self, obj):
         if not obj.avatar:
             return None
         request = self.context.get('request')
         url = obj.avatar.url
         return request.build_absolute_uri(url) if request else url
-        
-        
+
+
+class ProfilePhotoUploadSerializer(serializers.Serializer):
+    avatar = serializers.ImageField(required=True)
+
+
+class ProfilePhotoResponseSerializer(serializers.Serializer):
+    avatar_url = serializers.URLField(allow_null=True, required=False)
+
+
+class CheckAuthResponseSerializer(serializers.Serializer):
+    is_authenticated = serializers.BooleanField()
+    detail = serializers.CharField(required=False)
+    user = serializers.JSONField(required=False)
+
+
 class EnterReferralCodeSerializer(serializers.Serializer):
     referral_code = serializers.CharField(max_length=20)

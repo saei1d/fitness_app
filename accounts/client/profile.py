@@ -65,6 +65,10 @@ class ProfilePhotoView(APIView):
             return user, None
         return request.user, None
 
+    @extend_schema(
+        responses={200: ProfilePhotoResponseSerializer},
+        description="Get profile photo URL"
+    )
     def get(self, request, user_id=None):
         user, error = self._get_user(request, user_id=user_id)
         if error:
@@ -73,6 +77,11 @@ class ProfilePhotoView(APIView):
             return Response({'avatar_url': None})
         return Response({'avatar_url': request.build_absolute_uri(user.avatar.url)})
 
+    @extend_schema(
+        request=ProfilePhotoUploadSerializer,
+        responses={201: ProfilePhotoResponseSerializer},
+        description="Upload or replace profile photo"
+    )
     def post(self, request, user_id=None):
         user, error = self._get_user(request, user_id=user_id)
         if error:
@@ -91,6 +100,10 @@ class ProfilePhotoView(APIView):
 
         return Response({'avatar_url': request.build_absolute_uri(user.avatar.url)}, status=status.HTTP_201_CREATED)
 
+    @extend_schema(
+        responses={204: None},
+        description="Delete profile photo"
+    )
     def delete(self, request, user_id=None):
         user, error = self._get_user(request, user_id=user_id)
         if error:
