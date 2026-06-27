@@ -6,6 +6,7 @@ from datetime import timedelta
 from accounts.serializers import *
 from accounts.models import User, OTP
 import random
+import secrets
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.conf import settings
 from drf_spectacular.utils import extend_schema
