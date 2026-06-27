@@ -54,19 +54,19 @@ class Purchase(models.Model):
     class Meta:
         constraints = [
             models.CheckConstraint(
-                check=models.Q(total_amount__gte=0),
+                condition=models.Q(total_amount__gte=0),
                 name='check_total_amount_non_negative'
             ),
             models.CheckConstraint(
-                check=models.Q(final_amount__gte=0),
+                condition=models.Q(final_amount__gte=0),
                 name='check_final_amount_non_negative'
             ),
             models.CheckConstraint(
-                check=models.Q(commission_amount__gte=0) | models.Q(commission_amount__isnull=True),
+                condition=models.Q(commission_amount__gte=0) | models.Q(commission_amount__isnull=True),
                 name='check_commission_amount_non_negative'
             ),
             models.CheckConstraint(
-                check=models.Q(net_amount__gte=0) | models.Q(net_amount__isnull=True),
+                condition=models.Q(net_amount__gte=0) | models.Q(net_amount__isnull=True),
                 name='check_net_amount_non_negative'
             ),
         ]
@@ -83,7 +83,7 @@ class Wallet(models.Model):
     class Meta:
         constraints = [
             models.CheckConstraint(
-                check=models.Q(balance__gte=0),
+                condition=models.Q(balance__gte=0),
                 name='check_wallet_balance_non_negative'
             ),
         ]
@@ -99,7 +99,7 @@ class AdminWallet(models.Model):
     class Meta:
         constraints = [
             models.CheckConstraint(
-                check=models.Q(balance__gte=0),
+                condition=models.Q(balance__gte=0),
                 name='check_admin_wallet_balance_non_negative'
             ),
         ]
@@ -136,7 +136,7 @@ class Transaction(models.Model):
     class Meta:
         constraints = [
             models.CheckConstraint(
-                check=models.Q(amount__gte=0),
+                condition=models.Q(amount__gte=0),
                 name='check_transaction_amount_non_negative'
             ),
         ]
@@ -162,7 +162,7 @@ class WithdrawRequest(models.Model):
     class Meta:
         constraints = [
             models.CheckConstraint(
-                check=models.Q(amount__gte=0),
+                condition=models.Q(amount__gte=0),
                 name='check_withdraw_amount_non_negative'
             ),
         ]
