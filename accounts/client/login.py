@@ -1,6 +1,6 @@
 from accounts.imports import *
 import requests
-from .throttling import OTPRequestRateThrottle, OTPVerifyRateThrottle
+from ..throttling import OTPRequestRateThrottle, OTPVerifyRateThrottle
 
 OTP_TTL_SECONDS = 300
 
