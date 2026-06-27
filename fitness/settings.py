@@ -40,7 +40,7 @@ load_dotenv(BASE_DIR / '.env')
 
 # SECURITY WARNING: keep the secret key used in production secret!
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = _get_bool(os.getenv('DEBUG', 'True'))
+DEBUG = _get_bool(os.getenv('DEBUG', 'False'))
 
 SECRET_KEY = os.getenv('SECRET_KEY')
 if not SECRET_KEY:
@@ -135,12 +135,24 @@ REST_FRAMEWORK = {
         'rest_framework.permissions.IsAuthenticated',
     ),
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+    'DEFAULT_THROTTLE_CLASSES': [
+        'rest_framework.throttling.AnonRateThrottle',
+        'rest_framework.throttling.UserRateThrottle'
+    ],
+    'DEFAULT_THROTTLE_RATES': {
+        'anon': '100/day',
+        'user': '1000/day',
+        'otp_request': '5/hour',
+        'otp_verify': '20/hour',
+    },
 
 }
 
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(days=int(os.getenv('SIMPLE_JWT_ACCESS_DAYS', '10'))),
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=int(os.getenv('SIMPLE_JWT_REFRESH_DAYS', '30'))),
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=int(os.getenv('SIMPLE_JWT_ACCESS_MINUTES', '30'))),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=int(os.getenv('SIMPLE_JWT_REFRESH_DAYS', '7'))),
+    'ROTATE_REFRESH_TOKENS': True,
+    'BLACKLIST_AFTER_ROTATION': True,
 }
 
 SPECTACULAR_SETTINGS = {
@@ -199,6 +211,10 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 CORS_ALLOW_ALL_ORIGINS = _get_bool(os.getenv('CORS_ALLOW_ALL_ORIGINS', 'False'))
 CORS_ALLOWED_ORIGINS = _get_list(os.getenv('CORS_ALLOWED_ORIGINS', ''))
 
+# Security: Prevent CORS_ALLOW_ALL_ORIGINS=True in production
+if not DEBUG and CORS_ALLOW_ALL_ORIGINS:
+    raise ImproperlyConfigured('CORS_ALLOW_ALL_ORIGINS cannot be True in production. Set CORS_ALLOWED_ORIGINS instead.')
+
 # In production we keep uploads under the collected static tree so the
 # container can mount a persistent volume at /app/staticfiles/media.
 MEDIA_URL = '/media/'
@@ -216,7 +232,10 @@ SECURE_HSTS_SECONDS = int(os.getenv('SECURE_HSTS_SECONDS', '0' if DEBUG else '31
 SECURE_HSTS_INCLUDE_SUBDOMAINS = _get_bool(os.getenv('SECURE_HSTS_INCLUDE_SUBDOMAINS', str(not DEBUG)))
 SECURE_HSTS_PRELOAD = _get_bool(os.getenv('SECURE_HSTS_PRELOAD', str(not DEBUG)))
 SECURE_CONTENT_TYPE_NOSNIFF = True
+SECURE_BROWSER_XSS_FILTER = True
+X_FRAME_OPTIONS = 'DENY'
 SESSION_COOKIE_HTTPONLY = True
+CSRF_COOKIE_HTTPONLY = True
 
 # Melipayamak SMS
 MELIPAYAMAK_API_KEY = os.getenv('MELIPAYAMAK_API_KEY', '')

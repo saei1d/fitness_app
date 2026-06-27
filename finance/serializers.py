@@ -129,8 +129,18 @@ class PurchaseSerializer(serializers.ModelSerializer):
             final_amount=final_amount
         )
         if discount_code_obj:
-            DiscountCode.objects.filter(pk=discount_code_obj.pk).update(used_count=F('used_count') + 1)
+            # Atomic increment of used_count to prevent race conditions
+            updated = DiscountCode.objects.filter(
+                pk=discount_code_obj.pk
+            ).update(used_count=F('used_count') + 1)
+            
             from discount.models import DiscountUsage
+            # Check for duplicate usage to prevent double-spending
+            if DiscountUsage.objects.filter(discount=discount_code_obj, user=user).exists():
+                # Rollback the increment if user already used this code
+                DiscountCode.objects.filter(pk=discount_code_obj.pk).update(used_count=F('used_count') - 1)
+                raise serializers.ValidationError({"discount_code": "شما قبلاً از این کد استفاده کرده‌اید"})
+            
             DiscountUsage.objects.create(discount=discount_code_obj, user=user)
         return purchase
 

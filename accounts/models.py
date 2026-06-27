@@ -4,6 +4,9 @@ import string
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 from django.db import models
 from django.utils import timezone
+from django.core.validators import FileExtensionValidator
+from .validators import validate_iranian_phone_number
+from .file_validators import validate_avatar_size
 
 
 REFERRAL_ALPHABET = string.ascii_uppercase + string.digits
@@ -40,7 +43,7 @@ class User(AbstractBaseUser, PermissionsMixin):
         ('admin', 'Admin'),
     ]
 
-    phone = models.CharField(max_length=20, unique=True)
+    phone = models.CharField(max_length=20, unique=True, validators=[validate_iranian_phone_number])
     full_name = models.CharField(max_length=250, blank=True)
     birthdate = models.DateField(null=True, blank=True)
     is_active = models.BooleanField(default=True)
@@ -48,7 +51,12 @@ class User(AbstractBaseUser, PermissionsMixin):
     is_phone_verified = models.BooleanField(default=False)
     date_joined = models.DateTimeField(default=timezone.now)
     role = models.CharField(max_length=20, choices=ROLES_CHOICES, default='customer')
-    avatar = models.ImageField(upload_to='accounts/avatars/', null=True, blank=True)
+    avatar = models.ImageField(
+        upload_to='accounts/avatars/',
+        null=True,
+        blank=True,
+        validators=[FileExtensionValidator(allowed_extensions=['jpg', 'jpeg', 'png', 'webp']), validate_avatar_size]
+    )
     referral_code = models.CharField(max_length=20, unique=True, blank=True)
     referred_by = models.CharField(max_length=20, blank=True, null=True)
     is_banned_from_reviews = models.BooleanField(default=False)

@@ -1,5 +1,6 @@
 from decimal import Decimal
 from django.db import models
+from django.core.exceptions import ValidationError
 from accounts.models import User
 from packages.models import Package
 from discount.models import DiscountCode
@@ -50,6 +51,26 @@ class Purchase(models.Model):
     def __str__(self):
         return f"Purchase #{self.id} - {self.user.full_name} - {self.package.title}"
 
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                check=models.Q(total_amount__gte=0),
+                name='check_total_amount_non_negative'
+            ),
+            models.CheckConstraint(
+                check=models.Q(final_amount__gte=0),
+                name='check_final_amount_non_negative'
+            ),
+            models.CheckConstraint(
+                check=models.Q(commission_amount__gte=0) | models.Q(commission_amount__isnull=True),
+                name='check_commission_amount_non_negative'
+            ),
+            models.CheckConstraint(
+                check=models.Q(net_amount__gte=0) | models.Q(net_amount__isnull=True),
+                name='check_net_amount_non_negative'
+            ),
+        ]
+
 
 class Wallet(models.Model):
     owner = models.OneToOneField(User, on_delete=models.CASCADE, limit_choices_to={'role': 'owner'})
@@ -59,6 +80,14 @@ class Wallet(models.Model):
     def __str__(self):
         return f"Wallet for {self.owner.full_name} - Balance: {self.balance}"
 
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                check=models.Q(balance__gte=0),
+                name='check_wallet_balance_non_negative'
+            ),
+        ]
+
 
 class AdminWallet(models.Model):
     balance = models.DecimalField(max_digits=12, decimal_places=2, default=0)
@@ -66,6 +95,14 @@ class AdminWallet(models.Model):
 
     def __str__(self):
         return f"Admin Wallet - Balance: {self.balance}"
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                check=models.Q(balance__gte=0),
+                name='check_admin_wallet_balance_non_negative'
+            ),
+        ]
 
 
 class Transaction(models.Model):
@@ -96,6 +133,14 @@ class Transaction(models.Model):
             self.admin_wallet.__str__() if self.admin_wallet else "Unknown")
         return f"{self.type.capitalize()} - {self.amount} ({owner_name})"
 
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                check=models.Q(amount__gte=0),
+                name='check_transaction_amount_non_negative'
+            ),
+        ]
+
 
 class WithdrawRequest(models.Model):
     STATUS_CHOICES = [
@@ -113,3 +158,11 @@ class WithdrawRequest(models.Model):
     processed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='processed_withdraw_requests')
     processed_at = models.DateTimeField(null=True, blank=True)
     completed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                check=models.Q(amount__gte=0),
+                name='check_withdraw_amount_non_negative'
+            ),
+        ]

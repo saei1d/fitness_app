@@ -106,12 +106,15 @@ def _redirect_payload(purchase, outcome, reference_id=None):
 
 
 def verify_payment_gateway(transaction_obj, request):
-    """Backward-compatible payment verification hook.
+    """Payment verification hook using gateway authority.
 
-    Manual testing can still send payment_verified=true.
-    Real gateway verification uses the authority returned by the PSP.
+    In production, only real gateway verification is allowed.
+    Manual testing bypass is only available in DEBUG mode.
     """
-    if _is_truthy(_request_value(request, 'payment_verified')):
+    # Allow manual testing bypass ONLY in DEBUG mode
+    if settings.DEBUG and _is_truthy(_request_value(request, 'payment_verified')):
+        import logging
+        logging.warning(f"Manual payment verification bypass used for transaction {transaction_obj.id} - DEBUG mode")
         return True
 
     authority = _request_value(request, 'authority') or _request_value(request, 'Authority')

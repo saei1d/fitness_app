@@ -1,5 +1,6 @@
 from accounts.imports import *
 import requests
+from .throttling import OTPRequestRateThrottle, OTPVerifyRateThrottle
 
 OTP_TTL_SECONDS = 300
 
@@ -26,6 +27,7 @@ def send_sms_fake(phone, code):
 @extend_schema(tags=['Authentication'])
 class RequestOTPView(APIView):
     permission_classes = [permissions.AllowAny]
+    throttle_classes = [OTPRequestRateThrottle]
 
     @extend_schema(
         request=RequestOTPSerializer,
@@ -37,7 +39,7 @@ class RequestOTPView(APIView):
         serializer.is_valid(raise_exception=True)
         phone = serializer.validated_data['phone']
 
-        code = f"{random.randint(0, 999999):06d}"
+        code = f"{secrets.randbelow(1000000):06d}"
         now = timezone.now()
         otp = OTP.objects.create(
             phone=phone,
@@ -59,6 +61,7 @@ class RequestOTPView(APIView):
 @extend_schema(tags=['Authentication'])
 class VerifyOTPView(APIView):
     permission_classes = [permissions.AllowAny]
+    throttle_classes = [OTPVerifyRateThrottle]
 
     @extend_schema(
         request=VerifyOTPSerializer,

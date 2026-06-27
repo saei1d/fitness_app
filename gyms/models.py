@@ -1,9 +1,11 @@
 from django.conf import settings
 from django.db import models
 from django.contrib.gis.db import models as gis_models
+from django.core.validators import FileExtensionValidator
 from accounts.models import User
 import os
 from django.utils.text import slugify
+from .file_validators import validate_banner_size, validate_gym_image_size
 
 class Gym(gis_models.Model):
     owner = models.ForeignKey(User, on_delete=models.CASCADE)
@@ -16,7 +18,12 @@ class Gym(gis_models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     average_rating = models.FloatField(default=0.0)
     comments = models.IntegerField(default=0)
-    banner = models.ImageField(upload_to="gyms/banners/", null=True, blank=True)
+    banner = models.ImageField(
+        upload_to="gyms/banners/",
+        null=True,
+        blank=True,
+        validators=[FileExtensionValidator(allowed_extensions=['jpg', 'jpeg', 'png', 'webp']), validate_banner_size]
+    )
 
     class Meta:
         ordering = ["-created_at"]
@@ -45,7 +52,10 @@ def gym_image_upload_path(instance, filename):
 
 class GymImage(models.Model):
     gym = models.ForeignKey(Gym, on_delete=models.CASCADE, related_name="images")
-    image = models.ImageField(upload_to=gym_image_upload_path)
+    image = models.ImageField(
+        upload_to=gym_image_upload_path,
+        validators=[FileExtensionValidator(allowed_extensions=['jpg', 'jpeg', 'png', 'webp']), validate_gym_image_size]
+    )
     alt_text = models.CharField(max_length=255, blank=True)
     order = models.PositiveSmallIntegerField(default=0)
     uploaded_at = models.DateTimeField(auto_now_add=True)
