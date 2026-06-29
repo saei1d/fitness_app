@@ -12,15 +12,15 @@ class DiscountUsageInline(admin.TabularInline):
 
 @admin.register(DiscountCode)
 class DiscountCodeAdmin(admin.ModelAdmin):
-    list_display = ('id', 'code', 'discount_type', 'value', 'club', 'source_type', 'is_active', 'is_valid_display', 'used_count', 'usage_limit', 'created_at')
+    list_display = ('id', 'code', 'discount_type', 'value', 'gym', 'source_type', 'is_active', 'is_valid_display', 'used_count', 'usage_limit', 'created_at')
     list_filter = ('discount_type', 'source_type', 'is_active', 'created_at')
-    search_fields = ('code', 'club__name')
+    search_fields = ('code', 'gym__name')
     readonly_fields = ('used_count', 'created_at', 'updated_at', 'is_valid_display')
     inlines = [DiscountUsageInline]
     
     fieldsets = (
         ("اطلاعات اصلی", {
-            "fields": ("code", "discount_type", "value", "club", "source_type")
+            "fields": ("code", "discount_type", "value", "gym", "packages", "source_type")
         }),
         ("محدودیت‌ها", {
             "fields": ("usage_limit", "per_user_limit", "start_date", "end_date")

@@ -2,6 +2,7 @@ from django.db import models
 from django.utils import timezone
 from django.conf import settings
 from gyms.models import Gym
+from packages.models import Package
 
 
 
@@ -20,8 +21,11 @@ class DiscountCode(models.Model):
     discount_type = models.CharField(max_length=10, choices=DISCOUNT_TYPE_CHOICES, verbose_name="نوع تخفیف")
     value = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="مقدار تخفیف")
     
-    club = models.ForeignKey(Gym, on_delete=models.CASCADE, null=True, blank=True,
+    gym = models.ForeignKey(Gym, on_delete=models.CASCADE, null=True, blank=True,
                              verbose_name="باشگاه مرتبط (درصورت وجود)")
+    
+    packages = models.ManyToManyField(Package, blank=True, related_name="discount_codes",
+                                       verbose_name="پکیج‌های مرتبط")
     
     source_type = models.CharField(max_length=10, choices=SOURCE_TYPE_CHOICES, verbose_name="نوع کسر تخفیف")
     

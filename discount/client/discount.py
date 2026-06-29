@@ -40,7 +40,7 @@ class IsAdminOrOwnerPermission(permissions.BasePermission):
             # کدهای admin بدون باشگاه برای owner قابل دسترسی/ویرایش نیست
             if discount.source_type == 'admin':
                 return False
-            if discount.club and discount.club.owner == request.user:
+            if discount.gym and discount.gym.owner == request.user:
                 return True
 
         return False
@@ -107,11 +107,11 @@ class DiscountCodeViewSet(viewsets.ModelViewSet):
         user = self.request.user
 
         if user.is_staff:
-            return DiscountCode.objects.all().select_related('club', 'club__owner')
+            return DiscountCode.objects.all().select_related('gym', 'gym__owner').prefetch_related('packages')
         elif user.role == 'owner':
             return DiscountCode.objects.filter(
-                club__owner=user
-            ).select_related('club', 'club__owner')
+                gym__owner=user
+            ).select_related('gym', 'gym__owner').prefetch_related('packages')
 
         return DiscountCode.objects.none()
 
@@ -145,11 +145,11 @@ class DiscountUsageViewSet(viewsets.ReadOnlyModelViewSet):
 
         if user.is_staff:
             # ادمین همه استفاده‌ها را می‌بیند
-            return DiscountUsage.objects.all().select_related('discount', 'user', 'discount__club')
+            return DiscountUsage.objects.all().select_related('discount', 'user', 'discount__gym').prefetch_related('discount__packages')
         elif user.role == 'owner':
             # owner فقط استفاده‌های کدهای باشگاه خودش را می‌بیند
             return DiscountUsage.objects.filter(
-                discount__club__owner=user
-            ).select_related('discount', 'user', 'discount__club')
+                discount__gym__owner=user
+            ).select_related('discount', 'user', 'discount__gym').prefetch_related('discount__packages')
 
         return DiscountUsage.objects.none()

@@ -6,7 +6,7 @@ class DiscountCodeSerializer(serializers.ModelSerializer):
     class Meta:
         model = DiscountCode
         fields = [
-            'id', 'code', 'discount_type', 'value', 'club', 'source_type',
+            'id', 'code', 'discount_type', 'value', 'gym', 'packages', 'source_type',
             'start_date', 'end_date', 'usage_limit', 'used_count', 
             'per_user_limit', 'is_active', 'created_at', 'updated_at'
         ]
@@ -21,8 +21,11 @@ class DiscountCodeSerializer(serializers.ModelSerializer):
             'value': {
                 'help_text': 'مقدار تخفیف (برای درصد: 0-100، برای مبلغ: مقدار به ریال)'
             },
-            'club': {
+            'gym': {
                 'help_text': 'باشگاه مرتبط (برای source_type=club الزامی، برای admin=null)'
+            },
+            'packages': {
+                'help_text': 'پکیج‌های مرتبط (اگر خالی باشد، تمام پکیج‌های باشگاه اعمال می‌شود)'
             },
             'source_type': {
                 'help_text': 'منبع کسر تخفیف: club (از سهم باشگاه) یا admin (از سهم ادمین)'
@@ -60,7 +63,7 @@ class DiscountCodeSerializer(serializers.ModelSerializer):
         end_date = attrs.get('end_date')
 
         if start_date and end_date and start_date >= end_date:
-            raise serializers.ValidationError("تاریخ شروع باید قبل از تاریخ پایان باشد.")
+            raise serializers.ValidationError("تاریخ شروع باید قبل از تاریخ پایان باشد")
 
         request = self.context.get('request')
         if not request or not request.user or not request.user.is_authenticated:
@@ -70,32 +73,46 @@ class DiscountCodeSerializer(serializers.ModelSerializer):
 
         # Determine effective values (for update may be missing from attrs)
         source_type = attrs.get('source_type')
-        club = attrs.get('club')
+        gym = attrs.get('gym')
+        packages = attrs.get('packages', [])
 
         if self.instance is not None:
             # On update, fallback to existing values
             if source_type is None:
                 source_type = self.instance.source_type
-            if club is None:
-                club = self.instance.club
+            if gym is None:
+                gym = self.instance.gym
+            if not packages:
+                packages = list(self.instance.packages.all())
 
         # Owners constraints
         if not user.is_staff and getattr(user, 'role', None) == 'owner':
-            # Owner can only work with their own club
-            if club is None:
-                raise serializers.ValidationError("مالک باشگاه باید برای باشگاه خود کد بسازد.")
-            if getattr(club, 'owner', None) != user:
-                raise serializers.ValidationError("شما فقط می‌توانید برای باشگاه خودتان کد تخفیف بسازید/ویرایش کنید.")
+            # Owner can only work with their own gym
+            if gym is None:
+                raise serializers.ValidationError("مالک باشگاه باید برای باشگاه خود کد بسازد")
+            if getattr(gym, 'owner', None) != user:
+                raise serializers.ValidationError("شما فقط می‌توانید برای باشگاه خودتان کد تخفیف بسازید/ویرایش کنید")
 
             # Owner can only use club source
             if source_type != 'club':
-                raise serializers.ValidationError("مالک باشگاه فقط می‌تواند کد با منبع 'club' ایجاد/ویرایش کند.")
+                raise serializers.ValidationError("مالک باشگاه فقط می‌تواند کد با منبع 'club' ایجاد/ویرایش کند")
+            
+            # All packages must belong to the gym
+            for pkg in packages:
+                if pkg.group_package.gym != gym:
+                    raise serializers.ValidationError("تمام پکیج‌ها باید متعلق به باشگاه انتخاب‌شده باشند")
 
-        # If source_type is admin, club must be null (by business rule); if club, club required
-        if source_type == 'admin' and club is not None:
-            raise serializers.ValidationError("برای کدهای منبع ادمین نباید باشگاهی انتخاب شود.")
-        if source_type == 'club' and club is None:
-            raise serializers.ValidationError("برای کدهای منبع باشگاه انتخاب باشگاه الزامی است.")
+        # If source_type is admin, gym must be null (by business rule); if club, gym required
+        if source_type == 'admin' and gym is not None:
+            raise serializers.ValidationError("برای کدهای منبع ادمین نباید باشگاهی انتخاب شود")
+        if source_type == 'club' and gym is None:
+            raise serializers.ValidationError("برای کدهای منبع باشگاه انتخاب باشگاه الزامی است")
+        
+        # If packages are selected and gym is set, packages must belong to gym
+        if gym and packages:
+            for pkg in packages:
+                if pkg.group_package.gym != gym:
+                    raise serializers.ValidationError("تمام پکیج‌ها باید متعلق به باشگاه انتخاب‌شده باشند")
 
         return attrs
 

@@ -40,11 +40,11 @@ class PurchaseSerializer(serializers.ModelSerializer):
         if not package:
             raise serializers.ValidationError("Package not found")
 
-        # اعتبارسنجی کد تخفیف (در صورت وجود)
+        # اعتبارسنجی کد تخفیف (درصورت وجود)
         discount_code_str = data.get('discount_code')
         if discount_code_str:
             code_str = discount_code_str.strip()
-            discount = DiscountCode.objects.filter(code=code_str).first()
+            discount = DiscountCode.objects.filter(code=code_str).prefetch_related('packages').first()
             if not discount:
                 raise serializers.ValidationError({"discount_code": "کد تخفیف یافت نشد"})
 
@@ -53,8 +53,16 @@ class PurchaseSerializer(serializers.ModelSerializer):
 
             user = self.context['request'].user
             gym = package.group_package.gym
-            if discount.club and discount.club_id != gym.id:
+            
+            # Check if the discount is applicable to this package
+            if discount.gym and discount.gym_id != gym.id:
                 raise serializers.ValidationError({"discount_code": "این کد برای باشگاه انتخاب‌شده معتبر نیست"})
+            
+            # If packages are selected, check if this package is in them
+            if discount.packages.exists():
+                if package not in discount.packages.all():
+                    raise serializers.ValidationError({"discount_code": "این کد برای پکیج انتخاب‌شده معتبر نیست"})
+            
             if not discount.can_user_use(user):
                 raise serializers.ValidationError({"discount_code": "شما مجاز به استفاده از این کد نیستید"})
 
