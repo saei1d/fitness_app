@@ -25,4 +25,8 @@ class Migration(migrations.Migration):
                 verbose_name='پکیج‌های مرتبط',
             ),
         ),
+        migrations.RemoveIndex(
+            model_name='discountusage',
+            name='discount_di_discoun_5b82ab_idx',
+        ),
     ]
