@@ -124,7 +124,7 @@ class GymSerializer(serializers.ModelSerializer):
 
         # فیلتر کردن کدهای تخفیف فعال و معتبر برای این باشگاه
         discounts = DiscountCode.objects.filter(
-            club=obj,
+            gym=obj,
             is_active=True,
         ).filter(
             models.Q(start_date__isnull=True) | models.Q(start_date__lte=now),

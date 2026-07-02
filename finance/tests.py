@@ -211,7 +211,7 @@ class PurchaseHistoryTests(TestCase):
             code='SAVE20',
             discount_type='percent',
             value=Decimal('20.00'),
-            club=self.gym,
+            gym=self.gym,
             source_type='club',
             is_active=True,
         )

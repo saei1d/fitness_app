@@ -98,7 +98,7 @@ class EnterReferralCodeView(APIView):
             code=new_user_discount_code,
             discount_type='percent',
             value=Decimal('5.00'),
-            club=None,
+            gym=None,
             source_type='admin',
             is_active=True
         )
@@ -108,7 +108,7 @@ class EnterReferralCodeView(APIView):
             code=referrer_discount_code,
             discount_type='percent',
             value=Decimal('5.00'),
-            club=None,
+            gym=None,
             source_type='admin',
             is_active=True
         )
