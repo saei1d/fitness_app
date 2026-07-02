@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from .models import Package, GroupPackage
+from gyms.models import Gym
 
 
 class GymSimpleSerializer(serializers.ModelSerializer):
