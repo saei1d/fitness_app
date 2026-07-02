@@ -9,7 +9,13 @@ class GroupPackageSerializer(serializers.ModelSerializer):
 
 
 class PackageSerializer(serializers.ModelSerializer):
+    gym = serializers.SerializerMethodField()
+
     class Meta:
         model = Package
-        fields = ['id', 'group_package', 'title', 'description', 'gender', 'price', 'duration', 'commission_rate','sessions']
+        fields = ['id', 'group_package', 'title', 'description', 'gender', 'price', 'duration', 'commission_rate','sessions', 'gym']
+
+    def get_gym(self, obj):
+        from gyms.serializers import GymSerializer
+        return GymSerializer(obj.group_package.gym, context=self.context).data
 
