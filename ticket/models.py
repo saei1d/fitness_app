@@ -10,6 +10,7 @@ class Ticket(models.Model):
         CLOSED = 'closed', 'Closed'
 
     subject = models.CharField(max_length=255)
+    text = models.TextField()
     creator = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='created_tickets')
     admin = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='assigned_tickets')
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.OPEN)

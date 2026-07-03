@@ -6,29 +6,27 @@ from .models import Ticket, TicketMessage
 class TicketSerializer(serializers.ModelSerializer):
     creator = serializers.PrimaryKeyRelatedField(read_only=True)
     admin = serializers.PrimaryKeyRelatedField(queryset=get_user_model().objects.all(), allow_null=True, required=False)
-    message = serializers.CharField(write_only=True, help_text="متن اولیه تیکت")
 
     class Meta:
         model = Ticket
-        fields = ['id', 'subject', 'message', 'creator', 'admin', 'status', 'created_at', 'updated_at']
+        fields = ['id', 'subject', 'text', 'creator', 'admin', 'status', 'created_at', 'updated_at']
         read_only_fields = ['id', 'creator', 'created_at', 'updated_at']
 
     def create(self, validated_data):
         request = self.context.get('request')
-        message_text = validated_data.pop('message', '')  # Extract message from validated_data
         
         if request and request.user and request.user.is_authenticated:
             validated_data['creator'] = request.user
         
-        # Create the ticket first
+        # Create the ticket
         ticket = super().create(validated_data)
         
-        # Create the initial message if message text is provided
-        if message_text:
+        # Create the initial message from the ticket text
+        if ticket.text:
             TicketMessage.objects.create(
                 ticket=ticket,
                 author=request.user,
-                message=message_text
+                message=ticket.text
             )
         
         return ticket
@@ -80,7 +78,7 @@ class TicketDetailSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Ticket
-        fields = ['id', 'subject', 'creator', 'creator_name', 'admin', 'admin_name', 'status', 'created_at', 'updated_at', 'messages']
+        fields = ['id', 'subject', 'text', 'creator', 'creator_name', 'admin', 'admin_name', 'status', 'created_at', 'updated_at', 'messages']
         read_only_fields = ['id', 'creator', 'created_at', 'updated_at']
 
 

@@ -72,6 +72,7 @@ class TicketViewSet(viewsets.ModelViewSet):
         if search:
             queryset = queryset.filter(
                 Q(subject__icontains=search)
+                | Q(text__icontains=search)
                 | Q(creator__phone__icontains=search)
                 | Q(creator__full_name__icontains=search)
                 | Q(messages__message__icontains=search)

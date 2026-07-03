@@ -11,15 +11,15 @@ class TicketMessageInline(admin.TabularInline):
 
 @admin.register(Ticket)
 class TicketAdmin(admin.ModelAdmin):
-    list_display = ('id', 'subject', 'creator', 'creator_phone', 'admin', 'admin_phone', 'status', 'messages_count', 'created_at', 'updated_at')
+    list_display = ('id', 'subject', 'text_short', 'creator', 'creator_phone', 'admin', 'admin_phone', 'status', 'messages_count', 'created_at', 'updated_at')
     list_filter = ('status', 'created_at', 'updated_at')
-    search_fields = ('subject', 'creator__phone', 'creator__full_name', 'admin__phone', 'admin__full_name')
+    search_fields = ('subject', 'text', 'creator__phone', 'creator__full_name', 'admin__phone', 'admin__full_name')
     readonly_fields = ('created_at', 'updated_at', 'messages_count')
     inlines = [TicketMessageInline]
-    
+
     fieldsets = (
         ("اطلاعات تیکت", {
-            "fields": ("subject", "creator", "admin", "status")
+            "fields": ("subject", "text", "creator", "admin", "status")
         }),
         ("آمار", {
             "fields": ("messages_count",)
@@ -42,6 +42,12 @@ class TicketAdmin(admin.ModelAdmin):
     def messages_count(self, obj):
         return obj.messages.count()
     messages_count.short_description = "تعداد پیام‌ها"
+
+    def text_short(self, obj):
+        if obj.text:
+            return obj.text[:50] + "..." if len(obj.text) > 50 else obj.text
+        return "-"
+    text_short.short_description = "متن"
     
     def assign_to_admin(self, request, queryset):
         queryset.update(admin=request.user)
