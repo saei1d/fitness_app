@@ -77,31 +77,37 @@ class WalletDetailView(APIView):
 
 @extend_schema(
     tags=['Wallet'],
-    summary='لیست کیف پول‌های کاربر',
+    summary='کیف پول کاربر',
     description='نمایش کیف پول کاربر جاری (برای owner) یا همه کیف پول‌ها (برای admin)'
 )
 class WalletListView(APIView):
     permission_classes = [IsOwnerOrAdmin]
-    
+
     def get(self, request):
         try:
             if request.user.is_staff:
                 # admin می‌تواند همه کیف پول‌ها را ببیند
                 wallets = Wallet.objects.all()
+                serializer = WalletSerializer(wallets, many=True)
+                return Response(serializer.data, status=status.HTTP_200_OK)
             elif request.user.role == 'owner':
-                # owner فقط کیف پول خودش را می‌بیند
-                wallets = Wallet.objects.filter(owner=request.user)
+                # owner فقط کیف پول خودش را می‌بیند (به صورت آبجکت واحد)
+                wallet = Wallet.objects.filter(owner=request.user).first()
+                if not wallet:
+                    return Response(
+                        {'error': 'کیف پولی برای شما یافت نشد'},
+                        status=status.HTTP_404_NOT_FOUND
+                    )
+                serializer = WalletSerializer(wallet)
+                return Response(serializer.data, status=status.HTTP_200_OK)
             else:
                 return Response(
-                    {'error': 'شما دسترسی لازم برای مشاهده کیف پول‌ها را ندارید'}, 
+                    {'error': 'شما دسترسی لازم برای مشاهده کیف پول را ندارید'},
                     status=status.HTTP_403_FORBIDDEN
                 )
-            
-            serializer = WalletSerializer(wallets, many=True)
-            return Response(serializer.data, status=status.HTTP_200_OK)
-            
+
         except Exception as e:
             return Response(
-                {'error': f'خطا در دریافت لیست کیف پول‌ها: {str(e)}'}, 
+                {'error': f'خطا در دریافت اطلاعات کیف پول: {str(e)}'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )

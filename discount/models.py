@@ -86,3 +86,48 @@ class DiscountUsage(models.Model):
 
     def __str__(self):
         return f"{self.user} → {self.discount.code}"
+
+
+class PackageDiscount(models.Model):
+    """تخفیف پیش‌فرض روی پکیج‌ها (بدون نیاز به کد)"""
+    DISCOUNT_TYPE_CHOICES = [
+        ('percent', 'درصدی'),
+        ('amount', 'مبلغ ثابت'),
+    ]
+
+    SOURCE_TYPE_CHOICES = [
+        ('club', 'از سهم باشگاه'),
+        ('admin', 'از سهم ادمین'),
+    ]
+
+    package = models.ForeignKey(Package, on_delete=models.CASCADE, related_name="discounts",
+                                verbose_name="پکیج")
+    discount_type = models.CharField(max_length=10, choices=DISCOUNT_TYPE_CHOICES, verbose_name="نوع تخفیف")
+    value = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="مقدار تخفیف")
+    source_type = models.CharField(max_length=10, choices=SOURCE_TYPE_CHOICES, verbose_name="نوع کسر تخفیف")
+    
+    start_date = models.DateTimeField(null=True, blank=True, verbose_name="شروع اعتبار")
+    end_date = models.DateTimeField(null=True, blank=True, verbose_name="پایان اعتبار")
+    is_active = models.BooleanField(default=True, verbose_name="فعال")
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "تخفیف پکیج"
+        verbose_name_plural = "تخفیف‌های پکیج"
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.package.title} - {self.get_discount_type_display()} {self.value}"
+
+    def is_valid(self, now=None):
+        """بررسی اعتبار تخفیف پکیج"""
+        now = now or timezone.now()
+        if not self.is_active:
+            return False
+        if self.start_date and self.start_date > now:
+            return False
+        if self.end_date and self.end_date < now:
+            return False
+        return True

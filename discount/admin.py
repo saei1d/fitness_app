@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import DiscountCode, DiscountUsage
+from .models import DiscountCode, DiscountUsage, PackageDiscount
 from django.utils import timezone
 
 
@@ -59,3 +59,38 @@ class DiscountUsageAdmin(admin.ModelAdmin):
     def user_phone(self, obj):
         return obj.user.phone
     user_phone.short_description = "شماره تلفن"
+
+
+@admin.register(PackageDiscount)
+class PackageDiscountAdmin(admin.ModelAdmin):
+    list_display = ('id', 'package', 'discount_type', 'value', 'source_type', 'is_active', 'is_valid_display', 'created_at')
+    list_filter = ('discount_type', 'source_type', 'is_active', 'created_at')
+    search_fields = ('package__title', 'package__group_package__gym__name')
+    readonly_fields = ('created_at', 'updated_at', 'is_valid_display')
+    
+    fieldsets = (
+        ("اطلاعات اصلی", {
+            "fields": ("package", "discount_type", "value", "source_type")
+        }),
+        ("محدودیت‌ها", {
+            "fields": ("start_date", "end_date")
+        }),
+        ("وضعیت", {
+            "fields": ("is_active", "is_valid_display")
+        }),
+        ("تاریخ‌ها", {
+            "fields": ("created_at", "updated_at")
+        }),
+    )
+    
+    def is_valid_display(self, obj):
+        now = timezone.now()
+        if not obj.is_active:
+            return False
+        if obj.start_date and obj.start_date > now:
+            return False
+        if obj.end_date and obj.end_date < now:
+            return False
+        return True
+    is_valid_display.short_description = "معتبر"
+    is_valid_display.boolean = True

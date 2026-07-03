@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import DiscountCode, DiscountUsage
+from .models import DiscountCode, DiscountUsage, PackageDiscount
 
 
 class DiscountCodeSerializer(serializers.ModelSerializer):
@@ -133,3 +133,71 @@ class DiscountUsageSerializer(serializers.ModelSerializer):
                 'help_text': 'زمان استفاده از کد تخفیف'
             }
         }
+
+
+class PackageDiscountSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PackageDiscount
+        fields = [
+            'id', 'package', 'discount_type', 'value', 'source_type',
+            'start_date', 'end_date', 'is_active', 'created_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
+        extra_kwargs = {
+            'package': {
+                'help_text': 'پکیج مورد نظر'
+            },
+            'discount_type': {
+                'help_text': 'نوع تخفیف: percent (درصدی) یا amount (مبلغ ثابت)'
+            },
+            'value': {
+                'help_text': 'مقدار تخفیف (برای درصد: 0-100، برای مبلغ: مقدار به ریال)'
+            },
+            'source_type': {
+                'help_text': 'منبع کسر تخفیف: club (از سهم باشگاه) یا admin (از سهم ادمین)'
+            },
+            'start_date': {
+                'help_text': 'تاریخ شروع اعتبار (اختیاری)'
+            },
+            'end_date': {
+                'help_text': 'تاریخ پایان اعتبار (اختیاری)'
+            },
+            'is_active': {
+                'help_text': 'وضعیت فعال بودن تخفیف'
+            }
+        }
+
+    def validate(self, attrs):
+        """اعتبارسنجی کلی + قواعد دسترسی ساخت/ویرایش"""
+        start_date = attrs.get('start_date')
+        end_date = attrs.get('end_date')
+
+        if start_date and end_date and start_date >= end_date:
+            raise serializers.ValidationError("تاریخ شروع باید قبل از تاریخ پایان باشد")
+
+        request = self.context.get('request')
+        if not request or not request.user or not request.user.is_authenticated:
+            return attrs
+
+        user = request.user
+        package = attrs.get('package')
+        source_type = attrs.get('source_type')
+
+        if self.instance is not None:
+            # On update, fallback to existing values
+            if package is None:
+                package = self.instance.package
+            if source_type is None:
+                source_type = self.instance.source_type
+
+        # Owners constraints
+        if not user.is_staff and getattr(user, 'role', None) == 'owner':
+            # Owner can only work with packages from their own gym
+            if package.group_package.gym.owner != user:
+                raise serializers.ValidationError("شما فقط می‌توانید برای پکیج‌های باشگاه خودتان تخفیف بسازید/ویرایش کنید")
+
+            # Owner can only use club source
+            if source_type != 'club':
+                raise serializers.ValidationError("مالک باشگاه فقط می‌تواند تخفیف با منبع 'club' ایجاد/ویرایش کند")
+
+        return attrs

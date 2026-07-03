@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from .models import Package, GroupPackage
 from gyms.models import Gym
+from discount.models import PackageDiscount
 
 
 class GymSimpleSerializer(serializers.ModelSerializer):
@@ -18,10 +19,11 @@ class GroupPackageSerializer(serializers.ModelSerializer):
 
 class PackageSerializer(serializers.ModelSerializer):
     gym = serializers.SerializerMethodField()
+    discount = serializers.SerializerMethodField()
 
     class Meta:
         model = Package
-        fields = ['id', 'group_package', 'title', 'description', 'gender', 'price', 'duration', 'commission_rate','sessions', 'gym']
+        fields = ['id', 'group_package', 'title', 'description', 'gender', 'price', 'duration', 'commission_rate','sessions', 'gym', 'discount']
 
     def get_gym(self, obj):
         request = self.context.get('request')
@@ -34,4 +36,22 @@ class PackageSerializer(serializers.ModelSerializer):
         else:
             gym_data['banner'] = None
         return gym_data
+
+    def get_discount(self, obj):
+        """بررسی و بازگرداندن تخفیف فعال روی پکیج"""
+        from django.utils import timezone
+        now = timezone.now()
+        active_discount = obj.discounts.filter(
+            is_active=True,
+            start_date__lte=now,
+            end_date__gte=now
+        ).first()
+        if active_discount:
+            return {
+                'id': active_discount.id,
+                'discount_type': active_discount.discount_type,
+                'value': str(active_discount.value),
+                'source_type': active_discount.source_type
+            }
+        return None
 
