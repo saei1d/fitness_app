@@ -5,16 +5,12 @@ from ..throttling import OTPRequestRateThrottle, OTPVerifyRateThrottle
 OTP_TTL_SECONDS = 300
 
 
-def send_sms_fake(phone, code):
-    url = f"https://console.melipayamak.com/api/send/simple/{settings.MELIPAYAMAK_API_KEY}"
+def send_sms_otp(phone, code):
 
-    payload = {
-        "username": settings.MELIPAYAMAK_USERNAME,
-        "password": settings.MELIPAYAMAK_PASSWORD,
-        "from": settings.MELIPAYAMAK_FROM,
-        "text": f"کد زیر \n {code} \n برای ورود به وبسایت فیت تیکت میباشد",
-        "to": phone
-    }
+    url = f"https://console.melipayamak.com/api/send/shared/{settings.MELIPAYAMAK_API_KEY}"
+
+    payload = {'bodyId': 487686, 'to': {phone}, 'args': [{code}]}
+
 
     try:
         response = requests.post(url, json=payload, timeout=10)
@@ -22,7 +18,9 @@ def send_sms_fake(phone, code):
         return response.json()  # اگر پاسخ JSON باشد
     except Exception as e:
         return {"error": str(e)}
-    
+
+
+
 
 @extend_schema(tags=['Authentication'])
 class RequestOTPView(APIView):
@@ -50,7 +48,7 @@ class RequestOTPView(APIView):
 
         user, created = User.objects.get_or_create(phone=phone)
 
-        rep = send_sms_fake(phone, code)
+        rep = send_sms_otp(phone, code)
 
         return Response({
             "response": rep,

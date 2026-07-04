@@ -122,37 +122,34 @@ class GymSerializer(serializers.ModelSerializer):
         # دریافت تاریخ فعلی
         now = timezone.now()
 
-        # فیلتر کردن کدهای تخفیف فعال و معتبر برای این باشگاه
-        discounts = DiscountCode.objects.filter(
-            gym=obj,
+        # فیلتر کردن تخفیف‌های پکیج فعال و معتبر برای این باشگاه
+        package_discounts = PackageDiscount.objects.filter(
+            package__group_package__gym=obj,
             is_active=True,
         ).filter(
             models.Q(start_date__isnull=True) | models.Q(start_date__lte=now),
             models.Q(end_date__isnull=True) | models.Q(end_date__gte=now),
-        ).filter(
-            models.Q(usage_limit__isnull=True) | models.Q(used_count__lt=models.F('usage_limit'))
         )
 
-        if not discounts.exists():
-            return None  # اگر تخفیفی نبود، null برگردون
+        if not package_discounts.exists():
+            return None
 
-        # پیدا کردن بیشترین تخفیف
+        # پیدا کردن بیشترین تخفیف پکیج
         max_discount = None
         max_value = 0
 
-        for discount in discounts:
-            # برای تخفیف درصدی، مقدار رو به عنوان درصد در نظر می‌گیریم
-            # برای تخفیف مبلغی، مستقیماً مقدار رو مقایسه می‌کنیم
-            current_value = float(discount.value) if discount.discount_type == 'amount' else float(discount.value)
-            
+        for pkg_discount in package_discounts:
+            current_value = float(pkg_discount.value) if pkg_discount.discount_type == 'amount' else float(pkg_discount.value)
+
             if current_value > max_value:
                 max_value = current_value
                 max_discount = {
-                    'code': discount.code,
-                    'type': discount.discount_type,
-                    'value': float(discount.value),  # تبدیل به float برای JSON
-                    'start_date': discount.start_date,
-                    'end_date': discount.end_date
+                    'discount_type': pkg_discount.discount_type,
+                    'value': float(pkg_discount.value),
+                    'package_id': pkg_discount.package.id,
+                    'package_title': pkg_discount.package.title,
+                    'start_date': pkg_discount.start_date,
+                    'end_date': pkg_discount.end_date
                 }
 
         return max_discount

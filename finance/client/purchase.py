@@ -17,6 +17,23 @@ from finance.models import AdminWallet, Purchase, Transaction, Wallet
 from finance.serializers import PurchaseSerializer
 
 
+def send_purchase_notification(phone, gym, package_title, buyer_code):
+    url = f"https://console.melipayamak.com/api/send/shared/{settings.MELIPAYAMAK_API_KEY}"
+
+    payload = {
+        'bodyId':'487687' ,
+        'to': {phone},
+        'args': [gym,package_title ,'7',buyer_code]
+    }
+
+    try:
+        response = requests.post(url, json=payload, timeout=10)
+        response.raise_for_status()
+        return response.json()
+    except Exception as e:
+        return {"error": str(e)}
+
+
 def generate_buyer_code():
     while True:
         code = ''.join(random.choices('0123456789', k=6))
@@ -63,6 +80,14 @@ def _finalize_paid_purchase(*, purchase, transaction_obj, reference_id=None):
 
     AdminWallet.objects.filter(pk=admin_wallet.pk).update(balance=F('balance') + purchase.final_amount)
     admin_wallet.refresh_from_db(fields=['balance'])
+
+    send_purchase_notification(
+        phone=purchase.user.phone,
+        gym=purchase.package.group_package.gym.name,
+        package_title=purchase.package.title,
+        buyer_code=purchase.buyer_code,
+    )
+
     return purchase
 
 
