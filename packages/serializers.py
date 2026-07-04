@@ -43,9 +43,9 @@ class PackageSerializer(serializers.ModelSerializer):
         from django.db.models import Q
         now = timezone.now()
         active_discount = obj.discounts.filter(
-            is_active=True,
-            Q(start_date__lte=now) | Q(start_date__isnull=True),
-            Q(end_date__gte=now) | Q(end_date__isnull=True)
+            Q(is_active=True) &
+            (Q(start_date__lte=now) | Q(start_date__isnull=True)) &
+            (Q(end_date__gte=now) | Q(end_date__isnull=True))
         ).first()
         if active_discount:
             return {
