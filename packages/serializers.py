@@ -40,11 +40,12 @@ class PackageSerializer(serializers.ModelSerializer):
     def get_discount(self, obj):
         """بررسی و بازگرداندن تخفیف فعال روی پکیج"""
         from django.utils import timezone
+        from django.db.models import Q
         now = timezone.now()
         active_discount = obj.discounts.filter(
             is_active=True,
-            start_date__lte=now,
-            end_date__gte=now
+            Q(start_date__lte=now) | Q(start_date__isnull=True),
+            Q(end_date__gte=now) | Q(end_date__isnull=True)
         ).first()
         if active_discount:
             return {

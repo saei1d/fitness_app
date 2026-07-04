@@ -22,7 +22,7 @@ def send_purchase_notification(phone, gym, package_title, buyer_code):
 
     payload = {
         'bodyId':'487687' ,
-        'to': {phone},
+        'to': phone,
         'args': [gym,package_title ,'7',buyer_code]
     }
 
