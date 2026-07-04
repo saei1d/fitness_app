@@ -9,7 +9,7 @@ def send_sms_otp(phone, code):
 
     url = f"https://console.melipayamak.com/api/send/shared/{settings.MELIPAYAMAK_API_KEY}"
 
-    payload = {'bodyId': 487686, 'to': {phone}, 'args': [{code}]}
+    payload = {'bodyId': 487686, 'to': phone, 'args': [code]}
 
 
     try:
