@@ -2,12 +2,12 @@ from decimal import Decimal
 from datetime import timedelta
 
 from django.db import transaction
-from django.db.models import F
+from django.db.models import F, Q
 
 from finance.models import Purchase, Wallet, AdminWallet, Transaction, WithdrawRequest
 from rest_framework import serializers
 from django.utils import timezone
-from discount.models import DiscountCode
+from discount.models import DiscountCode, PackageDiscount
 
 
 class PurchaseSerializer(serializers.ModelSerializer):
@@ -17,7 +17,8 @@ class PurchaseSerializer(serializers.ModelSerializer):
     verified_by_name = serializers.CharField(source='verified_by.full_name', read_only=True)
     # دریافت کد تخفیف به صورت رشته (اختیاری)
     discount_code = serializers.CharField(write_only=True, required=False, allow_blank=True, allow_null=True)
-    
+    admin_notes = serializers.CharField(read_only=True, required=False, allow_null=True)
+
     class Meta:
         model = Purchase
         fields = '__all__'
@@ -33,6 +34,14 @@ class PurchaseSerializer(serializers.ModelSerializer):
             'verified_by',
             'final_amount',
         ]
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        request = self.context.get('request')
+        # فقط ادمین می‌تواند admin_notes را ببیند
+        if request and not (request.user.is_staff or request.user.is_superuser):
+            data.pop('admin_notes', None)
+        return data
 
     def validate(self, data):
         package = data.get('package')
@@ -87,26 +96,73 @@ class PurchaseSerializer(serializers.ModelSerializer):
             if not discount_code_obj.is_valid() or not discount_code_obj.can_user_use(user):
                 raise serializers.ValidationError({"discount_code": "کد تخفیف دیگر قابل استفاده نیست"})
 
+        # بررسی تخفیف پیش‌فرض پکیج
+        package_discount_obj = None
+        from django.utils import timezone
+        now = timezone.now()
+        package_discount_obj = package.discounts.filter(
+            is_active=True,
+        ).filter(
+            Q(start_date__isnull=True) | Q(start_date__lte=now),
+            Q(end_date__isnull=True) | Q(end_date__gte=now),
+        ).first()
+
         # محاسبه مقدار تخفیف با توجه به نوع و محدودیت‌ها
         discount_amount = Decimal('0')
-        if discount_code_obj:
-            if discount_code_obj.discount_type == 'percent':
-                requested_percent = Decimal(str(discount_code_obj.value))  # مثلا 5 یعنی 5%
-                if discount_code_obj.source_type == 'admin':
-                    # سقف درصد تخفیف ادمین = نرخ کمیسیون * 100
+        discount_source = None
+        discount_details = []
+
+        # محاسبه تخفیف پکیج (اگر وجود داشته باشد)
+        package_discount_amount = Decimal('0')
+        if package_discount_obj:
+            if package_discount_obj.discount_type == 'percent':
+                requested_percent = Decimal(str(package_discount_obj.value))
+                if package_discount_obj.source_type == 'admin':
                     max_admin_percent = (commission_rate * Decimal('100')).quantize(Decimal('1.0000'))
                     effective_percent = min(requested_percent, max_admin_percent)
                 else:
                     effective_percent = requested_percent
-                discount_amount = (total_amount * effective_percent) / Decimal('100')
+                package_discount_amount = (total_amount * effective_percent) / Decimal('100')
+                discount_details.append(f"تخفیف پکیج: ({effective_percent}% از {package_discount_obj.source_type})")
             else:  # amount
-                requested_amount = Decimal(str(discount_code_obj.value))
-                if discount_code_obj.source_type == 'admin':
-                    # سقف مبلغی تخفیف ادمین = کل سهم کمیسیون ادمین
+                requested_amount = Decimal(str(package_discount_obj.value))
+                if package_discount_obj.source_type == 'admin':
                     effective_amount = min(requested_amount, admin_commission_before_discount)
                 else:
                     effective_amount = requested_amount
-                discount_amount = effective_amount
+                package_discount_amount = effective_amount
+                discount_details.append(f"تخفیف پکیج: ({effective_amount} تومان از {package_discount_obj.source_type})")
+
+        # محاسبه تخفیف کد تخفیف (اگر وجود داشته باشد) - روی قیمت با تخفیف پکیج
+        code_discount_amount = Decimal('0')
+        if discount_code_obj:
+            price_after_package_discount = total_amount - package_discount_amount
+            if discount_code_obj.discount_type == 'percent':
+                requested_percent = Decimal(str(discount_code_obj.value))
+                if discount_code_obj.source_type == 'admin':
+                    max_admin_percent = (commission_rate * Decimal('100')).quantize(Decimal('1.0000'))
+                    effective_percent = min(requested_percent, max_admin_percent)
+                else:
+                    effective_percent = requested_percent
+                code_discount_amount = (price_after_package_discount * effective_percent) / Decimal('100')
+                discount_details.append(f"کد تخفیف: {discount_code_obj.code} ({effective_percent}% از {discount_code_obj.source_type})")
+            else:  # amount
+                requested_amount = Decimal(str(discount_code_obj.value))
+                if discount_code_obj.source_type == 'admin':
+                    effective_amount = min(requested_amount, admin_commission_before_discount)
+                else:
+                    effective_amount = requested_amount
+                code_discount_amount = effective_amount
+                discount_details.append(f"کد تخفیف: {discount_code_obj.code} ({effective_amount} تومان از {discount_code_obj.source_type})")
+
+        # جمع تخفیف‌ها (ترکیبی)
+        discount_amount = package_discount_amount + code_discount_amount
+        
+        # تعیین منبع تخفیف برای محاسبه سهم‌ها (اولویت با کد تخفیف)
+        if discount_code_obj:
+            discount_source = discount_code_obj.source_type
+        elif package_discount_obj:
+            discount_source = package_discount_obj.source_type
 
         # محاسبه final_amount برای کاربر (نباید منفی شود)
         final_amount = total_amount - discount_amount
@@ -114,7 +170,7 @@ class PurchaseSerializer(serializers.ModelSerializer):
             final_amount = Decimal('0')
 
         # اعمال تخفیف بر سهم‌ها بر اساس منبع تخفیف
-        if discount_code_obj and discount_code_obj.source_type == 'admin':
+        if discount_source == 'admin':
             # تخفیف از سهم ادمین کسر می‌شود و سهم باشگاه ثابت می‌ماند.
             commission_amount = admin_commission_before_discount - min(discount_amount, admin_commission_before_discount)
             if commission_amount < 0:
@@ -127,6 +183,14 @@ class PurchaseSerializer(serializers.ModelSerializer):
             if net_amount < 0:
                 net_amount = Decimal('0')
 
+        # ساخت توضیحات ادمین
+        admin_notes = f"قیمت اصلی: {total_amount} تومان\n"
+        if discount_details:
+            admin_notes += "\n".join(discount_details) + "\n"
+        admin_notes += f"قیمت نهایی: {final_amount} تومان\n"
+        admin_notes += f"کمیسیون ادمین: {commission_amount} تومان\n"
+        admin_notes += f"سهم باشگاه: {net_amount} تومان"
+
         purchase = Purchase.objects.create(
             user=user,
             package=package,
@@ -134,7 +198,8 @@ class PurchaseSerializer(serializers.ModelSerializer):
             total_amount=total_amount,
             commission_amount=commission_amount,
             net_amount=net_amount,
-            final_amount=final_amount
+            final_amount=final_amount,
+            admin_notes=admin_notes
         )
         if discount_code_obj:
             # Atomic increment of used_count to prevent race conditions

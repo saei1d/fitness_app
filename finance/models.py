@@ -36,6 +36,7 @@ class Purchase(models.Model):
     verified_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='verified_purchases')
     discount_code = models.ForeignKey(DiscountCode, on_delete=models.SET_NULL, null=True, blank=True, related_name='discount_code')
     final_amount = models.DecimalField(max_digits=10, decimal_places=2)
+    admin_notes = models.TextField(blank=True, null=True, help_text="توضیحات ادمین - فقط برای ادمین قابل مشاهده")
     
     
     def save(self, *args, **kwargs):

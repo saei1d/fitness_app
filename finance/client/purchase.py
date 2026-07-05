@@ -1,4 +1,5 @@
 import random
+import requests
 from datetime import timedelta
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
@@ -18,6 +19,13 @@ from finance.serializers import PurchaseSerializer
 
 
 def send_purchase_notification(phone, gym, package_title, buyer_code):
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    if not settings.MELIPAYAMAK_API_KEY:
+        logger.error("MELIPAYAMAK_API_KEY is not configured")
+        return {"error": "SMS API key not configured"}
+    
     url = f"https://console.melipayamak.com/api/send/shared/{settings.MELIPAYAMAK_API_KEY}"
 
     payload = {
@@ -29,8 +37,11 @@ def send_purchase_notification(phone, gym, package_title, buyer_code):
     try:
         response = requests.post(url, json=payload, timeout=10)
         response.raise_for_status()
-        return response.json()
+        result = response.json()
+        logger.info(f"SMS sent successfully to {phone}: {result}")
+        return result
     except Exception as e:
+        logger.error(f"Failed to send SMS to {phone}: {str(e)}")
         return {"error": str(e)}
 
 
