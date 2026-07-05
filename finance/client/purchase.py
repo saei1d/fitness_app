@@ -321,7 +321,7 @@ class VerifyPurchaseView(APIView):
         if not buyer_code:
             return Response({'error': 'buyer_code is required'}, status=400)
 
-        if request.user.role != 'owner':
+        if not (request.user.role == 'owner' or request.user.is_staff or request.user.is_superuser):
             return Response({'error': 'Only gym owners can verify purchases'}, status=403)
 
         try:
@@ -337,8 +337,20 @@ class VerifyPurchaseView(APIView):
                 if not purchase:
                     return Response({'error': 'Purchase not found or already processed'}, status=404)
 
-                if purchase.package.group_package.gym.owner != request.user:
+                is_admin = request.user.is_staff or request.user.is_superuser
+                if not is_admin and purchase.package.group_package.gym.owner != request.user:
                     return Response({'error': 'This purchase does not belong to your gym'}, status=403)
+
+                # بررسی مهلت ۷ روزه برای وریفای کد (ادمین از این چک معاف است)
+                CODE_EXPIRY_DAYS = 7
+                if not is_admin:
+                    code_expire_date = purchase.purchase_date + timedelta(days=CODE_EXPIRY_DAYS)
+                    if timezone.now() > code_expire_date:
+                        return Response({
+                            'error': 'کد خرید شما منقضی شده است. لطفاً با پشتیبانی تماس بگیرید.',
+                            'purchase_date': purchase.purchase_date.strftime('%Y-%m-%d %H:%M'),
+                            'code_expire_date': code_expire_date.strftime('%Y-%m-%d %H:%M'),
+                        }, status=400)
 
                 admin_wallet = AdminWallet.objects.select_for_update().get(id=1)
                 if admin_wallet.balance < purchase.net_amount:

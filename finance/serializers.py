@@ -18,6 +18,8 @@ class PurchaseSerializer(serializers.ModelSerializer):
     # دریافت کد تخفیف به صورت رشته (اختیاری)
     discount_code = serializers.CharField(write_only=True, required=False, allow_blank=True, allow_null=True)
     admin_notes = serializers.CharField(read_only=True, required=False, allow_null=True)
+    code_expire_date = serializers.SerializerMethodField(read_only=True)
+    is_code_expired = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = Purchase
@@ -42,6 +44,16 @@ class PurchaseSerializer(serializers.ModelSerializer):
         if request and not (request.user.is_staff or request.user.is_superuser):
             data.pop('admin_notes', None)
         return data
+
+    def get_code_expire_date(self, instance):
+        if instance.purchase_date:
+            return (instance.purchase_date + timedelta(days=7)).strftime('%Y-%m-%d %H:%M')
+        return None
+
+    def get_is_code_expired(self, instance):
+        if instance.purchase_date:
+            return timezone.now() > instance.purchase_date + timedelta(days=7)
+        return False
 
     def validate(self, data):
         package = data.get('package')

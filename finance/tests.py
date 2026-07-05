@@ -266,3 +266,87 @@ class PurchaseHistoryTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(response.data), 1)
         self.assertEqual(response.data[0]['user_phone'], self.customer.phone)
+
+
+class CodeExpiryTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.customer = User.objects.create_user(phone='09120000041')
+        self.owner = User.objects.create_user(phone='09120000042', role='owner')
+        self.admin = User.objects.create_user(phone='09120000043', role='admin')
+        self.admin.is_staff = True
+        self.admin.is_superuser = True
+        self.admin.save(update_fields=['is_staff', 'is_superuser'])
+
+        self.gym = Gym.objects.create(owner=self.owner, name='Expiry Gym', location=Point(51.0, 35.0, srid=4326))
+        self.group = GroupPackage.objects.create(gym=self.gym, title='Monthly')
+        self.package = Package.objects.create(
+            group_package=self.group,
+            title='Basic',
+            gender='male',
+            price=Decimal('100.00'),
+            duration=30,
+            commission_rate=0.10,
+        )
+
+    def _create_paid_purchase(self, buyer_code, purchase_date=None):
+        return Purchase.objects.create(
+            user=self.customer,
+            package=self.package,
+            buyer_code=buyer_code,
+            total_amount=Decimal('100.00'),
+            commission_amount=Decimal('10.00'),
+            net_amount=Decimal('90.00'),
+            final_amount=Decimal('100.00'),
+            payment_status='paid',
+            verification_status='pending',
+            purchase_date=purchase_date or timezone.now(),
+        )
+
+    @patch('finance.client.purchase.verify_payment', return_value=True)
+    def test_owner_verify_within_7_days_succeeds(self, _gateway):
+        """صاحب باشگاه می‌تونه کد رو داخل بازه ۷ روزه وریفای کنه"""
+        purchase = self._create_paid_purchase(buyer_code='111111')
+        self.client.force_authenticate(self.owner)
+
+        response = self.client.post('/api/v1/verify-by-gym/', {'buyer_code': '111111'}, format='json')
+
+        self.assertEqual(response.status_code, 200)
+        purchase.refresh_from_db()
+        self.assertEqual(purchase.verification_status, 'verified')
+
+    @patch('finance.client.purchase.verify_payment', return_value=True)
+    def test_owner_verify_after_7_days_rejected(self, _gateway):
+        """صاحب باشگاه نمی‌تونه کد منقضی شده رو وریفای کنه"""
+        eight_days_ago = timezone.now() - timedelta(days=8)
+        self._create_paid_purchase(buyer_code='222222', purchase_date=eight_days_ago)
+        self.client.force_authenticate(self.owner)
+
+        response = self.client.post('/api/v1/verify-by-gym/', {'buyer_code': '222222'}, format='json')
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn('منقضی', response.data['error'])
+
+    @patch('finance.client.purchase.verify_payment', return_value=True)
+    def test_admin_verify_after_7_days_succeeds(self, _gateway):
+        """ادمین می‌تونه کد منقضی شده رو وریفای کنه"""
+        eight_days_ago = timezone.now() - timedelta(days=8)
+        self._create_paid_purchase(buyer_code='333333', purchase_date=eight_days_ago)
+        self.client.force_authenticate(self.admin)
+
+        response = self.client.post('/api/v1/verify-by-gym/', {'buyer_code': '333333'}, format='json')
+
+        self.assertEqual(response.status_code, 200)
+        purchase = Purchase.objects.get(buyer_code='333333')
+        self.assertEqual(purchase.verification_status, 'verified')
+
+    @patch('finance.client.purchase.verify_payment', return_value=True)
+    def test_owner_verify_on_7th_day_succeeds(self, _gateway):
+        """صاحب باشگاه دقیقاً روی روز هفتم می‌تونه وریفای کنه"""
+        six_days_ago = timezone.now() - timedelta(days=6, hours=23)
+        self._create_paid_purchase(buyer_code='444444', purchase_date=six_days_ago)
+        self.client.force_authenticate(self.owner)
+
+        response = self.client.post('/api/v1/verify-by-gym/', {'buyer_code': '444444'}, format='json')
+
+        self.assertEqual(response.status_code, 200)
