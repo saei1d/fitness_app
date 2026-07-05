@@ -19,7 +19,7 @@ class DiscountCode(models.Model):
 
     code = models.CharField(max_length=50, unique=True, verbose_name="کد تخفیف")
     discount_type = models.CharField(max_length=10, choices=DISCOUNT_TYPE_CHOICES, verbose_name="نوع تخفیف")
-    value = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="مقدار تخفیف")
+    value = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="مقدار تخفیف", help_text="برای درصدی: عدد کامل وارد کنید (مثلاً 5 برای 5٪) - برای مبلغ ثابت: مبلغ را به تومان وارد کنید")
     
     gym = models.ForeignKey(Gym, on_delete=models.CASCADE, null=True, blank=True,
                              verbose_name="باشگاه مرتبط (درصورت وجود)")
@@ -103,7 +103,7 @@ class PackageDiscount(models.Model):
     package = models.ForeignKey(Package, on_delete=models.CASCADE, related_name="discounts",
                                 verbose_name="پکیج")
     discount_type = models.CharField(max_length=10, choices=DISCOUNT_TYPE_CHOICES, verbose_name="نوع تخفیف")
-    value = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="مقدار تخفیف")
+    value = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="مقدار تخفیف", help_text="برای درصدی: عدد کامل وارد کنید (مثلاً 5 برای 5٪) - برای مبلغ ثابت: مبلغ را به تومان وارد کنید")
     source_type = models.CharField(max_length=10, choices=SOURCE_TYPE_CHOICES, verbose_name="نوع کسر تخفیف")
     
     start_date = models.DateTimeField(null=True, blank=True, verbose_name="شروع اعتبار")

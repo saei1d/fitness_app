@@ -129,6 +129,9 @@ class PurchaseSerializer(serializers.ModelSerializer):
         if package_discount_obj:
             if package_discount_obj.discount_type == 'percent':
                 requested_percent = Decimal(str(package_discount_obj.value))
+                # برای سازگاری با داده‌های قدیمی: اگر مقدار کمتر از 1 بود، آن را به درصد تبدیل کن
+                if requested_percent < Decimal('1'):
+                    requested_percent = requested_percent * Decimal('100')
                 if package_discount_obj.source_type == 'admin':
                     max_admin_percent = (commission_rate * Decimal('100')).quantize(Decimal('1.0000'))
                     effective_percent = min(requested_percent, max_admin_percent)
@@ -151,6 +154,9 @@ class PurchaseSerializer(serializers.ModelSerializer):
             price_after_package_discount = total_amount - package_discount_amount
             if discount_code_obj.discount_type == 'percent':
                 requested_percent = Decimal(str(discount_code_obj.value))
+                # برای سازگاری با داده‌های قدیمی: اگر مقدار کمتر از 1 بود، آن را به درصد تبدیل کن
+                if requested_percent < Decimal('1'):
+                    requested_percent = requested_percent * Decimal('100')
                 if discount_code_obj.source_type == 'admin':
                     max_admin_percent = (commission_rate * Decimal('100')).quantize(Decimal('1.0000'))
                     effective_percent = min(requested_percent, max_admin_percent)
