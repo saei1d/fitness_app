@@ -92,6 +92,21 @@ def _finalize_paid_purchase(*, purchase, transaction_obj, reference_id=None):
     AdminWallet.objects.filter(pk=admin_wallet.pk).update(balance=F('balance') + purchase.final_amount)
     admin_wallet.refresh_from_db(fields=['balance'])
 
+    # Consume discount code if applicable
+    if purchase.discount_code:
+        from discount.models import DiscountCode, DiscountUsage
+        from django.db.models import F
+        
+        discount_code_obj = DiscountCode.objects.select_for_update().get(pk=purchase.discount_code_id)
+        
+        # Double-check validity and user usage limit one more time
+        if discount_code_obj.is_valid() and discount_code_obj.can_user_use(purchase.user):
+            # Increment used count
+            DiscountCode.objects.filter(pk=discount_code_obj.pk).update(used_count=F('used_count') + 1)
+            
+            # Create DiscountUsage record
+            DiscountUsage.objects.create(discount=discount_code_obj, user=purchase.user)
+
     send_purchase_notification(
         phone=purchase.user.phone,
         gym=purchase.package.group_package.gym.name,

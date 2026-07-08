@@ -1,10 +1,15 @@
 from rest_framework import viewsets, permissions, status
 from rest_framework.response import Response
-from drf_spectacular.utils import extend_schema
+from rest_framework.views import APIView
+from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiTypes
 from django.db import models
-from ..models import DiscountCode, DiscountUsage
+from django.db.models import Q
+from django.utils import timezone
+from ..models import DiscountCode, DiscountUsage, PackageDiscount
 from ..serializers import DiscountCodeSerializer, DiscountUsageSerializer
 from drf_spectacular.utils import extend_schema, extend_schema_view
+from decimal import Decimal
+from packages.models import Package
 
 
 class IsAdminOrOwnerPermission(permissions.BasePermission):
@@ -153,3 +158,122 @@ class DiscountUsageViewSet(viewsets.ReadOnlyModelViewSet):
             ).select_related('discount', 'user', 'discount__gym').prefetch_related('discount__packages')
 
         return DiscountUsage.objects.none()
+
+
+@extend_schema(tags=['Discount Code'])
+class CheckDiscountCodeView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(
+        summary="Check discount code validity and calculate discount",
+        description="Check if a discount code is valid for a specific package, and calculate the total discount (including package discount if applicable). This does NOT use/consume the discount code.",
+        parameters=[
+            OpenApiParameter(name='code', description='Discount code to check', required=True, type=OpenApiTypes.STR),
+            OpenApiParameter(name='package_id', description='Package ID to check discount against', required=True, type=OpenApiTypes.INT),
+        ],
+    )
+    def get(self, request):
+        code = request.query_params.get('code')
+        package_id = request.query_params.get('package_id')
+
+        if not code or not package_id:
+            return Response({'error': 'code and package_id are required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            package = Package.objects.get(id=package_id)
+        except Package.DoesNotExist:
+            return Response({'error': 'Package not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        code = code.strip()
+        discount = DiscountCode.objects.filter(code=code).prefetch_related('packages').first()
+        if not discount:
+            return Response({'error': 'کد تخفیف یافت نشد', 'is_valid': False}, status=status.HTTP_200_OK)
+
+        if not discount.is_valid():
+            return Response({'error': 'کد تخفیف معتبر نیست یا ظرفیت آن تمام شده است', 'is_valid': False}, status=status.HTTP_200_OK)
+
+        user = request.user
+        gym = package.group_package.gym
+
+        # Check if discount applies to this gym
+        if discount.gym and discount.gym_id != gym.id:
+            return Response({'error': 'این کد برای باشگاه انتخاب‌شده معتبر نیست', 'is_valid': False}, status=status.HTTP_200_OK)
+
+        # Check if discount applies to this package
+        if discount.packages.exists():
+            if package not in discount.packages.all():
+                return Response({'error': 'این کد برای پکیج انتخاب‌شده معتبر نیست', 'is_valid': False}, status=status.HTTP_200_OK)
+
+        if not discount.can_user_use(user):
+            return Response({'error': 'شما مجاز به استفاده از این کد نیستید', 'is_valid': False}, status=status.HTTP_200_OK)
+
+        # Now calculate discounts (package discount first, then code discount)
+        total_amount = package.price
+        commission_rate = Decimal(str(package.commission_rate))
+        admin_commission_before_discount = total_amount * commission_rate
+
+        # Get package discount
+        package_discount_obj = package.discounts.filter(
+            is_active=True,
+        ).filter(
+            Q(start_date__isnull=True) | Q(start_date__lte=timezone.now()),
+            Q(end_date__isnull=True) | Q(end_date__gte=timezone.now()),
+        ).first()
+
+        package_discount_amount = Decimal('0')
+        if package_discount_obj:
+            if package_discount_obj.discount_type == 'percent':
+                requested_percent = Decimal(str(package_discount_obj.value))
+                if requested_percent < Decimal('1'):
+                    requested_percent = requested_percent * Decimal('100')
+                if package_discount_obj.source_type == 'admin':
+                    max_admin_percent = (commission_rate * Decimal('100')).quantize(Decimal('1.0000'))
+                    effective_percent = min(requested_percent, max_admin_percent)
+                else:
+                    effective_percent = requested_percent
+                package_discount_amount = (total_amount * effective_percent) / Decimal('100')
+            else:  # amount
+                requested_amount = Decimal(str(package_discount_obj.value))
+                if package_discount_obj.source_type == 'admin':
+                    effective_amount = min(requested_amount, admin_commission_before_discount)
+                else:
+                    effective_amount = requested_amount
+                package_discount_amount = effective_amount
+
+        # Calculate code discount
+        price_after_package_discount = total_amount - package_discount_amount
+        code_discount_amount = Decimal('0')
+        if discount.discount_type == 'percent':
+            requested_percent = Decimal(str(discount.value))
+            if requested_percent < Decimal('1'):
+                requested_percent = requested_percent * Decimal('100')
+            if discount.source_type == 'admin':
+                max_admin_percent = (commission_rate * Decimal('100')).quantize(Decimal('1.0000'))
+                effective_percent = min(requested_percent, max_admin_percent)
+            else:
+                effective_percent = requested_percent
+            code_discount_amount = (price_after_package_discount * effective_percent) / Decimal('100')
+        else:  # amount
+            requested_amount = Decimal(str(discount.value))
+            if discount.source_type == 'admin':
+                effective_amount = min(requested_amount, admin_commission_before_discount)
+            else:
+                effective_amount = requested_amount
+            code_discount_amount = effective_amount
+
+        total_discount = package_discount_amount + code_discount_amount
+        final_amount = total_amount - total_discount
+        if final_amount < 0:
+            final_amount = Decimal('0')
+
+        return Response({
+            'is_valid': True,
+            'discount_code': discount.code,
+            'discount_type': discount.discount_type,
+            'discount_value': discount.value,
+            'code_discount_amount': code_discount_amount,
+            'package_discount_amount': package_discount_amount,
+            'total_discount': total_discount,
+            'original_price': total_amount,
+            'final_price': final_amount,
+        }, status=status.HTTP_200_OK)
