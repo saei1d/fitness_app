@@ -1,7 +1,7 @@
 from rest_framework import viewsets, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiTypes
+from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiTypes, OpenApiExample, OpenApiResponse
 from django.db import models
 from django.db.models import Q
 from django.utils import timezone
@@ -171,6 +171,42 @@ class CheckDiscountCodeView(APIView):
             OpenApiParameter(name='code', description='Discount code to check', required=True, type=OpenApiTypes.STR),
             OpenApiParameter(name='package_id', description='Package ID to check discount against', required=True, type=OpenApiTypes.INT),
         ],
+        responses={
+            200: OpenApiResponse(
+                description="Discount code check result",
+                examples=[
+                    OpenApiExample(
+                        'Valid discount code',
+                        value={
+                            'is_valid': True,
+                            'discount_code': 'SUMMER2024',
+                            'discount_type': 'percent',
+                            'discount_value': '10.00',
+                            'code_discount_amount': '8500.00',
+                            'package_discount_amount': '5000.00',
+                            'total_discount': '13500.00',
+                            'original_price': '100000.00',
+                            'final_price': '86500.00',
+                        },
+                    ),
+                    OpenApiExample(
+                        'Invalid discount code',
+                        value={
+                            'is_valid': False,
+                            'error': 'کد تخفیف معتبر نیست یا ظرفیت آن تمام شده است',
+                        },
+                    ),
+                ],
+            ),
+            400: OpenApiResponse(
+                description="Missing required parameters",
+                value={'error': 'code and package_id are required'},
+            ),
+            404: OpenApiResponse(
+                description="Package not found",
+                value={'error': 'Package not found'},
+            ),
+        },
     )
     def get(self, request):
         code = request.query_params.get('code')
