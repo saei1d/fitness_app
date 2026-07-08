@@ -146,11 +146,21 @@ from packages.models import Package
         ),
         404: OpenApiResponse(
             description="Package not found",
-            value={'error': 'Package not found'},
+            examples=[
+                OpenApiExample(
+                    'Package not found',
+                    value={'error': 'Package not found'},
+                ),
+            ],
         ),
         502: OpenApiResponse(
             description="Payment gateway error",
-            value={'error': 'Gateway error message'},
+            examples=[
+                OpenApiExample(
+                    'Gateway error',
+                    value={'error': 'Gateway error message'},
+                ),
+            ],
         ),
     },
 )

@@ -5,9 +5,9 @@ from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiTypes,
 from django.db import models
 from django.db.models import Q
 from django.utils import timezone
-from ..models import DiscountCode, DiscountUsage, PackageDiscount
+from ..models import DiscountCode, DiscountUsage
 from ..serializers import DiscountCodeSerializer, DiscountUsageSerializer
-from drf_spectacular.utils import extend_schema, extend_schema_view
+from drf_spectacular.utils import extend_schema_view
 from decimal import Decimal
 from packages.models import Package
 
@@ -200,11 +200,21 @@ class CheckDiscountCodeView(APIView):
             ),
             400: OpenApiResponse(
                 description="Missing required parameters",
-                value={'error': 'code and package_id are required'},
+                examples=[
+                    OpenApiExample(
+                        'Missing required parameters',
+                        value={'error': 'code and package_id are required'},
+                    ),
+                ],
             ),
             404: OpenApiResponse(
                 description="Package not found",
-                value={'error': 'Package not found'},
+                examples=[
+                    OpenApiExample(
+                        'Package not found',
+                        value={'error': 'Package not found'},
+                    ),
+                ],
             ),
         },
     )
