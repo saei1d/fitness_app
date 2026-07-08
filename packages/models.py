@@ -25,4 +25,5 @@ class Package(models.Model):
     def __str__(self):
         gender_display = self.get_gender_display()
         short_desc = (self.description[:50] + '...') if len(self.description) > 50 else self.description
-        return f"{self.title} ({gender_display}) - {short_desc}"
+        gym_name = self.group_package.gym.name
+        return f"{self.title} ({gender_display}) - {gym_name} - {short_desc}"

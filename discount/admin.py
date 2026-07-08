@@ -18,6 +18,18 @@ class DiscountCodeAdmin(admin.ModelAdmin):
     readonly_fields = ('used_count', 'created_at', 'updated_at', 'is_valid_display')
     inlines = [DiscountUsageInline]
     
+    def formfield_for_manytomany(self, db_field, request, obj=None):
+        if db_field.name == 'packages':
+            if obj and obj.gym:
+                from packages.models import Package
+                qs = Package.objects.filter(group_package__gym=obj.gym)
+                kwargs = {
+                    'queryset': qs,
+                    'required': db_field.blank,
+                }
+                return db_field.formfield(**kwargs)
+        return super().formfield_for_manytomany(db_field, request, obj)
+    
     fieldsets = (
         ("اطلاعات اصلی", {
             "fields": ("code", "discount_type", "value", "gym", "packages", "source_type")
