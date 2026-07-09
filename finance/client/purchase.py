@@ -95,7 +95,6 @@ def _finalize_paid_purchase(*, purchase, transaction_obj, reference_id=None):
     # Consume discount code if applicable
     if purchase.discount_code:
         from discount.models import DiscountCode, DiscountUsage
-        from django.db.models import F
         
         discount_code_obj = DiscountCode.objects.select_for_update().get(pk=purchase.discount_code_id)
         
