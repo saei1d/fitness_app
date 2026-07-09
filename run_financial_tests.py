@@ -57,6 +57,8 @@ class FinancialTestRunner:
         # پاک کردن داده‌های قبلی
         User.objects.filter(phone__startswith='091200001').delete()
         Gym.objects.filter(name='Discount Test Gym').delete()
+        DiscountCode.objects.filter(code__in=['ADMIN3', 'CLUB10', 'ADMIN2', 'CLUB5', 'ADMIN10']).delete()
+        PackageDiscount.objects.all().delete()
         
         self.customer = User.objects.create_user(
             phone='09120000100', 
@@ -132,7 +134,7 @@ class FinancialTestRunner:
         """ایجاد خرید با کد تخفیف"""
         self.client.force_authenticate(self.customer)
         response = self.client.post(
-            f'/api/v1/pending/{self.package.id}/',
+            f'/api/pending/{self.package.id}/',
             {'discount_code': discount_code},
             format='json'
         )
@@ -143,7 +145,7 @@ class FinancialTestRunner:
         self.client.force_authenticate(self.customer)
         with patch('finance.client.purchase.verify_payment_gateway', return_value=True):
             response = self.client.post(
-                '/api/v1/final-purchase/',
+                '/api/final-purchase/',
                 {'transaction_id': transaction_id, 'payment_verified': True},
                 format='json'
             )
@@ -155,7 +157,7 @@ class FinancialTestRunner:
         self.client.force_authenticate(user)
         with patch('finance.client.purchase.verify_payment', return_value=True):
             response = self.client.post(
-                '/api/v1/verify-by-gym/',
+                '/api/verify-by-gym/',
                 {'buyer_code': buyer_code},
                 format='json'
             )
