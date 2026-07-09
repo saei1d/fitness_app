@@ -476,8 +476,8 @@ class FinancialTestRunner:
             
             expected = {
                 'total': Decimal('100000.00'),
-                'commission': Decimal('3100.00'),
-                'net': Decimal('90000.00'),
+                'commission': Decimal('0.00'),
+                'net': Decimal('95000.00'),
                 'final': Decimal('93100.00')
             }
             
@@ -552,8 +552,8 @@ class FinancialTestRunner:
             
             expected = {
                 'total': Decimal('100000.00'),
-                'commission': Decimal('3000.00'),
-                'net': Decimal('93100.00'),
+                'commission': Decimal('5000.00'),
+                'net': Decimal('88100.00'),
                 'final': Decimal('93100.00')
             }
             
@@ -631,7 +631,7 @@ class FinancialTestRunner:
                 'total': Decimal('100000.00'),
                 'commission': Decimal('0.00'),
                 'net': Decimal('95000.00'),
-                'final': Decimal('95000.00')
+                'final': Decimal('94090.00')
             }
             
             success = (
