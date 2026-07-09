@@ -10,7 +10,7 @@ from rest_framework.test import APIClient
 from accounts.models import User
 from finance.client.gateway import PaymentRequestResult, PaymentVerificationResult
 from finance.models import AdminWallet, Purchase, Transaction, Wallet
-from discount.models import DiscountCode
+from discount.models import DiscountCode, PackageDiscount
 from gyms.models import Gym
 from packages.models import GroupPackage, Package
 
@@ -350,3 +350,507 @@ class CodeExpiryTests(TestCase):
         response = self.client.post('/api/v1/verify-by-gym/', {'buyer_code': '444444'}, format='json')
 
         self.assertEqual(response.status_code, 200)
+
+
+class FinancialDiscountTests(TestCase):
+    """تست‌های کامل محاسبات مالی با تخفیف‌های مختلف و کمیسیون 5%"""
+    
+    def setUp(self):
+        self.client = APIClient()
+        self.customer = User.objects.create_user(phone='09120000100', full_name='Test Customer')
+        self.owner = User.objects.create_user(phone='09120000101', role='owner', full_name='Gym Owner')
+        self.admin = User.objects.create_user(phone='09120000102', role='admin', full_name='Admin User')
+        self.admin.is_staff = True
+        self.admin.is_superuser = True
+        self.admin.save(update_fields=['is_staff', 'is_superuser'])
+        
+        self.gym = Gym.objects.create(owner=self.owner, name='Discount Test Gym', location=Point(51.0, 35.0, srid=4326))
+        self.group = GroupPackage.objects.create(gym=self.gym, title='Test Package Group')
+        
+        # پکیج با قیمت 100,000 تومان و کمیسیون 5%
+        self.package = Package.objects.create(
+            group_package=self.group,
+            title='Test Package',
+            gender='male',
+            price=Decimal('100000.00'),
+            duration=30,
+            commission_rate=Decimal('0.05'),  # 5% کمیسیون
+        )
+        
+        # ایجاد کیف پول ادمین
+        self.admin_wallet, _ = AdminWallet.objects.get_or_create(
+            id=1,
+            defaults={'balance': Decimal('0')}
+        )
+    
+    def _create_purchase_with_code(self, discount_code):
+        """ایجاد خرید با کد تخفیف"""
+        self.client.force_authenticate(self.customer)
+        response = self.client.post(
+            f'/api/v1/pending/{self.package.id}/',
+            {'discount_code': discount_code},
+            format='json'
+        )
+        return response
+    
+    def _finalize_purchase(self, transaction_id):
+        """نهایی کردن خرید با mock پرداخت"""
+        self.client.force_authenticate(self.customer)
+        with patch('finance.client.purchase.verify_payment_gateway', return_value=True):
+            response = self.client.post(
+                '/api/v1/final-purchase/',
+                {'transaction_id': transaction_id, 'payment_verified': True},
+                format='json'
+            )
+        return response
+    
+    def _verify_purchase(self, buyer_code, user=None):
+        """تایید خرید توسط صاحب باشگاه یا ادمین"""
+        user = user or self.owner
+        self.client.force_authenticate(user)
+        with patch('finance.client.purchase.verify_payment', return_value=True):
+            response = self.client.post(
+                '/api/v1/verify-by-gym/',
+                {'buyer_code': buyer_code},
+                format='json'
+            )
+        return response
+    
+    def test_discount_code_admin_share_reduction(self):
+        """تست 1: کد تخفیف از سهم ادمین - سهم ادمین کم میشه، سهم باشگاه ثابت"""
+        # ایجاد کد تخفیف 3% از سهم ادمین
+        discount = DiscountCode.objects.create(
+            code='ADMIN3',
+            discount_type='percent',
+            value=Decimal('3.00'),
+            gym=self.gym,
+            source_type='admin',
+            is_active=True,
+        )
+        
+        response = self._create_purchase_with_code('ADMIN3')
+        self.assertEqual(response.status_code, 201)
+        
+        transaction_id = response.data['transaction_id']
+        finalize = self._finalize_purchase(transaction_id)
+        self.assertEqual(finalize.status_code, 200)
+        
+        buyer_code = finalize.data['buyer_code']
+        purchase = Purchase.objects.get(buyer_code=buyer_code)
+        
+        # محاسبات مورد انتظار:
+        # قیمت: 100,000
+        # کمیسیون اولیه ادمین: 5,000 (5%)
+        # تخفیف 3% از سهم ادمین: 3,000
+        # کمیسیون نهایی ادمین: 2,000
+        # سهم باشگاه: 95,000
+        # قیمت نهایی کاربر: 97,000
+        
+        self.assertEqual(purchase.total_amount, Decimal('100000.00'))
+        self.assertEqual(purchase.commission_amount, Decimal('2000.00'))
+        self.assertEqual(purchase.net_amount, Decimal('95000.00'))
+        self.assertEqual(purchase.final_amount, Decimal('97000.00'))
+        
+        # تست تایید و واریز به کیف پول
+        verify = self._verify_purchase(buyer_code)
+        self.assertEqual(verify.status_code, 200)
+        
+        wallet = Wallet.objects.get(owner=self.owner)
+        self.assertEqual(wallet.balance, Decimal('95000.00'))
+        
+        admin_wallet = AdminWallet.objects.get(id=1)
+        self.assertEqual(admin_wallet.balance, Decimal('2000.00'))
+    
+    def test_discount_code_gym_share_reduction(self):
+        """تست 2: کد تخفیف از سهم باشگاه - سهم باشگاه کم میشه، سهم ادمین ثابت"""
+        # ایجاد کد تخفیف 10% از سهم باشگاه
+        discount = DiscountCode.objects.create(
+            code='CLUB10',
+            discount_type='percent',
+            value=Decimal('10.00'),
+            gym=self.gym,
+            source_type='club',
+            is_active=True,
+        )
+        
+        response = self._create_purchase_with_code('CLUB10')
+        self.assertEqual(response.status_code, 201)
+        
+        transaction_id = response.data['transaction_id']
+        finalize = self._finalize_purchase(transaction_id)
+        self.assertEqual(finalize.status_code, 200)
+        
+        buyer_code = finalize.data['buyer_code']
+        purchase = Purchase.objects.get(buyer_code=buyer_code)
+        
+        # محاسبات مورد انتظار:
+        # قیمت: 100,000
+        # کمیسیون ادمین: 5,000 (5% - ثابت)
+        # تخفیف 10% از سهم باشگاه: 10,000
+        # سهم نهایی باشگاه: 85,000
+        # قیمت نهایی کاربر: 90,000
+        
+        self.assertEqual(purchase.total_amount, Decimal('100000.00'))
+        self.assertEqual(purchase.commission_amount, Decimal('5000.00'))
+        self.assertEqual(purchase.net_amount, Decimal('85000.00'))
+        self.assertEqual(purchase.final_amount, Decimal('90000.00'))
+        
+        verify = self._verify_purchase(buyer_code)
+        self.assertEqual(verify.status_code, 200)
+        
+        wallet = Wallet.objects.get(owner=self.owner)
+        self.assertEqual(wallet.balance, Decimal('85000.00'))
+        
+        admin_wallet = AdminWallet.objects.get(id=1)
+        self.assertEqual(admin_wallet.balance, Decimal('5000.00'))
+    
+    def test_package_discount_admin_share_reduction(self):
+        """تست 3: تخفیف پکیج از سهم ادمین - سهم ادمین کم میشه، سهم باشگاه ثابت"""
+        # ایجاد تخفیف پکیج 3% از سهم ادمین
+        package_discount = PackageDiscount.objects.create(
+            package=self.package,
+            discount_type='percent',
+            value=Decimal('3.00'),
+            source_type='admin',
+            is_active=True,
+        )
+        
+        response = self._create_purchase_with_code('')
+        self.assertEqual(response.status_code, 201)
+        
+        transaction_id = response.data['transaction_id']
+        finalize = self._finalize_purchase(transaction_id)
+        self.assertEqual(finalize.status_code, 200)
+        
+        buyer_code = finalize.data['buyer_code']
+        purchase = Purchase.objects.get(buyer_code=buyer_code)
+        
+        # محاسبات مورد انتظار:
+        # قیمت: 100,000
+        # کمیسیون اولیه ادمین: 5,000 (5%)
+        # تخفیف 3% از سهم ادمین: 3,000
+        # کمیسیون نهایی ادمین: 2,000
+        # سهم باشگاه: 95,000
+        # قیمت نهایی کاربر: 97,000
+        
+        self.assertEqual(purchase.total_amount, Decimal('100000.00'))
+        self.assertEqual(purchase.commission_amount, Decimal('2000.00'))
+        self.assertEqual(purchase.net_amount, Decimal('95000.00'))
+        self.assertEqual(purchase.final_amount, Decimal('97000.00'))
+        
+        verify = self._verify_purchase(buyer_code)
+        self.assertEqual(verify.status_code, 200)
+        
+        wallet = Wallet.objects.get(owner=self.owner)
+        self.assertEqual(wallet.balance, Decimal('95000.00'))
+        
+        admin_wallet = AdminWallet.objects.get(id=1)
+        self.assertEqual(admin_wallet.balance, Decimal('2000.00'))
+    
+    def test_package_discount_gym_share_reduction(self):
+        """تست 4: تخفیف پکیج از سهم باشگاه - سهم باشگاه کم میشه، سهم ادمین ثابت"""
+        # ایجاد تخفیف پکیج 10% از سهم باشگاه
+        package_discount = PackageDiscount.objects.create(
+            package=self.package,
+            discount_type='percent',
+            value=Decimal('10.00'),
+            source_type='club',
+            is_active=True,
+        )
+        
+        response = self._create_purchase_with_code('')
+        self.assertEqual(response.status_code, 201)
+        
+        transaction_id = response.data['transaction_id']
+        finalize = self._finalize_purchase(transaction_id)
+        self.assertEqual(finalize.status_code, 200)
+        
+        buyer_code = finalize.data['buyer_code']
+        purchase = Purchase.objects.get(buyer_code=buyer_code)
+        
+        # محاسبات مورد انتظار:
+        # قیمت: 100,000
+        # کمیسیون ادمین: 5,000 (5% - ثابت)
+        # تخفیف 10% از سهم باشگاه: 10,000
+        # سهم نهایی باشگاه: 85,000
+        # قیمت نهایی کاربر: 90,000
+        
+        self.assertEqual(purchase.total_amount, Decimal('100000.00'))
+        self.assertEqual(purchase.commission_amount, Decimal('5000.00'))
+        self.assertEqual(purchase.net_amount, Decimal('85000.00'))
+        self.assertEqual(purchase.final_amount, Decimal('90000.00'))
+        
+        verify = self._verify_purchase(buyer_code)
+        self.assertEqual(verify.status_code, 200)
+        
+        wallet = Wallet.objects.get(owner=self.owner)
+        self.assertEqual(wallet.balance, Decimal('85000.00'))
+        
+        admin_wallet = AdminWallet.objects.get(id=1)
+        self.assertEqual(admin_wallet.balance, Decimal('5000.00'))
+    
+    def test_combined_admin_code_gym_package_discount(self):
+        """تست 5: کد تخفیف ادمین + تخفیف پکیج باشگاه"""
+        # کد تخفیف 2% از سهم ادمین
+        code_discount = DiscountCode.objects.create(
+            code='ADMIN2',
+            discount_type='percent',
+            value=Decimal('2.00'),
+            gym=self.gym,
+            source_type='admin',
+            is_active=True,
+        )
+        
+        # تخفیف پکیج 5% از سهم باشگاه
+        package_discount = PackageDiscount.objects.create(
+            package=self.package,
+            discount_type='percent',
+            value=Decimal('5.00'),
+            source_type='club',
+            is_active=True,
+        )
+        
+        response = self._create_purchase_with_code('ADMIN2')
+        self.assertEqual(response.status_code, 201)
+        
+        transaction_id = response.data['transaction_id']
+        finalize = self._finalize_purchase(transaction_id)
+        self.assertEqual(finalize.status_code, 200)
+        
+        buyer_code = finalize.data['buyer_code']
+        purchase = Purchase.objects.get(buyer_code=buyer_code)
+        
+        # محاسبات مورد انتظار:
+        # قیمت: 100,000
+        # تخفیف پکیج 5%: 5,000 (از سهم باشگاه)
+        # قیمت بعد از تخفیف پکیج: 95,000
+        # تخفیف کد 2% روی 95,000: 1,900 (از سهم ادمین)
+        # کمیسیون اولیه ادمین: 5,000
+        # کمیسیون نهایی ادمین: 5,000 - 1,900 = 3,100
+        # سهم باشگاه: 95,000 - 5,000 = 90,000
+        # قیمت نهایی کاربر: 100,000 - 5,000 - 1,900 = 93,100
+        
+        self.assertEqual(purchase.total_amount, Decimal('100000.00'))
+        self.assertEqual(purchase.commission_amount, Decimal('3100.00'))
+        self.assertEqual(purchase.net_amount, Decimal('90000.00'))
+        self.assertEqual(purchase.final_amount, Decimal('93100.00'))
+        
+        verify = self._verify_purchase(buyer_code)
+        self.assertEqual(verify.status_code, 200)
+        
+        wallet = Wallet.objects.get(owner=self.owner)
+        self.assertEqual(wallet.balance, Decimal('90000.00'))
+        
+        admin_wallet = AdminWallet.objects.get(id=1)
+        self.assertEqual(admin_wallet.balance, Decimal('3100.00'))
+    
+    def test_combined_gym_code_admin_package_discount(self):
+        """تست 6: کد تخفیف باشگاه + تخفیف پکیج ادمین"""
+        # کد تخفیف 5% از سهم باشگاه
+        code_discount = DiscountCode.objects.create(
+            code='CLUB5',
+            discount_type='percent',
+            value=Decimal('5.00'),
+            gym=self.gym,
+            source_type='club',
+            is_active=True,
+        )
+        
+        # تخفیف پکیج 2% از سهم ادمین
+        package_discount = PackageDiscount.objects.create(
+            package=self.package,
+            discount_type='percent',
+            value=Decimal('2.00'),
+            source_type='admin',
+            is_active=True,
+        )
+        
+        response = self._create_purchase_with_code('CLUB5')
+        self.assertEqual(response.status_code, 201)
+        
+        transaction_id = response.data['transaction_id']
+        finalize = self._finalize_purchase(transaction_id)
+        self.assertEqual(finalize.status_code, 200)
+        
+        buyer_code = finalize.data['buyer_code']
+        purchase = Purchase.objects.get(buyer_code=buyer_code)
+        
+        # محاسبات مورد انتظار:
+        # قیمت: 100,000
+        # تخفیف پکیج 2%: 2,000 (از سهم ادمین)
+        # قیمت بعد از تخفیف پکیج: 98,000
+        # تخفیف کد 5% روی 98,000: 4,900 (از سهم باشگاه)
+        # کمیسیون اولیه ادمین: 5,000
+        # کمیسیون نهایی ادمین: 5,000 - 2,000 = 3,000
+        # سهم باشگاه: 98,000 - 4,900 = 93,100
+        # قیمت نهایی کاربر: 100,000 - 2,000 - 4,900 = 93,100
+        
+        self.assertEqual(purchase.total_amount, Decimal('100000.00'))
+        self.assertEqual(purchase.commission_amount, Decimal('3000.00'))
+        self.assertEqual(purchase.net_amount, Decimal('93100.00'))
+        self.assertEqual(purchase.final_amount, Decimal('93100.00'))
+        
+        verify = self._verify_purchase(buyer_code)
+        self.assertEqual(verify.status_code, 200)
+        
+        wallet = Wallet.objects.get(owner=self.owner)
+        self.assertEqual(wallet.balance, Decimal('93100.00'))
+        
+        admin_wallet = AdminWallet.objects.get(id=1)
+        self.assertEqual(admin_wallet.balance, Decimal('3000.00'))
+    
+    def test_combined_both_admin_discounts(self):
+        """تست 7: هر دو تخفیف از ادمین - محدودیت 5%"""
+        # کد تخفیف 3% از سهم ادمین
+        code_discount = DiscountCode.objects.create(
+            code='ADMIN3',
+            discount_type='percent',
+            value=Decimal('3.00'),
+            gym=self.gym,
+            source_type='admin',
+            is_active=True,
+        )
+        
+        # تخفیف پکیج 3% از سهم ادمین
+        package_discount = PackageDiscount.objects.create(
+            package=self.package,
+            discount_type='percent',
+            value=Decimal('3.00'),
+            source_type='admin',
+            is_active=True,
+        )
+        
+        response = self._create_purchase_with_code('ADMIN3')
+        self.assertEqual(response.status_code, 201)
+        
+        transaction_id = response.data['transaction_id']
+        finalize = self._finalize_purchase(transaction_id)
+        self.assertEqual(finalize.status_code, 200)
+        
+        buyer_code = finalize.data['buyer_code']
+        purchase = Purchase.objects.get(buyer_code=buyer_code)
+        
+        # محاسبات مورد انتظار:
+        # قیمت: 100,000
+        # کمیسیون اولیه ادمین: 5,000 (5%)
+        # تخفیف پکیج 3%: 3,000 (از سهم ادمین - محدود به 5%)
+        # قیمت بعد از تخفیف پکیج: 97,000
+        # تخفیف کد 3% روی 97,000: 2,910 (از سهم ادمین)
+        # اما چون منبع تخفیف کد است، اولویت با کد
+        # تخفیف کل از سهم ادمین: min(3% + 3%, 5%) = 5%
+        # کمیسیون نهایی ادمین: 5,000 - 5,000 = 0
+        # سهم باشگاه: 95,000
+        # قیمت نهایی کاربر: 95,000
+        
+        self.assertEqual(purchase.total_amount, Decimal('100000.00'))
+        self.assertEqual(purchase.commission_amount, Decimal('0.00'))
+        self.assertEqual(purchase.net_amount, Decimal('95000.00'))
+        self.assertEqual(purchase.final_amount, Decimal('95000.00'))
+        
+        verify = self._verify_purchase(buyer_code)
+        self.assertEqual(verify.status_code, 200)
+        
+        wallet = Wallet.objects.get(owner=self.owner)
+        self.assertEqual(wallet.balance, Decimal('95000.00'))
+        
+        admin_wallet = AdminWallet.objects.get(id=1)
+        self.assertEqual(admin_wallet.balance, Decimal('0.00'))
+    
+    def test_combined_both_gym_discounts(self):
+        """تست 8: هر دو تخفیف از باشگاه - بدون محدودیت"""
+        # کد تخفیف 10% از سهم باشگاه
+        code_discount = DiscountCode.objects.create(
+            code='CLUB10',
+            discount_type='percent',
+            value=Decimal('10.00'),
+            gym=self.gym,
+            source_type='club',
+            is_active=True,
+        )
+        
+        # تخفیف پکیج 5% از سهم باشگاه
+        package_discount = PackageDiscount.objects.create(
+            package=self.package,
+            discount_type='percent',
+            value=Decimal('5.00'),
+            source_type='club',
+            is_active=True,
+        )
+        
+        response = self._create_purchase_with_code('CLUB10')
+        self.assertEqual(response.status_code, 201)
+        
+        transaction_id = response.data['transaction_id']
+        finalize = self._finalize_purchase(transaction_id)
+        self.assertEqual(finalize.status_code, 200)
+        
+        buyer_code = finalize.data['buyer_code']
+        purchase = Purchase.objects.get(buyer_code=buyer_code)
+        
+        # محاسبات مورد انتظار:
+        # قیمت: 100,000
+        # کمیسیون ادمین: 5,000 (5% - ثابت)
+        # تخفیف پکیج 5%: 5,000 (از سهم باشگاه)
+        # قیمت بعد از تخفیف پکیج: 95,000
+        # تخفیف کد 10% روی 95,000: 9,500 (از سهم باشگاه)
+        # سهم نهایی باشگاه: 95,000 - 5,000 - 9,500 = 80,500
+        # قیمت نهایی کاربر: 100,000 - 5,000 - 9,500 = 85,500
+        
+        self.assertEqual(purchase.total_amount, Decimal('100000.00'))
+        self.assertEqual(purchase.commission_amount, Decimal('5000.00'))
+        self.assertEqual(purchase.net_amount, Decimal('80500.00'))
+        self.assertEqual(purchase.final_amount, Decimal('85500.00'))
+        
+        verify = self._verify_purchase(buyer_code)
+        self.assertEqual(verify.status_code, 200)
+        
+        wallet = Wallet.objects.get(owner=self.owner)
+        self.assertEqual(wallet.balance, Decimal('80500.00'))
+        
+        admin_wallet = AdminWallet.objects.get(id=1)
+        self.assertEqual(admin_wallet.balance, Decimal('5000.00'))
+    
+    def test_admin_discount_exceeds_commission_limit(self):
+        """تست 9: تخفیف ادمین بیشتر از کمیسیون - باید محدود شود"""
+        # کد تخفیف 10% از سهم ادمین (بیشتر از 5% کمیسیون)
+        discount = DiscountCode.objects.create(
+            code='ADMIN10',
+            discount_type='percent',
+            value=Decimal('10.00'),
+            gym=self.gym,
+            source_type='admin',
+            is_active=True,
+        )
+        
+        response = self._create_purchase_with_code('ADMIN10')
+        self.assertEqual(response.status_code, 201)
+        
+        transaction_id = response.data['transaction_id']
+        finalize = self._finalize_purchase(transaction_id)
+        self.assertEqual(finalize.status_code, 200)
+        
+        buyer_code = finalize.data['buyer_code']
+        purchase = Purchase.objects.get(buyer_code=buyer_code)
+        
+        # محاسبات مورد انتظار:
+        # قیمت: 100,000
+        # کمیسیون اولیه ادمین: 5,000 (5%)
+        # تخفیف درخواستی 10%: 10,000
+        # اما محدود به کمیسیون ادمین: 5,000
+        # کمیسیون نهایی ادمین: 0
+        # سهم باشگاه: 95,000
+        # قیمت نهایی کاربر: 95,000
+        
+        self.assertEqual(purchase.total_amount, Decimal('100000.00'))
+        self.assertEqual(purchase.commission_amount, Decimal('0.00'))
+        self.assertEqual(purchase.net_amount, Decimal('95000.00'))
+        self.assertEqual(purchase.final_amount, Decimal('95000.00'))
+        
+        verify = self._verify_purchase(buyer_code)
+        self.assertEqual(verify.status_code, 200)
+        
+        wallet = Wallet.objects.get(owner=self.owner)
+        self.assertEqual(wallet.balance, Decimal('95000.00'))
+        
+        admin_wallet = AdminWallet.objects.get(id=1)
+        self.assertEqual(admin_wallet.balance, Decimal('0.00'))
