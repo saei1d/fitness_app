@@ -169,6 +169,10 @@ class FinancialTestRunner:
         self.log_test_start(test_name)
         
         try:
+            # پاک کردن کدهای تخفیف و تخفیف‌های پکیج قبلی
+            DiscountCode.objects.filter(code__in=['ADMIN3', 'CLUB10', 'ADMIN2', 'CLUB5', 'ADMIN10']).delete()
+            PackageDiscount.objects.all().delete()
+            
             # ایجاد کد تخفیف
             discount = DiscountCode.objects.create(
                 code='ADMIN3',
@@ -182,8 +186,9 @@ class FinancialTestRunner:
             
             response = self.create_purchase_with_code('ADMIN3')
             logger.info(f"خرید ایجاد شد: status={response.status_code}")
+            logger.info(f"Response data: {response.data}")
             
-            transaction_id = response.data['transaction_id']
+            transaction_id = response.data['transaction']['id']
             finalize = self.finalize_purchase(transaction_id)
             logger.info(f"خرید نهایی شد: status={finalize.status_code}")
             
@@ -236,6 +241,10 @@ class FinancialTestRunner:
         self.log_test_start(test_name)
         
         try:
+            # پاک کردن کدهای تخفیف و تخفیف‌های پکیج قبلی
+            DiscountCode.objects.filter(code__in=['ADMIN3', 'CLUB10', 'ADMIN2', 'CLUB5', 'ADMIN10']).delete()
+            PackageDiscount.objects.all().delete()
+            
             discount = DiscountCode.objects.create(
                 code='CLUB10',
                 discount_type='percent',
@@ -247,7 +256,7 @@ class FinancialTestRunner:
             logger.info(f"کد تخفیف ایجاد شد: {discount.code} - {discount.value}% از {discount.source_type}")
             
             response = self.create_purchase_with_code('CLUB10')
-            transaction_id = response.data['transaction_id']
+            transaction_id = response.data['transaction']['id']
             finalize = self.finalize_purchase(transaction_id)
             
             buyer_code = finalize.data['buyer_code']
@@ -298,6 +307,10 @@ class FinancialTestRunner:
         self.log_test_start(test_name)
         
         try:
+            # پاک کردن کدهای تخفیف و تخفیف‌های پکیج قبلی
+            DiscountCode.objects.filter(code__in=['ADMIN3', 'CLUB10', 'ADMIN2', 'CLUB5', 'ADMIN10']).delete()
+            PackageDiscount.objects.all().delete()
+            
             package_discount = PackageDiscount.objects.create(
                 package=self.package,
                 discount_type='percent',
@@ -308,7 +321,7 @@ class FinancialTestRunner:
             logger.info(f"تخفیف پکیج ایجاد شد: {package_discount.value}% از {package_discount.source_type}")
             
             response = self.create_purchase_with_code('')
-            transaction_id = response.data['transaction_id']
+            transaction_id = response.data['transaction']['id']
             finalize = self.finalize_purchase(transaction_id)
             
             buyer_code = finalize.data['buyer_code']
@@ -359,6 +372,10 @@ class FinancialTestRunner:
         self.log_test_start(test_name)
         
         try:
+            # پاک کردن کدهای تخفیف و تخفیف‌های پکیج قبلی
+            DiscountCode.objects.filter(code__in=['ADMIN3', 'CLUB10', 'ADMIN2', 'CLUB5', 'ADMIN10']).delete()
+            PackageDiscount.objects.all().delete()
+            
             package_discount = PackageDiscount.objects.create(
                 package=self.package,
                 discount_type='percent',
@@ -369,7 +386,7 @@ class FinancialTestRunner:
             logger.info(f"تخفیف پکیج ایجاد شد: {package_discount.value}% از {package_discount.source_type}")
             
             response = self.create_purchase_with_code('')
-            transaction_id = response.data['transaction_id']
+            transaction_id = response.data['transaction']['id']
             finalize = self.finalize_purchase(transaction_id)
             
             buyer_code = finalize.data['buyer_code']
@@ -420,6 +437,10 @@ class FinancialTestRunner:
         self.log_test_start(test_name)
         
         try:
+            # پاک کردن کدهای تخفیف و تخفیف‌های پکیج قبلی
+            DiscountCode.objects.filter(code__in=['ADMIN3', 'CLUB10', 'ADMIN2', 'CLUB5', 'ADMIN10']).delete()
+            PackageDiscount.objects.all().delete()
+            
             code_discount = DiscountCode.objects.create(
                 code='ADMIN2',
                 discount_type='percent',
@@ -441,7 +462,7 @@ class FinancialTestRunner:
             logger.info(f"تخفیف پکیج: {package_discount.value}% از {package_discount.source_type}")
             
             response = self.create_purchase_with_code('ADMIN2')
-            transaction_id = response.data['transaction_id']
+            transaction_id = response.data['transaction']['id']
             finalize = self.finalize_purchase(transaction_id)
             
             buyer_code = finalize.data['buyer_code']
@@ -492,6 +513,10 @@ class FinancialTestRunner:
         self.log_test_start(test_name)
         
         try:
+            # پاک کردن کدهای تخفیف و تخفیف‌های پکیج قبلی
+            DiscountCode.objects.filter(code__in=['ADMIN3', 'CLUB10', 'ADMIN2', 'CLUB5', 'ADMIN10']).delete()
+            PackageDiscount.objects.all().delete()
+            
             code_discount = DiscountCode.objects.create(
                 code='CLUB5',
                 discount_type='percent',
@@ -513,7 +538,7 @@ class FinancialTestRunner:
             logger.info(f"تخفیف پکیج: {package_discount.value}% از {package_discount.source_type}")
             
             response = self.create_purchase_with_code('CLUB5')
-            transaction_id = response.data['transaction_id']
+            transaction_id = response.data['transaction']['id']
             finalize = self.finalize_purchase(transaction_id)
             
             buyer_code = finalize.data['buyer_code']
@@ -564,6 +589,10 @@ class FinancialTestRunner:
         self.log_test_start(test_name)
         
         try:
+            # پاک کردن کدهای تخفیف و تخفیف‌های پکیج قبلی
+            DiscountCode.objects.filter(code__in=['ADMIN3', 'CLUB10', 'ADMIN2', 'CLUB5', 'ADMIN10']).delete()
+            PackageDiscount.objects.all().delete()
+            
             code_discount = DiscountCode.objects.create(
                 code='ADMIN3',
                 discount_type='percent',
@@ -586,7 +615,7 @@ class FinancialTestRunner:
             logger.info("⚠ محدودیت: تخفیف ادمین نمی‌تواند بیشتر از 5% کمیسیون باشد")
             
             response = self.create_purchase_with_code('ADMIN3')
-            transaction_id = response.data['transaction_id']
+            transaction_id = response.data['transaction']['id']
             finalize = self.finalize_purchase(transaction_id)
             
             buyer_code = finalize.data['buyer_code']
@@ -637,6 +666,10 @@ class FinancialTestRunner:
         self.log_test_start(test_name)
         
         try:
+            # پاک کردن کدهای تخفیف و تخفیف‌های پکیج قبلی
+            DiscountCode.objects.filter(code__in=['ADMIN3', 'CLUB10', 'ADMIN2', 'CLUB5', 'ADMIN10']).delete()
+            PackageDiscount.objects.all().delete()
+            
             code_discount = DiscountCode.objects.create(
                 code='CLUB10',
                 discount_type='percent',
@@ -658,7 +691,7 @@ class FinancialTestRunner:
             logger.info(f"تخفیف پکیج: {package_discount.value}% از {package_discount.source_type}")
             
             response = self.create_purchase_with_code('CLUB10')
-            transaction_id = response.data['transaction_id']
+            transaction_id = response.data['transaction']['id']
             finalize = self.finalize_purchase(transaction_id)
             
             buyer_code = finalize.data['buyer_code']
@@ -709,6 +742,10 @@ class FinancialTestRunner:
         self.log_test_start(test_name)
         
         try:
+            # پاک کردن کدهای تخفیف و تخفیف‌های پکیج قبلی
+            DiscountCode.objects.filter(code__in=['ADMIN3', 'CLUB10', 'ADMIN2', 'CLUB5', 'ADMIN10']).delete()
+            PackageDiscount.objects.all().delete()
+            
             discount = DiscountCode.objects.create(
                 code='ADMIN10',
                 discount_type='percent',
@@ -723,7 +760,7 @@ class FinancialTestRunner:
             logger.info("⚠ باید محدود شود به 5% کمیسیون")
             
             response = self.create_purchase_with_code('ADMIN10')
-            transaction_id = response.data['transaction_id']
+            transaction_id = response.data['transaction']['id']
             finalize = self.finalize_purchase(transaction_id)
             
             buyer_code = finalize.data['buyer_code']
