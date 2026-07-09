@@ -182,7 +182,7 @@ class FinancialTestRunner:
             logger.info(f"خرید ایجاد شد: status={response.status_code}")
             
             transaction_id = response.data['transaction_id']
-            finalize = self._finalize_purchase(transaction_id)
+            finalize = self.finalize_purchase(transaction_id)
             logger.info(f"خرید نهایی شد: status={finalize.status_code}")
             
             buyer_code = finalize.data['buyer_code']
@@ -246,7 +246,7 @@ class FinancialTestRunner:
             
             response = self.create_purchase_with_code('CLUB10')
             transaction_id = response.data['transaction_id']
-            finalize = self._finalize_purchase(transaction_id)
+            finalize = self.finalize_purchase(transaction_id)
             
             buyer_code = finalize.data['buyer_code']
             purchase = Purchase.objects.get(buyer_code=buyer_code)
@@ -307,7 +307,7 @@ class FinancialTestRunner:
             
             response = self.create_purchase_with_code('')
             transaction_id = response.data['transaction_id']
-            finalize = self._finalize_purchase(transaction_id)
+            finalize = self.finalize_purchase(transaction_id)
             
             buyer_code = finalize.data['buyer_code']
             purchase = Purchase.objects.get(buyer_code=buyer_code)
@@ -368,7 +368,7 @@ class FinancialTestRunner:
             
             response = self.create_purchase_with_code('')
             transaction_id = response.data['transaction_id']
-            finalize = self._finalize_purchase(transaction_id)
+            finalize = self.finalize_purchase(transaction_id)
             
             buyer_code = finalize.data['buyer_code']
             purchase = Purchase.objects.get(buyer_code=buyer_code)
@@ -440,7 +440,7 @@ class FinancialTestRunner:
             
             response = self.create_purchase_with_code('ADMIN2')
             transaction_id = response.data['transaction_id']
-            finalize = self._finalize_purchase(transaction_id)
+            finalize = self.finalize_purchase(transaction_id)
             
             buyer_code = finalize.data['buyer_code']
             purchase = Purchase.objects.get(buyer_code=buyer_code)
@@ -512,7 +512,7 @@ class FinancialTestRunner:
             
             response = self.create_purchase_with_code('CLUB5')
             transaction_id = response.data['transaction_id']
-            finalize = self._finalize_purchase(transaction_id)
+            finalize = self.finalize_purchase(transaction_id)
             
             buyer_code = finalize.data['buyer_code']
             purchase = Purchase.objects.get(buyer_code=buyer_code)
@@ -585,7 +585,7 @@ class FinancialTestRunner:
             
             response = self.create_purchase_with_code('ADMIN3')
             transaction_id = response.data['transaction_id']
-            finalize = self._finalize_purchase(transaction_id)
+            finalize = self.finalize_purchase(transaction_id)
             
             buyer_code = finalize.data['buyer_code']
             purchase = Purchase.objects.get(buyer_code=buyer_code)
@@ -657,7 +657,7 @@ class FinancialTestRunner:
             
             response = self.create_purchase_with_code('CLUB10')
             transaction_id = response.data['transaction_id']
-            finalize = self._finalize_purchase(transaction_id)
+            finalize = self.finalize_purchase(transaction_id)
             
             buyer_code = finalize.data['buyer_code']
             purchase = Purchase.objects.get(buyer_code=buyer_code)
@@ -722,7 +722,7 @@ class FinancialTestRunner:
             
             response = self.create_purchase_with_code('ADMIN10')
             transaction_id = response.data['transaction_id']
-            finalize = self._finalize_purchase(transaction_id)
+            finalize = self.finalize_purchase(transaction_id)
             
             buyer_code = finalize.data['buyer_code']
             purchase = Purchase.objects.get(buyer_code=buyer_code)
