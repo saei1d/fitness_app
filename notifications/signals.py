@@ -3,7 +3,7 @@ import logging
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
-from notifications.utils import bulk_notify, get_all_admins
+from notifications.utils import bulk_notify, get_all_admins, format_price
 
 logger = logging.getLogger(__name__)
 
@@ -50,7 +50,7 @@ def _handle_payment_status(instance, created):
     else:
         title = f"خرید جدید توسط {buyer.full_name or buyer.phone}"
 
-    message = f"پکیج: {package.title} | مبلغ: {instance.final_amount}"
+    message = f"پکیج: {package.title} | مبلغ: {format_price(instance.final_amount)}"
     data = {"purchase_id": instance.pk, "package_id": package.pk}
 
     if owner is not None:
@@ -98,11 +98,12 @@ def _handle_verification_status(instance, created):
         except Exception:
             pass
 
-    title = f"پلن شما فعال شد: {package.title}"
-    message = f"پلن '{package.title}' شما فعال شد. تاریخ انقضا: {expire}"
-    data = {"purchase_id": instance.pk}
+    # Notification for buyer
+    buyer_title = f"پلن شما فعال شد: {package.title}"
+    buyer_message = f"پلن '{package.title}' شما فعال شد. تاریخ انقضا: {expire}"
+    buyer_data = {"purchase_id": instance.pk}
 
-    bulk_notify([buyer], Notification.NotificationType.PLAN_ACTIVATED, title, message, data)
+    bulk_notify([buyer], Notification.NotificationType.PLAN_ACTIVATED, buyer_title, buyer_message, buyer_data)
 
     # Resolve owner
     owner = None
@@ -112,7 +113,11 @@ def _handle_verification_status(instance, created):
         pass
 
     if owner is not None:
-        bulk_notify([owner], Notification.NotificationType.PLAN_ACTIVATED, title, message, data)
+        # Notification for owner
+        owner_title = f"پلن کاربر {buyer.full_name or buyer.phone} توسط شما فعال شد"
+        owner_message = f"پلن '{package.title}' برای {buyer.full_name or buyer.phone} فعال شد."
+        owner_data = {"purchase_id": instance.pk}
+        bulk_notify([owner], Notification.NotificationType.PLAN_ACTIVATED, owner_title, owner_message, owner_data)
 
 
 # ---------------------------------------------------------------------------
@@ -135,7 +140,7 @@ def on_withdraw_request_post_save(sender, instance, created, **kwargs):
 
     owner = instance.user
     title = f"درخواست برداشت از {owner.full_name or owner.phone}"
-    message = f"مبلغ درخواست: {instance.amount} تومان"
+    message = f"مبلغ درخواست: {format_price(instance.amount)}"
     data = {"withdraw_request_id": instance.pk}
 
     bulk_notify(admins, Notification.NotificationType.WITHDRAW_REQUEST, title, message, data)

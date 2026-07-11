@@ -2,15 +2,20 @@ from rest_framework import serializers
 from django.shortcuts import get_object_or_404
 
 from .models import Notification
+from .utils import to_jalali
 
 
 class NotificationSerializer(serializers.ModelSerializer):
     """Read serializer for listing and detail."""
+    created_at_jalali = serializers.SerializerMethodField()
 
     class Meta:
         model = Notification
-        fields = ['id', 'notification_type', 'title', 'message', 'is_read', 'created_at', 'data']
-        read_only_fields = ['id', 'notification_type', 'title', 'message', 'is_read', 'created_at', 'data']
+        fields = ['id', 'notification_type', 'title', 'message', 'is_read', 'created_at', 'created_at_jalali', 'data']
+        read_only_fields = ['id', 'notification_type', 'title', 'message', 'is_read', 'created_at', 'created_at_jalali', 'data']
+
+    def get_created_at_jalali(self, obj):
+        return to_jalali(obj.created_at)
 
 
 class AdminSendNotificationSerializer(serializers.Serializer):

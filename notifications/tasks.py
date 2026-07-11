@@ -3,6 +3,8 @@ from datetime import timedelta
 
 from django.utils import timezone
 
+from notifications.utils import format_price
+
 logger = logging.getLogger(__name__)
 
 
