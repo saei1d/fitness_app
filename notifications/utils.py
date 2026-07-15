@@ -3,12 +3,12 @@ from django.db import models as db_models
 
 
 def format_price(amount):
-    """Format price by removing last two zeros and adding Toman label."""
+    """Format price in Toman with commas."""
     if amount is None:
         return '0 تومان'
     try:
-        # Convert to integer and divide by 100 to remove last two zeros
-        price = int(amount) // 100
+        # Convert to integer (remove decimal places since it's stored as .00)
+        price = int(amount)
         return f"{price:,} تومان"
     except Exception:
         return f"{amount} تومان"
