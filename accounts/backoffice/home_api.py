@@ -96,7 +96,11 @@ class SportGroupPackagesView(APIView):
             # استفاده از related name یا attribute برای گرفتن پکیج‌های گروه
             # Sort packages by order_homepage first (if > 0), then by default
             packages = list(group.packages.all())
-            packages.sort(key=lambda p: (-p.order_homepage if p.order_homepage > 0 else 0, p.id))
+            try:
+                packages.sort(key=lambda p: (-p.order_homepage if p.order_homepage > 0 else 0, p.id))
+            except AttributeError:
+                # If order_homepage field doesn't exist yet (migration not run), use default sorting
+                packages.sort(key=lambda p: p.id)
             gym_packages_map[gym_id].extend(packages)
 
         # واکشی همه‌ی Gymها یک‌جا (برای جلوگیری از N+1)
