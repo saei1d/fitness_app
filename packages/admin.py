@@ -5,7 +5,7 @@ from .models import Package, GroupPackage
 class PackageInline(admin.TabularInline):
     model = Package
     extra = 1
-    fields = ("title", "description", "gender", "price", "duration", "commission_rate")
+    fields = ("title", "description", "gender", "price", "duration", "commission_rate", "order_homepage")
 
 
 @admin.register(GroupPackage)
@@ -22,17 +22,17 @@ class GroupPackageAdmin(admin.ModelAdmin):
 
 @admin.register(Package)
 class PackageAdmin(admin.ModelAdmin):
-    list_display = ("id", "title", "group_package", "gym_name", "gender", "price", "duration", "commission_rate", "purchases_count")
+    list_display = ("id", "title", "group_package", "gym_name", "gender", "price", "duration", "commission_rate", "order_homepage", "purchases_count")
     search_fields = ("title", "description", "group_package__title", "group_package__gym__name")
     list_filter = ("gender", "group_package__gym", "duration")
     readonly_fields = ("purchases_count",)
-    
+
     fieldsets = (
         ("اطلاعات اصلی", {
             "fields": ("group_package", "title", "description")
         }),
         ("جزئیات پکیج", {
-            "fields": ("gender", "price", "duration", "commission_rate")
+            "fields": ("gender", "price", "duration", "commission_rate", "order_homepage")
         }),
         ("آمار", {
             "fields": ("purchases_count",)

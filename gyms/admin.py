@@ -53,7 +53,7 @@ class GymAdminForm(forms.ModelForm):
 @admin.register(Gym)
 class GymAdmin(admin.ModelAdmin):
     form = GymAdminForm
-    list_display = ("id", "name", "owner", "address", "average_rating", "comments", "created_at", "updated_at")
+    list_display = ("id", "name", "owner", "address", "average_rating", "order_homepage", "comments", "created_at", "updated_at")
     list_filter = ("created_at", "updated_at", "average_rating")
     search_fields = ("name", "owner__phone", "address", "description")
     readonly_fields = ("created_at", "updated_at", "average_rating", "comments", "latitude_display", "longitude_display")
@@ -69,7 +69,7 @@ class GymAdmin(admin.ModelAdmin):
             "description": "لطفاً مختصات جغرافیایی را وارد کنید (مثال: Latitude: 35.6892, Longitude: 51.3890)"
         }),
         ("اطلاعات اضافی", {
-            "fields": ("working_hours", "banner", "average_rating", "comments")
+            "fields": ("working_hours", "banner", "average_rating", "comments", "order_homepage")
         }),
         ("تاریخ‌ها", {
             "fields": ("created_at", "updated_at")

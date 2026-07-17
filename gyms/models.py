@@ -24,6 +24,7 @@ class Gym(gis_models.Model):
         blank=True,
         validators=[FileExtensionValidator(allowed_extensions=['jpg', 'jpeg', 'png', 'webp']), validate_banner_size]
     )
+    order_homepage = models.IntegerField(default=0, help_text="Order for homepage display (0 = use default sorting)")
 
     class Meta:
         ordering = ["-created_at"]

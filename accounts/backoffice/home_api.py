@@ -36,10 +36,11 @@ class TopGymsView(APIView):
             group_package__gym=OuterRef('pk')
         ).order_by('price').values('price')[:1]
 
+        # Sort by order_homepage first (if > 0), then by average_rating
         gyms = (
             Gym.objects
-            .annotate(price=Subquery(cheapest_package))  # فیلد price به هر Gym اضافه میشه
-            .order_by('-average_rating')[:10]
+            .annotate(price=Subquery(cheapest_package))
+            .order_by('-order_homepage', '-average_rating')[:10]
         )
 
         data = GymSerializer(gyms, many=True, context={'request': request}).data
@@ -93,8 +94,10 @@ class SportGroupPackagesView(APIView):
                 continue
             gym_ids.add(gym_id)
             # استفاده از related name یا attribute برای گرفتن پکیج‌های گروه
-            for package in group.packages.all():
-                gym_packages_map[gym_id].append(package)
+            # Sort packages by order_homepage first (if > 0), then by default
+            packages = list(group.packages.all())
+            packages.sort(key=lambda p: (-p.order_homepage if p.order_homepage > 0 else 0, p.id))
+            gym_packages_map[gym_id].extend(packages)
 
         # واکشی همه‌ی Gymها یک‌جا (برای جلوگیری از N+1)
         gyms = Gym.objects.filter(id__in=gym_ids)
