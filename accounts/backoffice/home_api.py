@@ -76,16 +76,13 @@ class SportGroupPackagesView(APIView):
             .prefetch_related('packages')
         )
 
-        # اگر رندوم می‌خوایم و دیتابیس بزرگه: بهتره در پایتون رندوم کنیم
         groups = list(groups_qs)
         if not groups:
             return Response([])  # یا می‌تونی fallback بذاری
 
-        random.shuffle(groups)
-        groups = groups[:10]  # محدودسازی بعد از shuffle در پایتون امن‌تر است
-
         # جمع‌آوری پکیج‌ها بر اساس gym_id (مقاوم در برابر gym به صورت id یا آبجکت)
         gym_packages_map = defaultdict(list)  # key = gym_id, value = list of package instances
+        gym_max_order_map = {}  # key = gym_id, value = max order_homepage of packages
         gym_ids = set()
         for group in groups:
             # اگر select_related('gym') انجام شده، group.gym ممکن است آبجکت باشد
@@ -98,9 +95,13 @@ class SportGroupPackagesView(APIView):
             packages = list(group.packages.all())
             try:
                 packages.sort(key=lambda p: (-p.order_homepage if p.order_homepage > 0 else 0, p.id))
+                # Track max order_homepage for this gym
+                max_order = max([p.order_homepage for p in packages if p.order_homepage > 0] or [0])
+                gym_max_order_map[gym_id] = max(gym_max_order_map.get(gym_id, 0), max_order)
             except AttributeError:
                 # If order_homepage field doesn't exist yet (migration not run), use default sorting
                 packages.sort(key=lambda p: p.id)
+                gym_max_order_map[gym_id] = 0
             gym_packages_map[gym_id].extend(packages)
 
         # واکشی همه‌ی Gymها یک‌جا (برای جلوگیری از N+1)
@@ -116,6 +117,16 @@ class SportGroupPackagesView(APIView):
             packages = gym_packages_map.get(gid, [])
             gym_data['packages'] = PackageSerializer(packages, many=True).data
             gyms_data.append(gym_data)
+
+        # Sort gyms by highest order_homepage of their packages, then by gym order_homepage, then random for ties
+        gyms_data.sort(key=lambda g: (
+            -gym_max_order_map.get(g['id'], 0),  # Highest package order_homepage
+            -g.get('order_homepage', 0),  # Gym's own order_homepage
+            hash(str(g['id']))  # Random tiebreaker
+        ))
+
+        # Limit to 10 gyms
+        gyms_data = gyms_data[:10]
 
         return Response(gyms_data)
 
