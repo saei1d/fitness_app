@@ -4,7 +4,7 @@ from rest_framework import status, permissions
 from drf_spectacular.utils import extend_schema
 from django.db import transaction
 from accounts.models import User
-from .models import GymOperator
+from gyms.models import GymOperator
 from .serializers import GymOperatorSerializer, GymOperatorCreateSerializer
 
 
