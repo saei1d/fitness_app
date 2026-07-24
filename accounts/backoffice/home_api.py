@@ -14,6 +14,8 @@ from gyms.models import Gym
 from packages.models import Package
 from django.db.models import Q
 import random
+from trainers.models import Trainer
+from trainers.serializers import TrainerSerializer
 
 
 class GroupPackageWithPackagesSerializer(serializers.ModelSerializer):
@@ -160,5 +162,23 @@ class HomeSearchView(APIView):
             'group_packages': GroupPackageWithPackagesSerializer(groups, many=True).data,
             'packages': PackageSerializer(packages, many=True).data,
         })
+
+
+@extend_schema(
+    tags=['Home'],
+    summary='Top trainers',
+    description='برگرداندن مربی‌ها به ترتیب order_homepage'
+)
+class TopTrainersView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        # Sort by order_homepage first (if > 0), then by average_rating
+        trainers = Trainer.objects.filter(
+            is_active=True
+        ).order_by('-order_homepage', '-average_rating')[:10]
+
+        data = TrainerSerializer(trainers, many=True).data
+        return Response(data)
 
 

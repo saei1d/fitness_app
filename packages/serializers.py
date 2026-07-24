@@ -23,7 +23,7 @@ class PackageSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Package
-        fields = ['id', 'group_package', 'title', 'description', 'gender', 'price', 'duration', 'commission_rate','sessions', 'gym', 'discount',"order_homepage"]
+        fields = ['id', 'group_package', 'title', 'description', 'gender', 'price', 'duration', 'commission_rate','sessions', 'gym', 'discount', 'order_homepage', 'dedicated']
 
     def get_gym(self, obj):
         request = self.context.get('request')

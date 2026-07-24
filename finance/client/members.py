@@ -72,11 +72,11 @@ class GymMemberListView(APIView):
             )
 
         queryset = queryset.order_by(
+            '-purchase_date',
+            '-id',
             'package__group_package__gym_id',
             'user_id',
             '-verified_at',
-            '-purchase_date',
-            '-id',
         )
 
         now = timezone.now()

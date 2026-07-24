@@ -1,6 +1,7 @@
 from django.urls import path
 from .wallet import *
 from .withdraw_request import *
+from .stats import MonthlyStatsAPIView, GymGenderSalesAPIView
 
 
 urlpatterns = [
@@ -33,5 +34,11 @@ urlpatterns = [
     
     # جزئیات درخواست برداشت خاص
     path('withdraw-requests-detail/<int:pk>/', AdminWithdrawRequestDetailView.as_view(), name='admin-withdraw-request-detail'),
+    
+    # آمار ماهانه - باشگاه و مربی برتر
+    path('monthly-stats/', MonthlyStatsAPIView.as_view(), name='admin-monthly-stats'),
+    
+    # آمار فروش بر اساس gender در یک ماه گذشته
+    path('gym-gender-sales/', GymGenderSalesAPIView.as_view(), name='admin-gym-gender-sales'),
 
 ]

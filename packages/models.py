@@ -20,6 +20,7 @@ class Package(models.Model):
     commission_rate = models.FloatField(help_text="Commission rate 0.05 is 5 percent", default=0.05)
     sessions = models.IntegerField(default=0, help_text="Number of sessions")
     order_homepage = models.IntegerField(default=0, help_text="Order for homepage display (0 = use default sorting)")
+    dedicated = models.BooleanField(default=False, help_text="پکیج اختصاصی برای باشگاه")
 
 
 

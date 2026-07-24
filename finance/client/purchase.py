@@ -335,8 +335,8 @@ class VerifyPurchaseView(APIView):
         if not buyer_code:
             return Response({'error': 'buyer_code is required'}, status=400)
 
-        if not (request.user.role == 'owner' or request.user.is_staff or request.user.is_superuser):
-            return Response({'error': 'Only gym owners can verify purchases'}, status=403)
+        if not (request.user.role in ['owner', 'operator'] or request.user.is_staff or request.user.is_superuser):
+            return Response({'error': 'Only gym owners, operators, and admins can verify purchases'}, status=403)
 
         try:
             with transaction.atomic():
@@ -352,8 +352,23 @@ class VerifyPurchaseView(APIView):
                     return Response({'error': 'Purchase not found or already processed'}, status=404)
 
                 is_admin = request.user.is_staff or request.user.is_superuser
-                if not is_admin and purchase.package.group_package.gym.owner != request.user:
-                    return Response({'error': 'This purchase does not belong to your gym'}, status=403)
+                user_role = getattr(request.user, 'role', None)
+                
+                # بررسی دسترسی برای owner
+                if user_role == 'owner':
+                    if purchase.package.group_package.gym.owner != request.user:
+                        return Response({'error': 'This purchase does not belong to your gym'}, status=403)
+                
+                # بررسی دسترسی برای operator
+                elif user_role == 'operator':
+                    from gyms.models import GymOperator
+                    gym = purchase.package.group_package.gym
+                    if not GymOperator.objects.filter(
+                        gym=gym,
+                        operator=request.user,
+                        is_active=True
+                    ).exists():
+                        return Response({'error': 'You are not assigned to this gym'}, status=403)
 
                 # بررسی مهلت ۷ روزه برای وریفای کد (ادمین از این چک معاف است)
                 CODE_EXPIRY_DAYS = 7

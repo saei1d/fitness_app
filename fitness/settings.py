@@ -76,6 +76,7 @@ INSTALLED_APPS = [
     'ticket',
     'discount',
     'notifications',
+    'trainers',
     'corsheaders',
 ]
 
@@ -279,7 +280,7 @@ JAZZMIN_SETTINGS = {
     "navigation_expanded": True,
     "hide_apps": [],
     "hide_models": [],
-    "order_with_respect_to": ["accounts", "gyms", "finance", "packages", "ticket", "interactions", "discount"],
+    "order_with_respect_to": ["accounts", "gyms", "finance", "packages", "ticket", "interactions", "discount", "trainers"],
     "custom_links": {
         "accounts": [{
             "name": "گزارشات کاربران",
@@ -307,6 +308,10 @@ JAZZMIN_SETTINGS = {
         "interactions.Review": "fas fa-star",
         "interactions.Favorite": "fas fa-heart",
         "discount.DiscountCode": "fas fa-tag",
+        "trainers.Trainer": "fas fa-user-ninja",
+        "trainers.TrainerGroupPackage": "fas fa-layer-group",
+        "trainers.TrainerPackage": "fas fa-box",
+        "trainers.TrainerReview": "fas fa-star",
     },
     "default_icon_parents": "fas fa-chevron-circle-right",
     "default_icon_children": "fas fa-circle",

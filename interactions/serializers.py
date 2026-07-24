@@ -72,6 +72,8 @@ class ReviewSerializer(serializers.ModelSerializer):
         if reply_to:
             if user.role != 'owner':
                 raise serializers.ValidationError("فقط صاحب باشگاه می‌تواند پاسخ دهد.")
+            if reply_to.reply_to is not None:
+                raise serializers.ValidationError("فقط می‌توانید به نظرات اصلی پاسخ دهید، نه به پاسخ‌های دیگر.")
             if reply_to.gym.owner != user:
                 raise serializers.ValidationError("شما نمی‌توانید به این نظر پاسخ دهید.")
 

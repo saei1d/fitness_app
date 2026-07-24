@@ -3,7 +3,7 @@ from django.utils.safestring import mark_safe
 from django.contrib.gis.geos import Point
 from django import forms
 from django.db import transaction
-from .models import Gym, GymImage
+from .models import Gym, GymImage, GymOperator
 from .services import promote_gym_owner
 
 
@@ -295,3 +295,24 @@ class WithdrawRequestAdmin(admin.ModelAdmin):
         from django.utils import timezone
         queryset.update(status='rejected', processed_by=request.user, processed_at=timezone.now())
     reject_requests.short_description = "رد درخواست‌های انتخاب شده"
+
+
+@admin.register(GymOperator)
+class GymOperatorAdmin(admin.ModelAdmin):
+    list_display = ("id", "gym", "operator", "operator_phone", "is_active", "created_at")
+    list_filter = ("is_active", "created_at", "gym")
+    search_fields = ("operator__phone", "operator__full_name", "gym__name")
+    readonly_fields = ("created_at",)
+    
+    fieldsets = (
+        ("اطلاعات متصدی", {
+            "fields": ("gym", "operator", "is_active")
+        }),
+        ("تاریخ", {
+            "fields": ("created_at",)
+        }),
+    )
+    
+    def operator_phone(self, obj):
+        return obj.operator.phone
+    operator_phone.short_description = "شماره تلفن"

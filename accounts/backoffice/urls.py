@@ -1,7 +1,7 @@
 from django.urls import path
 from .staffuser import UserStaff
 from .users_list import UsersList
-from .home_api import TopGymsView, SportGroupPackagesView, HomeSearchView
+from .home_api import TopGymsView, SportGroupPackagesView, HomeSearchView, TopTrainersView
 
 urlpatterns = [
     path('make-this-user-staff/', UserStaff.as_view(), name='staffuser'),
@@ -9,4 +9,5 @@ urlpatterns = [
     path('home/top-gyms/', TopGymsView.as_view(), name='home-top-gyms'),
     path('home/sport-groups/', SportGroupPackagesView.as_view(), name='home-sport-groups'),
     path('home/search/', HomeSearchView.as_view(), name='home-search'),
+    path('home/top-trainers/', TopTrainersView.as_view(), name='home-top-trainers'),
 ]

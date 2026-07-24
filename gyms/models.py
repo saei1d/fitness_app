@@ -66,3 +66,19 @@ class GymImage(models.Model):
 
     def __str__(self):
         return f"Image {self.id} for {self.gym.name}"
+
+
+class GymOperator(models.Model):
+    """مدل برای ارتباط متصدی با باشگاه"""
+    gym = models.ForeignKey(Gym, on_delete=models.CASCADE, related_name='operators')
+    operator = models.ForeignKey(User, on_delete=models.CASCADE, related_name='assigned_gyms')
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        unique_together = ['gym', 'operator']
+        verbose_name = "Gym Operator"
+        verbose_name_plural = "Gym Operators"
+    
+    def __str__(self):
+        return f"{self.operator.full_name or self.operator.phone} - {self.gym.name}"

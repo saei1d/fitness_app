@@ -37,12 +37,17 @@ class ReviewViewSet(viewsets.ModelViewSet):
         return ReviewSerializer
 
     def get_queryset(self):
-        """نمایش فقط نظرات سالم و بدون بن"""
-        return Review.objects.filter(
+        """نمایش فقط نظرات سالم و بدون بن (برای کاربران عادی)"""
+        queryset = Review.objects.filter(
             blocked=False,
-            deleted=False,
-            user__is_banned_from_reviews=False
+            deleted=False
         ).select_related('user', 'gym', 'reply_to')
+
+        # فقط برای کاربران عادی، نظرات کاربران بن‌شده را فیلتر کن
+        if not self.request.user.is_staff:
+            queryset = queryset.filter(user__is_banned_from_reviews=False)
+
+        return queryset
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
