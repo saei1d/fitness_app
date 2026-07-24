@@ -10,14 +10,6 @@ from .models import Purchase, Wallet, AdminWallet, Transaction, WithdrawRequest
 User = get_user_model()
 
 
-@admin.register(Purchase)
-class PurchaseAdmin(admin.ModelAdmin):
-    list_display = ('id', 'user', 'package', 'payment_status', 'verification_status', 'total_amount', 'purchase_date')
-    list_filter = ('payment_status', 'verification_status', 'purchase_date')
-    search_fields = ('user__phone', 'user__full_name', 'package__title', 'buyer_code')
-    readonly_fields = ('purchase_date', 'verified_at')
-
-
 @admin.register(Wallet)
 class WalletAdmin(admin.ModelAdmin):
     list_display = ('owner', 'balance', 'updated_at')
