@@ -3,7 +3,6 @@ from rest_framework import viewsets, permissions, status
 from rest_framework.response import Response
 from rest_framework.decorators import action
 from rest_framework.filters import SearchFilter, OrderingFilter
-from django_filters.rest_framework import DjangoFilterBackend
 from .models import Trainer, TrainerGroupPackage, TrainerPackage, TrainerReview
 from .serializers import (
     TrainerSerializer,
@@ -28,7 +27,7 @@ class TrainerViewSet(viewsets.ModelViewSet):
     """ViewSet برای مدیریت مربی‌ها"""
     queryset = Trainer.objects.filter(is_active=True).prefetch_related('active_gyms')
     permission_classes = [IsAdminOrReadOnly]
-    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    filter_backends = [SearchFilter, OrderingFilter]
     search_fields = ['name', 'phone', 'bio']
     ordering_fields = ['name', 'average_rating', 'reviews_count', 'created_at']
     filterset_fields = ['active_gyms', 'specializations']
@@ -79,7 +78,7 @@ class TrainerGroupPackageViewSet(viewsets.ModelViewSet):
     queryset = TrainerGroupPackage.objects.all().select_related('trainer')
     serializer_class = TrainerGroupPackageSerializer
     permission_classes = [IsAdminOrReadOnly]
-    filter_backends = [DjangoFilterBackend, SearchFilter]
+    filter_backends = [SearchFilter]
     search_fields = ['title', 'trainer__name']
     filterset_fields = ['trainer']
     
@@ -95,7 +94,7 @@ class TrainerPackageViewSet(viewsets.ModelViewSet):
     )
     serializer_class = TrainerPackageSerializer
     permission_classes = [IsAdminOrReadOnly]
-    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    filter_backends = [SearchFilter, OrderingFilter]
     search_fields = ['title', 'group_package__title', 'group_package__trainer__name']
     ordering_fields = ['price', 'duration', 'sessions', 'order_homepage']
     filterset_fields = ['group_package', 'gender']
@@ -112,7 +111,7 @@ class TrainerReviewViewSet(viewsets.ModelViewSet):
         blocked=False
     ).select_related('user', 'trainer', 'reply_to')
     permission_classes = [permissions.IsAuthenticated]
-    filter_backends = [DjangoFilterBackend, OrderingFilter]
+    filter_backends = [OrderingFilter]
     ordering_fields = ['created_at', 'rating']
     filterset_fields = ['trainer', 'rating']
     
