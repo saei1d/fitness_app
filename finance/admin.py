@@ -2,73 +2,8 @@ from django.contrib import admin
 from django.urls import path
 from django.http import JsonResponse
 from django.contrib.auth import get_user_model
-from django.db import transaction
-from django.utils import timezone
-from django.db.models import F
-from .models import Purchase, Wallet, AdminWallet, Transaction, WithdrawRequest
 
 User = get_user_model()
-
-
-@admin.register(Wallet)
-class WalletAdmin(admin.ModelAdmin):
-    list_display = ('owner', 'balance', 'updated_at')
-    readonly_fields = ('updated_at',)
-
-
-@admin.register(AdminWallet)
-class AdminWalletAdmin(admin.ModelAdmin):
-    list_display = ('balance', 'updated_at')
-    readonly_fields = ('updated_at',)
-
-
-@admin.register(Transaction)
-class TransactionAdmin(admin.ModelAdmin):
-    list_display = ('id', 'type', 'amount', 'status', 'wallet', 'admin_wallet', 'created_at')
-    list_filter = ('type', 'status', 'created_at')
-    readonly_fields = ('created_at',)
-
-
-@admin.register(WithdrawRequest)
-class WithdrawRequestAdmin(admin.ModelAdmin):
-    list_display = ('id', 'user', 'amount', 'status', 'created_at', 'processed_at')
-    list_filter = ('status', 'created_at')
-    readonly_fields = ('created_at', 'processed_at', 'completed_at')
-    
-    def save_model(self, request, obj, form, change):
-        with transaction.atomic():
-            # اگر درخواست جدید نیست و status به completed تغییر کرده است
-            if change:
-                try:
-                    old_obj = WithdrawRequest.objects.get(pk=obj.pk)
-                    if old_obj.status != 'completed' and obj.status == 'completed':
-                        # بررسی موجودی کافی در کیف پول
-                        if obj.wallet.balance < obj.amount:
-                            raise ValueError('موجودی کیف پول کافی نیست')
-                        
-                        # کم کردن موجودی کیف پول
-                        Wallet.objects.filter(pk=obj.wallet.pk).update(
-                            balance=F('balance') - obj.amount
-                        )
-                        
-                        # ثبت تراکنش برداشت
-                        Transaction.objects.create(
-                            wallet=obj.wallet,
-                            amount=obj.amount,
-                            type='debit',
-                            status='completed',
-                            description=f'برداشت درخواست #{obj.id}',
-                            payment_id=None
-                        )
-                        
-                        # تنظیم completed_at
-                        obj.completed_at = timezone.now()
-                        obj.processed_at = timezone.now()
-                        obj.processed_by = request.user
-                except WithdrawRequest.DoesNotExist:
-                    pass
-            
-            super().save_model(request, obj, form, change)
 
 
 def monthly_stats_admin_view(request):

@@ -295,6 +295,46 @@ class WithdrawRequestAdmin(admin.ModelAdmin):
         from django.utils import timezone
         queryset.update(status='rejected', processed_by=request.user, processed_at=timezone.now())
     reject_requests.short_description = "رد درخواست‌های انتخاب شده"
+    
+    def save_model(self, request, obj, form, change):
+        from django.db import transaction
+        from django.utils import timezone
+        from django.db.models import F
+        from finance.models import Wallet, Transaction, WithdrawRequest
+        
+        with transaction.atomic():
+            # اگر درخواست جدید نیست و status به completed تغییر کرده است
+            if change:
+                try:
+                    old_obj = WithdrawRequest.objects.get(pk=obj.pk)
+                    if old_obj.status != 'completed' and obj.status == 'completed':
+                        # بررسی موجودی کافی در کیف پول
+                        if obj.wallet.balance < obj.amount:
+                            raise ValueError('موجودی کیف پول کافی نیست')
+                        
+                        # کم کردن موجودی کیف پول
+                        Wallet.objects.filter(pk=obj.wallet.pk).update(
+                            balance=F('balance') - obj.amount
+                        )
+                        
+                        # ثبت تراکنش برداشت
+                        Transaction.objects.create(
+                            wallet=obj.wallet,
+                            amount=obj.amount,
+                            type='debit',
+                            status='completed',
+                            description=f'برداشت درخواست #{obj.id}',
+                            payment_id=None
+                        )
+                        
+                        # تنظیم completed_at
+                        obj.completed_at = timezone.now()
+                        obj.processed_at = timezone.now()
+                        obj.processed_by = request.user
+                except WithdrawRequest.DoesNotExist:
+                    pass
+            
+            super().save_model(request, obj, form, change)
 
 
 @admin.register(GymOperator)
