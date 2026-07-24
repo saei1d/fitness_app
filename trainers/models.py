@@ -94,17 +94,24 @@ class Trainer(models.Model):
 
 
 class TrainerGroupPackage(models.Model):
-    """گروه پکیج مربی (مشابه GroupPackage برای باشگاه)"""
-    trainer = models.ForeignKey(Trainer, on_delete=models.CASCADE, related_name="group_packages")
+    """گروه پکیج مربی"""
+    trainer = models.ForeignKey(
+        Trainer,
+        on_delete=models.CASCADE,
+        related_name="group_packages"
+    )
     title = models.CharField(max_length=100)
     description = models.TextField(blank=True)
-    
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
     def __str__(self):
         return f"{self.title} - {self.trainer.name}"
 
 
 class TrainerPackage(models.Model):
-    """پکیج مربی (مشابه Package برای باشگاه)"""
+    """پکیج مربی"""
     group_package = models.ForeignKey(
         TrainerGroupPackage,
         on_delete=models.CASCADE,
@@ -114,10 +121,18 @@ class TrainerPackage(models.Model):
     description = models.TextField(blank=True)
     gender = models.CharField(
         max_length=100,
-        choices=[('male', 'Male'), ('female', 'Female')]
+        choices=[
+            ('male', 'Male'),
+            ('female', 'Female')
+        ]
     )
-    price = models.DecimalField(max_digits=15, decimal_places=2)
-    duration = models.IntegerField(help_text="Duration in days")
+    price = models.DecimalField(
+        max_digits=15,
+        decimal_places=2
+    )
+    duration = models.IntegerField(
+        help_text="Duration in days"
+    )
     commission_rate = models.FloatField(
         help_text="Commission rate 0.05 is 5 percent",
         default=0.05
@@ -130,14 +145,26 @@ class TrainerPackage(models.Model):
         default=0,
         help_text="Order for homepage display (0 = use default sorting)"
     )
-    
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
     def __str__(self):
         gender_display = self.get_gender_display()
-        short_desc = (self.description[:50] + '...') if len(self.description) > 50 else self.description
+        short_desc = (
+            (self.description[:50] + '...')
+            if len(self.description) > 50
+            else self.description
+        )
         trainer_name = self.group_package.trainer.name
-        return f"{self.title} ({gender_display}) - {trainer_name} - {short_desc}"
+
+        return (
+            f"{self.title} ({gender_display}) - "
+            f"{trainer_name} - {short_desc}"
+        )
 
 
+        
 class TrainerReview(models.Model):
     """نظرات شاگردان برای مربی"""
     trainer = models.ForeignKey(

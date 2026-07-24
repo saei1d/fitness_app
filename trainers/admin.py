@@ -14,18 +14,51 @@ class TrainerAdmin(admin.ModelAdmin):
 
 @admin.register(TrainerGroupPackage)
 class TrainerGroupPackageAdmin(admin.ModelAdmin):
-    list_display = ['title', 'trainer', 'created_at']
-    list_filter = ['created_at']
-    search_fields = ['title', 'trainer__name']
+    list_display = [
+        'title',
+        'trainer',
+        'created_at',
+        'updated_at',
+    ]
+    list_filter = [
+        'created_at',
+    ]
+    search_fields = [
+        'title',
+        'trainer__name',
+    ]
+    readonly_fields = [
+        'created_at',
+        'updated_at',
+    ]
 
 
 @admin.register(TrainerPackage)
 class TrainerPackageAdmin(admin.ModelAdmin):
-    list_display = ['title', 'group_package', 'gender', 'price', 'duration', 'sessions', 'order_homepage']
-    list_filter = ['gender', 'created_at']
-    search_fields = ['title', 'group_package__title', 'group_package__trainer__name']
-
-
+    list_display = [
+        'title',
+        'group_package',
+        'gender',
+        'price',
+        'duration',
+        'sessions',
+        'order_homepage',
+        'created_at',
+    ]
+    list_filter = [
+        'gender',
+        'created_at',
+    ]
+    search_fields = [
+        'title',
+        'group_package__title',
+        'group_package__trainer__name',
+    ]
+    readonly_fields = [
+        'created_at',
+        'updated_at',
+    ]
+    
 @admin.register(TrainerReview)
 class TrainerReviewAdmin(admin.ModelAdmin):
     list_display = ['trainer', 'user', 'rating', 'buyer', 'is_reported', 'blocked', 'deleted', 'created_at']
