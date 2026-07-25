@@ -23,7 +23,7 @@ class Trainer(models.Model):
     # تخصص‌ها
     specializations = models.JSONField(
         default=list,
-        help_text="لیست تخصص‌ها مثل: ['بدنسازی', 'کراسفیت', 'TRX']"
+        help_text="لیست تخصص‌ها مثل: ["بدنسازی", "کراسفیت"]"
     )
     teaching_experience_years = models.PositiveIntegerField(
         default=0,
@@ -31,11 +31,11 @@ class Trainer(models.Model):
     )
     certifications = models.JSONField(
         default=list,
-        help_text="لیست مدارک و گواهینامه‌ها مثل: ['مربیگری درجه ۱', 'مربیگری درجه ۲']"
+        help_text="لیست مدارک و گواهینامه‌ها مثل: ["مربیگری درجه ۱", "مربیگری درجه ۲"]"
     )
     special_expertise = models.JSONField(
         default=list,
-        help_text="تخصص‌های ویژه مثل: ['کاهش وزن', 'حجم', 'توانبخشی']"
+        help_text="تخصص‌های ویژه مثل: ["کاهش وزن", "حجم", "توانبخشی"]"
     )
     
     # باشگاه‌های فعال
