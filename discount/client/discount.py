@@ -239,7 +239,7 @@ class CheckDiscountCodeView(APIView):
             return Response({'error': 'کد تخفیف معتبر نیست یا ظرفیت آن تمام شده است', 'is_valid': False}, status=status.HTTP_200_OK)
 
         user = request.user
-        gym = package.group_package.gym
+        gym = package.gym
 
         # Check if discount applies to this gym
         if discount.gym and discount.gym_id != gym.id:

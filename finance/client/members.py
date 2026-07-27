@@ -26,16 +26,16 @@ class GymMemberListView(APIView):
         user = request.user
         queryset = Purchase.objects.select_related(
             'user',
-            'package__group_package__gym',
+            'package__gym',
             'verified_by',
         )
 
         if not (user.is_staff or getattr(user, 'role', None) == 'admin'):
-            queryset = queryset.filter(package__group_package__gym__owner=user)
+            queryset = queryset.filter(package__gym__owner=user)
 
         gym_id = request.query_params.get('gym_id')
         if gym_id:
-            queryset = queryset.filter(package__group_package__gym_id=gym_id)
+            queryset = queryset.filter(package__gym_id=gym_id)
 
         payment_status = request.query_params.get('payment_status')
         if payment_status:
@@ -67,14 +67,14 @@ class GymMemberListView(APIView):
                 Q(user__phone__icontains=search)
                 | Q(user__full_name__icontains=search)
                 | Q(package__title__icontains=search)
-                | Q(package__group_package__gym__name__icontains=search)
+                | Q(package__gym__name__icontains=search)
                 | Q(buyer_code__icontains=search)
             )
 
         queryset = queryset.order_by(
             '-purchase_date',
             '-id',
-            'package__group_package__gym_id',
+            'package__gym_id',
             'user_id',
             '-verified_at',
         )
@@ -82,7 +82,7 @@ class GymMemberListView(APIView):
         now = timezone.now()
         grouped_memberships = {}
         for purchase in queryset:
-            key = (purchase.user_id, purchase.package.group_package.gym_id)
+            key = (purchase.user_id, purchase.package.gym_id)
             grouped_memberships.setdefault(key, []).append(purchase)
 
         def is_active_membership(purchase):

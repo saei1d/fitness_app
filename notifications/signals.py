@@ -32,11 +32,11 @@ def _handle_payment_status(instance, created):
     ).exists():
         return
 
-    # Resolve owner via purchase.package.group_package.gym.owner
+    # Resolve owner via purchase.package.gym.owner
     owner = None
     gym = None
     try:
-        gym = instance.package.group_package.gym
+        gym = instance.package.gym
         owner = gym.owner
     except Exception:
         # Incomplete chain — fall back to admin-only notification (Requirement 2.4)
@@ -108,7 +108,7 @@ def _handle_verification_status(instance, created):
     # Resolve owner
     owner = None
     try:
-        owner = instance.package.group_package.gym.owner
+        owner = instance.package.gym.owner
     except Exception:
         pass
 

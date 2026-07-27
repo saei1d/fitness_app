@@ -1,7 +1,5 @@
 from rest_framework import serializers
 from .models import GymImage, Gym
-from django.contrib.gis.geos import Point
-from .models import Gym
 from accounts.serializers import UserDetailSerializer
 from django.utils import timezone
 from discount.models import *
@@ -41,10 +39,6 @@ class GymSerializer(serializers.ModelSerializer):
     price = serializers.SerializerMethodField()
     max_discount = serializers.SerializerMethodField()  # فیلد جدید برای بیشترین تخفیف    owner = serializers.CharField(write_only=True)
     owner_data = UserDetailSerializer(source='owner', read_only=True)
-    latitude = serializers.SerializerMethodField()
-    longitude = serializers.SerializerMethodField()
-    latitude_input = serializers.FloatField(write_only=True, required=False)
-    longitude_input = serializers.FloatField(write_only=True, required=False)
     images = serializers.SerializerMethodField()
     package = serializers.SerializerMethodField()
     distance_meters = serializers.SerializerMethodField(read_only=True)
@@ -56,7 +50,6 @@ class GymSerializer(serializers.ModelSerializer):
         fields = [
             "id", "owner", "owner_data", "name", "description", "address",
             "working_hours", "banner", "latitude", "longitude",
-            "latitude_input", "longitude_input",
             "comments", "average_rating", "price","max_discount","images", "package","distance_meters"
         ]
 
@@ -81,17 +74,9 @@ class GymSerializer(serializers.ModelSerializer):
                 })
         return image_urls
     
-    def get_latitude(self, obj):
-        """برگرداندن عرض جغرافیایی از location"""
-        return float(obj.latitude) if obj.latitude else None
-    
-    def get_longitude(self, obj):
-        """برگرداندن طول جغرافیایی از location"""
-        return float(obj.longitude) if obj.longitude else None
-    
     def get_distance_meters(self, obj):
         if hasattr(obj, 'distance') and obj.distance:
-            return round(obj.distance.m, 2)  # دو رقم اعشار برای نمایش تمیزتر
+            return round(obj.distance, 2)  # دو رقم اعشار برای نمایش تمیزتر
         return None
     
     def get_package(self, obj):
@@ -124,7 +109,7 @@ class GymSerializer(serializers.ModelSerializer):
 
         # فیلتر کردن تخفیف‌های پکیج فعال و معتبر برای این باشگاه
         package_discounts = PackageDiscount.objects.filter(
-            package__group_package__gym=obj,
+            package__gym=obj,
             is_active=True,
         ).filter(
             models.Q(start_date__isnull=True) | models.Q(start_date__lte=now),
@@ -153,16 +138,3 @@ class GymSerializer(serializers.ModelSerializer):
                 }
 
         return max_discount
-    def create(self, validated_data):
-        latitude = validated_data.pop("latitude_input", None)
-        longitude = validated_data.pop("longitude_input", None)
-        if latitude is not None and longitude is not None:
-            validated_data["location"] = Point(float(longitude), float(latitude), srid=4326)
-        return super().create(validated_data)
-
-    def update(self, instance, validated_data):
-        latitude = validated_data.pop("latitude_input", None)
-        longitude = validated_data.pop("longitude_input", None)
-        if latitude is not None and longitude is not None:
-            validated_data["location"] = Point(float(longitude), float(latitude), srid=4326)
-        return super().update(instance, validated_data)

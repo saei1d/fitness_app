@@ -89,14 +89,11 @@ class TrainerDetailSerializer(serializers.ModelSerializer):
 
 class TrainerGroupPackageSerializer(serializers.ModelSerializer):
     """Serializer برای گروه پکیج مربی"""
-    trainer_name = serializers.CharField(source='trainer.name', read_only=True)
     
     class Meta:
         model = TrainerGroupPackage
         fields = [
             'id',
-            'trainer',
-            'trainer_name',
             'title',
             'description',
         ]
@@ -105,16 +102,17 @@ class TrainerGroupPackageSerializer(serializers.ModelSerializer):
 
 class TrainerPackageSerializer(serializers.ModelSerializer):
     """Serializer برای پکیج مربی"""
-    trainer_name = serializers.CharField(source='group_package.trainer.name', read_only=True)
+    trainer_name = serializers.CharField(source='trainer.name', read_only=True)
     group_package_title = serializers.CharField(source='group_package.title', read_only=True)
     
     class Meta:
         model = TrainerPackage
         fields = [
             'id',
+            'trainer',
+            'trainer_name',
             'group_package',
             'group_package_title',
-            'trainer_name',
             'title',
             'description',
             'gender',

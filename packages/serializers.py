@@ -14,7 +14,7 @@ class GymSimpleSerializer(serializers.ModelSerializer):
 class GroupPackageSerializer(serializers.ModelSerializer):
     class Meta:
         model = GroupPackage
-        fields = ['id', 'gym', 'title', 'description']
+        fields = ['id', 'title', 'description']
 
 
 class PackageSerializer(serializers.ModelSerializer):
@@ -27,9 +27,9 @@ class PackageSerializer(serializers.ModelSerializer):
 
     def get_gym(self, obj):
         request = self.context.get('request')
-        gym_data = GymSimpleSerializer(obj.group_package.gym).data
-        if obj.group_package.gym.banner and hasattr(obj.group_package.gym.banner, 'url'):
-            url = obj.group_package.gym.banner.url
+        gym_data = GymSimpleSerializer(obj.gym).data
+        if obj.gym.banner and hasattr(obj.gym.banner, 'url'):
+            url = obj.gym.banner.url
             if request:
                 url = request.build_absolute_uri(url)
             gym_data['banner'] = url

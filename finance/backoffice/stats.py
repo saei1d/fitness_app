@@ -21,8 +21,8 @@ class MonthlyStatsAPIView(APIView):
             purchase_date__month=current_month,
             purchase_date__year=current_year
         ).values(
-            'package__group_package__gym__id',
-            'package__group_package__gym__name'
+            'package__gym__id',
+            'package__gym__name'
         ).annotate(
             total_sales=Sum('final_amount'),
             total_count=Count('id')
@@ -55,19 +55,19 @@ class GymGenderSalesAPIView(APIView):
             payment_status='paid',
             purchase_date__gte=one_month_ago
         ).values(
-            'package__group_package__gym__id',
-            'package__group_package__gym__name',
+            'package__gym__id',
+            'package__gym__name',
             'package__gender'
         ).annotate(
             total_sales=Sum('final_amount'),
             total_count=Count('id')
-        ).order_by('package__group_package__gym__id', 'package__gender')
+        ).order_by('package__gym__id', 'package__gender')
         
         # گروه‌بندی نتایج بر اساس باشگاه
         result = {}
         for stat in gym_gender_stats:
-            gym_id = stat['package__group_package__gym__id']
-            gym_name = stat['package__group_package__gym__name']
+            gym_id = stat['package__gym__id']
+            gym_name = stat['package__gym__name']
             gender = stat['package__gender']
             
             if gym_id not in result:

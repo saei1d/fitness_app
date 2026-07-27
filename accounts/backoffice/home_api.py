@@ -35,7 +35,7 @@ class TopGymsView(APIView):
     def get(self, request):
         # ساب‌کوئری برای پیدا کردن کمترین قیمت پکیج هر باشگاه
         cheapest_package = Package.objects.filter(
-            group_package__gym=OuterRef('pk')
+            gym=OuterRef('pk')
         ).order_by('price').values('price')[:1]
 
         # Sort by order_homepage first (if > 0), then by average_rating
@@ -154,7 +154,7 @@ class HomeSearchView(APIView):
         packages = (
             Package.objects
             .filter(title__icontains=q)
-            .select_related('group_package', 'group_package__gym')[:5]
+            .select_related('gym', 'group_package')[:5]
         )
 
         return Response({

@@ -39,7 +39,8 @@ class GymAdminTests(TestCase):
         gym = Gym(
             owner=self.customer,
             name="Test Gym",
-            location=Point(51.3890, 35.6892, srid=4326),
+            latitude=35.6892,
+            longitude=51.3890,
         )
 
         admin = GymAdmin(Gym, AdminSite())

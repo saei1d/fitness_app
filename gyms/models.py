@@ -1,17 +1,17 @@
 from django.conf import settings
 from django.db import models
-from django.contrib.gis.db import models as gis_models
 from django.core.validators import FileExtensionValidator
 from accounts.models import User
 import os
 from django.utils.text import slugify
 from .file_validators import validate_banner_size, validate_gym_image_size
 
-class Gym(gis_models.Model):
+class Gym(models.Model):
     owner = models.ForeignKey(User, on_delete=models.CASCADE)
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True)
-    location = gis_models.PointField(srid=4326)
+    latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True, help_text="Latitude coordinate")
+    longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True, help_text="Longitude coordinate")
     address = models.CharField(max_length=512, blank=True)
     working_hours = models.JSONField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -33,14 +33,6 @@ class Gym(gis_models.Model):
 
     def __str__(self):
         return f"{self.name} (owner={self.owner})"
-
-    @property
-    def latitude(self):
-        return self.location.y if self.location else None
-
-    @property
-    def longitude(self):
-        return self.location.x if self.location else None
 
 
 

@@ -18,7 +18,7 @@ class IsGymOperator(permissions.BasePermission):
         if hasattr(obj, 'gym'):
             gym = obj.gym
         elif hasattr(obj, 'package'):
-            gym = obj.package.group_package.gym
+            gym = obj.package.gym
         elif hasattr(obj, 'group_package'):
             gym = obj.group_package.gym
         else:
@@ -49,7 +49,7 @@ class IsGymOperatorOrOwner(permissions.BasePermission):
             if hasattr(obj, 'gym'):
                 return obj.gym.owner == request.user
             elif hasattr(obj, 'package'):
-                return obj.package.group_package.gym.owner == request.user
+                return obj.package.gym.owner == request.user
             elif hasattr(obj, 'group_package'):
                 return obj.group_package.gym.owner == request.user
             return False
@@ -61,7 +61,7 @@ class IsGymOperatorOrOwner(permissions.BasePermission):
             if hasattr(obj, 'gym'):
                 gym = obj.gym
             elif hasattr(obj, 'package'):
-                gym = obj.package.group_package.gym
+                gym = obj.package.gym
             elif hasattr(obj, 'group_package'):
                 gym = obj.group_package.gym
             else:

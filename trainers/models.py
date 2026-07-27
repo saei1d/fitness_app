@@ -23,7 +23,7 @@ class Trainer(models.Model):
     # تخصص‌ها
     specializations = models.JSONField(
         default=list,
-        help_text="لیست تخصص‌ها مثل: ["بدنسازی", "کراسفیت"]"
+        help_text="لیست تخصص‌ها مثل: [\"بدنسازی\", \"کراسفیت\"]"
     )
     teaching_experience_years = models.PositiveIntegerField(
         default=0,
@@ -31,11 +31,11 @@ class Trainer(models.Model):
     )
     certifications = models.JSONField(
         default=list,
-        help_text="لیست مدارک و گواهینامه‌ها مثل: ["مربیگری درجه ۱", "مربیگری درجه ۲"]"
+        help_text="لیست مدارک و گواهینامه‌ها مثل: [\"مربیگری درجه 1\", \"مربیگری درجه 2\"]"
     )
     special_expertise = models.JSONField(
         default=list,
-        help_text="تخصص‌های ویژه مثل: ["کاهش وزن", "حجم", "توانبخشی"]"
+        help_text="تخصص‌های ویژه مثل: [\"کاهش وزن\", \"حجم\", \"توانبخشی\"]"
     )
     
     # باشگاه‌های فعال
@@ -95,11 +95,6 @@ class Trainer(models.Model):
 
 class TrainerGroupPackage(models.Model):
     """گروه پکیج مربی"""
-    trainer = models.ForeignKey(
-        Trainer,
-        on_delete=models.CASCADE,
-        related_name="group_packages"
-    )
     title = models.CharField(max_length=100)
     description = models.TextField(blank=True)
 
@@ -107,11 +102,16 @@ class TrainerGroupPackage(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f"{self.title} - {self.trainer.name}"
+        return self.title
 
 
 class TrainerPackage(models.Model):
     """پکیج مربی"""
+    trainer = models.ForeignKey(
+        Trainer,
+        on_delete=models.CASCADE,
+        related_name="packages"
+    )
     group_package = models.ForeignKey(
         TrainerGroupPackage,
         on_delete=models.CASCADE,
@@ -156,11 +156,9 @@ class TrainerPackage(models.Model):
             if len(self.description) > 50
             else self.description
         )
-        trainer_name = self.group_package.trainer.name
-
         return (
             f"{self.title} ({gender_display}) - "
-            f"{trainer_name} - {short_desc}"
+            f"{self.trainer.name} - {short_desc}"
         )
 
 

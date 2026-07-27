@@ -22,7 +22,7 @@ class DiscountCodeAdmin(admin.ModelAdmin):
         form = super().get_form(request, obj, **kwargs)
         if obj and obj.gym:
             from packages.models import Package
-            form.base_fields['packages'].queryset = Package.objects.filter(group_package__gym=obj.gym)
+            form.base_fields['packages'].queryset = Package.objects.filter(gym=obj.gym)
         return form
     
     fieldsets = (
@@ -72,7 +72,7 @@ class DiscountUsageAdmin(admin.ModelAdmin):
 class PackageDiscountAdmin(admin.ModelAdmin):
     list_display = ('id', 'package', 'discount_type', 'value', 'source_type', 'is_active', 'is_valid_display', 'created_at')
     list_filter = ('discount_type', 'source_type', 'is_active', 'created_at')
-    search_fields = ('package__title', 'package__group_package__gym__name')
+    search_fields = ('package__title', 'package__gym__name')
     readonly_fields = ('created_at', 'updated_at', 'is_valid_display')
     
     fieldsets = (

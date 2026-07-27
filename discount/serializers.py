@@ -99,7 +99,7 @@ class DiscountCodeSerializer(serializers.ModelSerializer):
             
             # All packages must belong to the gym
             for pkg in packages:
-                if pkg.group_package.gym != gym:
+                if pkg.gym != gym:
                     raise serializers.ValidationError("تمام پکیج‌ها باید متعلق به باشگاه انتخاب‌شده باشند")
 
         # If source_type is admin, gym must be null (by business rule); if club, gym required
@@ -111,7 +111,7 @@ class DiscountCodeSerializer(serializers.ModelSerializer):
         # If packages are selected and gym is set, packages must belong to gym
         if gym and packages:
             for pkg in packages:
-                if pkg.group_package.gym != gym:
+                if pkg.gym != gym:
                     raise serializers.ValidationError("تمام پکیج‌ها باید متعلق به باشگاه انتخاب‌شده باشند")
 
         return attrs
@@ -193,7 +193,7 @@ class PackageDiscountSerializer(serializers.ModelSerializer):
         # Owners constraints
         if not user.is_staff and getattr(user, 'role', None) == 'owner':
             # Owner can only work with packages from their own gym
-            if package.group_package.gym.owner != user:
+            if package.gym.owner != user:
                 raise serializers.ValidationError("شما فقط می‌توانید برای پکیج‌های باشگاه خودتان تخفیف بسازید/ویرایش کنید")
 
             # Owner can only use club source

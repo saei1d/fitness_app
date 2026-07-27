@@ -2,10 +2,10 @@ from drf_spectacular.utils import extend_schema
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status, permissions
-from django.contrib.gis.db.models.functions import Distance
-from django.contrib.gis.geos import Point
 from ..models import Gym
 from ..serializers import GymSerializer
+from django.db.models import ExpressionWrapper, FloatField
+from django.db.models.functions import ACos, Cos, Radians, Sin
 
 
 @extend_schema(tags=['nearest_gym'])
@@ -20,16 +20,21 @@ class NearestGymsView(APIView):
     def post(self, request, *args, **kwargs):
         try:
             # دریافت مختصات کاربر از بدنه درخواست
-            latitude = float(request.data.get('latitude'))
-            longitude = float(request.data.get('longitude'))
+            user_lat = float(request.data.get('latitude'))
+            user_lon = float(request.data.get('longitude'))
 
-            # ساخت نقطه جغرافیایی برای موقعیت کاربر
-            user_location = Point(longitude, latitude, srid=4326)
-
-            # پیدا کردن نزدیک‌ترین باشگاه‌ها
+            # محاسبه فاصله با استفاده از فرمول Haversine در SQL
+            # فرمول: 6371 * ACOS(COS(RADIANS(lat1)) * COS(RADIANS(lat2)) * COS(RADIANS(lon2) - RADIANS(lon1)) + SIN(RADIANS(lat1)) * SIN(RADIANS(lat2)))
             nearest_gyms = Gym.objects.annotate(
-                distance=Distance('location', user_location)
-            ).order_by('distance')[:5]
+                distance=ExpressionWrapper(
+                    6371 * ACos(
+                        Cos(Radians(user_lat)) * Cos(Radians('latitude')) * 
+                        Cos(Radians('longitude') - Radians(user_lon)) + 
+                        Sin(Radians(user_lat)) * Sin(Radians('latitude'))
+                    ),
+                    output_field=FloatField()
+                )
+            ).filter(latitude__isnull=False, longitude__isnull=False).order_by('distance')[:5]
 
             # سریالایز کردن باشگاه‌ها (فاصله درون Serializer محاسبه می‌شود)
             serializer = GymSerializer(nearest_gyms, many=True, context={'request': request})

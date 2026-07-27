@@ -2,15 +2,15 @@ from django.db import models
 from gyms.models import Gym
 
 class GroupPackage(models.Model):
-    gym = models.ForeignKey(Gym, on_delete=models.CASCADE, related_name="group_packages")
     title = models.CharField(max_length=100)
     description = models.TextField(blank=True)
 
     def __str__(self):
-        return f"{self.title} - {self.gym.name}"
+        return self.title
 
 
 class Package(models.Model):
+    gym = models.ForeignKey(Gym, on_delete=models.CASCADE, related_name="packages")
     group_package = models.ForeignKey(GroupPackage, on_delete=models.CASCADE, related_name="packages")
     title = models.CharField(max_length=100)
     description = models.TextField(blank=True)
@@ -27,5 +27,4 @@ class Package(models.Model):
     def __str__(self):
         gender_display = self.get_gender_display()
         short_desc = (self.description[:50] + '...') if len(self.description) > 50 else self.description
-        gym_name = self.group_package.gym.name
-        return f"{self.title} ({gender_display}) - {gym_name} - {short_desc}"
+        return f"{self.title} ({gender_display}) - {self.gym.name} - {short_desc}"

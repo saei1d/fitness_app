@@ -30,7 +30,7 @@ class IsAdminOrOwnerPermission(permissions.BasePermission):
 
         # owner فقط به تخفیف‌های پکیج‌های باشگاه خودش دسترسی دارد
         if request.user.role == 'owner':
-            if obj.package.group_package.gym.owner == request.user:
+            if obj.package.gym.owner == request.user:
                 return True
 
         return False
@@ -97,13 +97,13 @@ class PackageDiscountViewSet(viewsets.ModelViewSet):
 
         if user.is_staff:
             return PackageDiscount.objects.all().select_related(
-                'package', 'package__group_package', 'package__group_package__gym', 'package__group_package__gym__owner'
+                'package', 'package__gym', 'package__gym__owner'
             )
         elif user.role == 'owner':
             return PackageDiscount.objects.filter(
-                package__group_package__gym__owner=user
+                package__gym__owner=user
             ).select_related(
-                'package', 'package__group_package', 'package__group_package__gym', 'package__group_package__gym__owner'
+                'package', 'package__gym', 'package__gym__owner'
             )
 
         return PackageDiscount.objects.none()

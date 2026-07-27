@@ -58,7 +58,7 @@ class ReviewSerializer(serializers.ModelSerializer):
         # جلوگیری از ثبت چند نظر برای یک باشگاه
         if not reply_to:
             # بررسی خرید کاربر از باشگاه
-            has_purchased = hasattr(user, "purchases") and user.purchases.filter(package__group_package__gym=gym, payment_status='paid').exists()
+            has_purchased = hasattr(user, "purchases") and user.purchases.filter(package__gym=gym, payment_status='paid').exists()
 
             # اگر کاربر خرید نداشته و قبلاً کامنت داده، جلوی تکرار را بگیر
             if not has_purchased and Review.objects.filter(user=user, gym=gym, reply_to__isnull=True, deleted=False).exists():

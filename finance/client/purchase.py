@@ -108,7 +108,7 @@ def _finalize_paid_purchase(*, purchase, transaction_obj, reference_id=None):
 
     send_purchase_notification(
         phone=purchase.user.phone,
-        gym=purchase.package.group_package.gym.name,
+        gym=purchase.package.gym.name,
         package_title=purchase.package.title,
         buyer_code=purchase.buyer_code,
     )
@@ -133,7 +133,7 @@ def _redirect_payload(purchase, outcome, reference_id=None):
     package = getattr(purchase, 'package', None)
     gym = None
     try:
-        gym = purchase.package.group_package.gym
+        gym = purchase.package.gym
     except Exception:
         gym = None
 
@@ -341,7 +341,7 @@ class VerifyPurchaseView(APIView):
         try:
             with transaction.atomic():
                 purchase = Purchase.objects.select_for_update().select_related(
-                    'package__group_package__gym__owner'
+                    'package__gym__owner'
                 ).filter(
                     buyer_code=buyer_code,
                     payment_status='paid',
@@ -356,13 +356,13 @@ class VerifyPurchaseView(APIView):
                 
                 # بررسی دسترسی برای owner
                 if user_role == 'owner':
-                    if purchase.package.group_package.gym.owner != request.user:
+                    if purchase.package.gym.owner != request.user:
                         return Response({'error': 'This purchase does not belong to your gym'}, status=403)
                 
                 # بررسی دسترسی برای operator
                 elif user_role == 'operator':
                     from gyms.models import GymOperator
-                    gym = purchase.package.group_package.gym
+                    gym = purchase.package.gym
                     if not GymOperator.objects.filter(
                         gym=gym,
                         operator=request.user,

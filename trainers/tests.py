@@ -12,7 +12,8 @@ class TrainerModelTest(TestCase):
         self.gym = Gym.objects.create(
             owner=self.user,
             name='Test Gym',
-            location='POINT(0 0)'
+            latitude=0.0,
+            longitude=0.0
         )
         self.trainer = Trainer.objects.create(
             name='Test Trainer',

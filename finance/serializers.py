@@ -73,7 +73,7 @@ class PurchaseSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError({"discount_code": "کد تخفیف معتبر نیست یا ظرفیت آن تمام شده است"})
 
             user = self.context['request'].user
-            gym = package.group_package.gym
+            gym = package.gym
             
             # Check if the discount is applicable to this package
             if discount.gym and discount.gym_id != gym.id:
@@ -362,7 +362,7 @@ class GymMemberSerializer(serializers.Serializer):
     def to_representation(self, instance):
         now = self.context.get('now') or timezone.now()
         purchase = instance
-        gym = purchase.package.group_package.gym
+        gym = purchase.package.gym
         expire_date = purchase.expire_date
         is_active = (
             purchase.payment_status == 'paid'
@@ -433,7 +433,7 @@ class PurchaseHistorySerializer(serializers.Serializer):
     def to_representation(self, instance):
         now = self.context.get('now') or timezone.now()
         purchase = instance
-        gym = purchase.package.group_package.gym
+        gym = purchase.package.gym
         discount = purchase.discount_code
 
         start_date = purchase.verified_at if purchase.verification_status == 'verified' else None

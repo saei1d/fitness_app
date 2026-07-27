@@ -2,7 +2,6 @@ from decimal import Decimal
 from datetime import timedelta
 from unittest.mock import patch
 
-from django.contrib.gis.geos import Point
 from django.utils import timezone
 from django.test import TestCase
 from rest_framework.test import APIClient
@@ -20,10 +19,11 @@ class PurchaseFlowTests(TestCase):
         self.client = APIClient()
         self.customer = User.objects.create_user(phone='09120000001')
         self.owner = User.objects.create_user(phone='09120000002', role='owner')
-        self.gym = Gym.objects.create(owner=self.owner, name='Test Gym', location=Point(51.0, 35.0, srid=4326))
-        self.group = GroupPackage.objects.create(gym=self.gym, title='Monthly')
+        self.gym = Gym.objects.create(owner=self.owner, name='Test Gym', latitude=35.0, longitude=51.0)
+        self.group = GroupPackage.objects.create(title='Monthly')
         self.package = Package.objects.create(
             group_package=self.group,
+            gym=self.gym,
             title='Basic',
             gender='male',
             price=Decimal('100.00'),
@@ -118,12 +118,13 @@ class GymMemberListTests(TestCase):
         self.admin.is_superuser = True
         self.admin.save(update_fields=['is_staff', 'is_superuser'])
 
-        self.gym = Gym.objects.create(owner=self.owner, name='Main Gym', location=Point(51.0, 35.0, srid=4326))
-        self.other_gym = Gym.objects.create(owner=self.owner, name='Second Gym', location=Point(51.1, 35.1, srid=4326))
-        self.group = GroupPackage.objects.create(gym=self.gym, title='Monthly')
-        self.other_group = GroupPackage.objects.create(gym=self.other_gym, title='Weekly')
+        self.gym = Gym.objects.create(owner=self.owner, name='Main Gym', latitude=35.0, longitude=51.0)
+        self.other_gym = Gym.objects.create(owner=self.owner, name='Second Gym', latitude=35.1, longitude=51.1)
+        self.group = GroupPackage.objects.create(title='Monthly')
+        self.other_group = GroupPackage.objects.create(title='Weekly')
         self.package = Package.objects.create(
             group_package=self.group,
+            gym=self.gym,
             title='Gold',
             gender='male',
             price=Decimal('100.00'),
@@ -197,10 +198,11 @@ class PurchaseHistoryTests(TestCase):
         self.admin.is_superuser = True
         self.admin.save(update_fields=['is_staff', 'is_superuser'])
 
-        self.gym = Gym.objects.create(owner=self.owner, name='History Gym', location=Point(51.0, 35.0, srid=4326))
-        self.group = GroupPackage.objects.create(gym=self.gym, title='Annual')
+        self.gym = Gym.objects.create(owner=self.owner, name='History Gym', latitude=35.0, longitude=51.0)
+        self.group = GroupPackage.objects.create(title='Annual')
         self.package = Package.objects.create(
             group_package=self.group,
+            gym=self.gym,
             title='Platinum',
             gender='male',
             price=Decimal('200.00'),
@@ -278,10 +280,11 @@ class CodeExpiryTests(TestCase):
         self.admin.is_superuser = True
         self.admin.save(update_fields=['is_staff', 'is_superuser'])
 
-        self.gym = Gym.objects.create(owner=self.owner, name='Expiry Gym', location=Point(51.0, 35.0, srid=4326))
-        self.group = GroupPackage.objects.create(gym=self.gym, title='Monthly')
+        self.gym = Gym.objects.create(owner=self.owner, name='Expiry Gym', latitude=35.0, longitude=51.0)
+        self.group = GroupPackage.objects.create(title='Monthly')
         self.package = Package.objects.create(
             group_package=self.group,
+            gym=self.gym,
             title='Basic',
             gender='male',
             price=Decimal('100.00'),
@@ -364,8 +367,8 @@ class FinancialDiscountTests(TestCase):
         self.admin.is_superuser = True
         self.admin.save(update_fields=['is_staff', 'is_superuser'])
         
-        self.gym = Gym.objects.create(owner=self.owner, name='Discount Test Gym', location=Point(51.0, 35.0, srid=4326))
-        self.group = GroupPackage.objects.create(gym=self.gym, title='Test Package Group')
+        self.gym = Gym.objects.create(owner=self.owner, name='Discount Test Gym', latitude=35.0, longitude=51.0)
+        self.group = GroupPackage.objects.create(title='Test Package Group')
         
         # پکیج با قیمت 100,000 تومان و کمیسیون 5%
         self.package = Package.objects.create(

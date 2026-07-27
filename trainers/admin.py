@@ -52,7 +52,6 @@ class TrainerAdmin(admin.ModelAdmin):
 class TrainerGroupPackageAdmin(admin.ModelAdmin):
     list_display = [
         'title',
-        'trainer',
         'created_at',
         'updated_at',
     ]
@@ -61,7 +60,6 @@ class TrainerGroupPackageAdmin(admin.ModelAdmin):
     ]
     search_fields = [
         'title',
-        'trainer__name',
     ]
     readonly_fields = [
         'created_at',
@@ -73,6 +71,7 @@ class TrainerGroupPackageAdmin(admin.ModelAdmin):
 class TrainerPackageAdmin(admin.ModelAdmin):
     list_display = [
         'title',
+        'trainer',
         'group_package',
         'gender',
         'price',
@@ -88,7 +87,7 @@ class TrainerPackageAdmin(admin.ModelAdmin):
     search_fields = [
         'title',
         'group_package__title',
-        'group_package__trainer__name',
+        'trainer__name',
     ]
     readonly_fields = [
         'created_at',
