@@ -174,7 +174,11 @@ class TopTrainersView(APIView):
             is_active=True
         ).order_by('-order_homepage', '-average_rating')[:10]
 
-        data = TrainerSerializer(trainers, many=True).data
+        data = TrainerSerializer(
+            trainers,
+            many=True,
+            context={'request': request},
+        ).data
         return Response(data)
 
 

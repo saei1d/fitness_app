@@ -8,6 +8,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from rest_framework.test import APIClient
 
 from accounts.models import User
+from trainers.models import Trainer
 
 
 def _make_test_image(name='avatar.png'):
@@ -103,3 +104,28 @@ class ProfilePhotoAPITests(TestCase):
         )
         self.assertEqual(second.status_code, 200)
         self.assertNotEqual(first_url, second.data['avatar_url'])
+
+
+class TopTrainersApiTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.override = override_settings(MEDIA_ROOT=self.temp_dir.name)
+        self.override.enable()
+        self.addCleanup(self.override.disable)
+        self.addCleanup(self.temp_dir.cleanup)
+
+    def test_top_trainers_returns_absolute_image_url(self):
+        trainer = Trainer.objects.create(
+            name='Top Trainer',
+            phone='09125555555',
+            image=_make_test_image('trainer.png'),
+            is_active=True,
+        )
+
+        response = self.client.get('/api/admin/accounts/home/top-trainers/')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]['id'], trainer.id)
+        self.assertTrue(response.data[0]['image'].startswith('http://testserver/media/'))
