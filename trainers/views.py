@@ -18,6 +18,9 @@ class IsAdminOrReadOnly(permissions.BasePermission):
     """فقط ادمین می‌تواند ایجاد/ویرایش کند، بقیه فقط خواندن"""
     
     def has_permission(self, request, view):
+        # اجازه دسترسی بدون احراز هویت برای لیست و جزئیات مربی‌ها
+        if hasattr(view, 'action') and view.action in ['list', 'retrieve']:
+            return True
         if request.method in permissions.SAFE_METHODS:
             return request.user and request.user.is_authenticated
         return request.user and request.user.is_authenticated and request.user.is_staff
