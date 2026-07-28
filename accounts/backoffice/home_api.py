@@ -19,12 +19,11 @@ from trainers.serializers import TrainerSerializer
 
 
 class GroupPackageWithPackagesSerializer(serializers.ModelSerializer):
-    gym = GymSerializer(read_only=True)
     packages = PackageSerializer(many=True, read_only=True)
 
     class Meta:
         model = GroupPackage
-        fields = ['id', 'title', 'description', 'gym', 'packages']
+        fields = ['id', 'title', 'description', 'packages']
 
 
 
@@ -64,47 +63,40 @@ class SportGroupPackagesView(APIView):
         if not sport:
             return Response({'detail': 'sport query param is required (e.g., بدنسازی, پیلاتس, یوگا).'}, status=400)
 
-        # فیلتر روی group packages (عنوان و توضیحات و همچنین پکیج‌ها)
-        groups_qs = (
-            GroupPackage.objects
+        # فیلتر روی پکیج‌ها (عنوان و توضیحات و همچنین گروه پکیج)
+        packages_qs = (
+            Package.objects
             .filter(
                 Q(title__icontains=sport) |
                 Q(description__icontains=sport) |
-                Q(packages__title__icontains=sport) |
-                Q(packages__description__icontains=sport)
+                Q(group_package__title__icontains=sport) |
+                Q(group_package__description__icontains=sport)
             )
             .distinct()
-            .select_related('gym')
-            .prefetch_related('packages')
+            .select_related('gym', 'group_package')
         )
 
-        groups = list(groups_qs)
-        if not groups:
-            return Response([])  # یا می‌تونی fallback بذاری
+        packages = list(packages_qs)
+        if not packages:
+            return Response([])
 
-        # جمع‌آوری پکیج‌ها بر اساس gym_id (مقاوم در برابر gym به صورت id یا آبجکت)
+        # جمع‌آوری پکیج‌ها بر اساس gym_id
         gym_packages_map = defaultdict(list)  # key = gym_id, value = list of package instances
         gym_max_order_map = {}  # key = gym_id, value = max order_homepage of packages
         gym_ids = set()
-        for group in groups:
-            # اگر select_related('gym') انجام شده، group.gym ممکن است آبجکت باشد
-            gym_id = getattr(group, 'gym_id', None) or (getattr(group, 'gym', None) and getattr(group.gym, 'id', None))
-            if gym_id is None:
-                continue
+        for package in packages:
+            gym_id = package.gym_id
             gym_ids.add(gym_id)
-            # استفاده از related name یا attribute برای گرفتن پکیج‌های گروه
             # Sort packages by order_homepage first (if > 0), then by default
-            packages = list(group.packages.all())
             try:
-                packages.sort(key=lambda p: (-p.order_homepage if p.order_homepage > 0 else 0, p.id))
+                order_homepage = package.order_homepage if hasattr(package, 'order_homepage') else 0
+                gym_packages_map[gym_id].append(package)
                 # Track max order_homepage for this gym
-                max_order = max([p.order_homepage for p in packages if p.order_homepage > 0] or [0])
-                gym_max_order_map[gym_id] = max(gym_max_order_map.get(gym_id, 0), max_order)
+                if order_homepage > 0:
+                    gym_max_order_map[gym_id] = max(gym_max_order_map.get(gym_id, 0), order_homepage)
             except AttributeError:
-                # If order_homepage field doesn't exist yet (migration not run), use default sorting
-                packages.sort(key=lambda p: p.id)
+                gym_packages_map[gym_id].append(package)
                 gym_max_order_map[gym_id] = 0
-            gym_packages_map[gym_id].extend(packages)
 
         # واکشی همه‌ی Gymها یک‌جا (برای جلوگیری از N+1)
         gyms = Gym.objects.filter(id__in=gym_ids)
@@ -117,6 +109,11 @@ class SportGroupPackagesView(APIView):
                 continue
             gym_data = GymSerializer(gym_obj, context={'request': request}).data
             packages = gym_packages_map.get(gid, [])
+            # Sort packages by order_homepage first (if > 0), then by default
+            try:
+                packages.sort(key=lambda p: (-p.order_homepage if p.order_homepage > 0 else 0, p.id))
+            except AttributeError:
+                packages.sort(key=lambda p: p.id)
             gym_data['packages'] = PackageSerializer(packages, many=True).data
             gyms_data.append(gym_data)
 
@@ -148,8 +145,7 @@ class HomeSearchView(APIView):
         gyms = Gym.objects.filter(name__icontains=q)[:5]
         groups = (
             GroupPackage.objects
-            .filter(title__icontains=q)
-            .select_related('gym')[:5]
+            .filter(title__icontains=q)[:5]
         )
         packages = (
             Package.objects

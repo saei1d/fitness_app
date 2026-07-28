@@ -54,7 +54,7 @@ class GymSerializer(serializers.ModelSerializer):
         ]
 
     def get_price(self, obj):
-        prices = [package.price for group in obj.group_packages.all().prefetch_related('packages') for package in group.packages.all()]
+        prices = [package.price for package in obj.packages.all()]
         return min(prices) if prices else None
 
     def get_images(self, obj):
@@ -81,16 +81,7 @@ class GymSerializer(serializers.ModelSerializer):
     
     def get_package(self, obj):
         """برگرداندن تمام پکیج‌های باشگاه"""
-        all_packages = []
-        # گرفتن تمام GroupPackage های این باشگاه
-        group_packages = obj.group_packages.all().prefetch_related('packages')
-        
-        for group_package in group_packages:
-            # گرفتن تمام پکیج‌های هر گروه
-            packages = group_package.packages.all()
-            for package in packages:
-                all_packages.append(package)
-        
+        all_packages = obj.packages.all()
         # سریالایز کردن تمام پکیج‌ها
         return PackageSerializer(all_packages, many=True).data
     
