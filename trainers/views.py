@@ -28,7 +28,10 @@ class IsAdminOrReadOnly(permissions.BasePermission):
 
 class TrainerViewSet(viewsets.ModelViewSet):
     """ViewSet برای مدیریت مربی‌ها"""
-    queryset = Trainer.objects.filter(is_active=True).prefetch_related('active_gyms')
+    queryset = Trainer.objects.filter(is_active=True).prefetch_related(
+        'active_gyms',
+        'packages__group_package',
+    )
     permission_classes = [IsAdminOrReadOnly]
     filter_backends = [SearchFilter, OrderingFilter]
     search_fields = ['name', 'phone', 'bio']

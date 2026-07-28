@@ -44,6 +44,7 @@ class TrainerDetailSerializer(serializers.ModelSerializer):
     """Serializer برای نمایش جزئیات مربی"""
     active_gyms = serializers.SerializerMethodField()
     reviews = serializers.SerializerMethodField()
+    packages = serializers.SerializerMethodField()
     
     class Meta:
         model = Trainer
@@ -64,6 +65,7 @@ class TrainerDetailSerializer(serializers.ModelSerializer):
             'created_at',
             'updated_at',
             'is_active',
+            'packages',
             'reviews',
         ]
         read_only_fields = [
@@ -85,6 +87,14 @@ class TrainerDetailSerializer(serializers.ModelSerializer):
             reply_to__isnull=True
         )[:10]
         return TrainerReviewSerializer(reviews, many=True).data
+
+    def get_packages(self, obj):
+        packages = obj.packages.select_related('group_package').order_by(
+            'group_package_id',
+            'order_homepage',
+            'id',
+        )
+        return TrainerPackageSerializer(packages, many=True, context=self.context).data
 
 
 class TrainerGroupPackageSerializer(serializers.ModelSerializer):
