@@ -74,7 +74,7 @@ class GymImageAdmin(admin.ModelAdmin):
 
 
     # --------------------------------------------------------------
-from finance.models import Purchase, Wallet, AdminWallet, Transaction, WithdrawRequest
+from finance.models import Purchase, Wallet, AdminWallet, Transaction, WithdrawRequest, TrainerWallet, TrainerWithdrawRequest
 
 
 class TransactionInline(admin.TabularInline):
@@ -87,15 +87,15 @@ class TransactionInline(admin.TabularInline):
 
 @admin.register(Purchase)
 class PurchaseAdmin(admin.ModelAdmin):
-    list_display = ("id", "user", "user_phone", "package", "payment_status", "verification_status", "buyer_code", "total_amount", "final_amount", "purchase_date", "expire_date", "verified_at")
-    list_filter = ("payment_status", "verification_status", "purchase_date", "verified_at", "expire_date")
-    search_fields = ("user__phone", "user__full_name", "package__title", "buyer_code")
-    readonly_fields = ("total_amount", "commission_amount", "net_amount", "buyer_code", "verified_at", "verified_by", "purchase_date")
+    list_display = ("id", "user", "user_phone", "purchase_type", "package_display", "payment_status", "verification_status", "buyer_code", "total_amount", "final_amount", "purchase_date", "expire_date", "verified_at")
+    list_filter = ("purchase_type", "payment_status", "verification_status", "purchase_date", "verified_at", "expire_date")
+    search_fields = ("user__phone", "user__full_name", "content_object__title", "buyer_code")
+    readonly_fields = ("total_amount", "commission_amount", "net_amount", "buyer_code", "verified_at", "verified_by", "purchase_date", "purchase_type", "content_type", "object_id")
     inlines = [TransactionInline]
     
     fieldsets = (
         ("اطلاعات خرید", {
-            "fields": ("user", "package", "buyer_code", "discount_code")
+            "fields": ("user", "purchase_type", "content_type", "object_id", "package", "buyer_code", "discount_code")
         }),
         ("وضعیت پرداخت", {
             "fields": ("payment_status", "verification_status", "verified_by", "verified_at")
@@ -112,6 +112,13 @@ class PurchaseAdmin(admin.ModelAdmin):
         return obj.user.phone
     user_phone.short_description = "شماره تلفن"
     
+    def package_display(self, obj):
+        pkg = obj.get_package()
+        if pkg:
+            return f"{pkg.title} ({obj.purchase_type})"
+        return "-"
+    package_display.short_description = "پکیج"
+    
     actions = ["mark_as_verified", "mark_as_rejected"]
     
     def mark_as_verified(self, request, queryset):
@@ -122,8 +129,10 @@ class PurchaseAdmin(admin.ModelAdmin):
             purchase.verification_status = 'verified'
             purchase.verified_at = timezone.now()
             purchase.verified_by = request.user
-            if purchase.expire_date is None and purchase.package_id:
-                purchase.expire_date = timezone.now() + timedelta(days=purchase.package.duration)
+            if purchase.expire_date is None:
+                pkg = purchase.get_package()
+                if pkg:
+                    purchase.expire_date = timezone.now() + timedelta(days=purchase.get_package_duration())
             purchase.save(update_fields=['verification_status', 'verified_at', 'verified_by', 'expire_date'])
     mark_as_verified.short_description = "علامت‌گذاری به عنوان تأیید شده"
     
@@ -289,6 +298,102 @@ class WithdrawRequestAdmin(admin.ModelAdmin):
                         obj.processed_at = timezone.now()
                         obj.processed_by = request.user
                 except WithdrawRequest.DoesNotExist:
+                    pass
+            
+            super().save_model(request, obj, form, change)
+
+
+@admin.register(TrainerWallet)
+class TrainerWalletAdmin(admin.ModelAdmin):
+    list_display = ("id", "trainer", "trainer_phone", "balance", "transactions_count", "updated_at")
+    search_fields = ("trainer__phone", "trainer__name")
+    readonly_fields = ("updated_at", "transactions_count")
+    inlines = [TransactionInline]
+    
+    fieldsets = (
+        ("اطلاعات کیف پول مربی", {
+            "fields": ("trainer", "balance")
+        }),
+        ("آمار", {
+            "fields": ("transactions_count",)
+        }),
+        ("تاریخ", {
+            "fields": ("updated_at",)
+        }),
+    )
+    
+    def trainer_phone(self, obj):
+        return obj.trainer.phone
+    trainer_phone.short_description = "شماره تلفن مربی"
+    
+    def transactions_count(self, obj):
+        return obj.transactions.count()
+    transactions_count.short_description = "تعداد تراکنش‌ها"
+
+
+@admin.register(TrainerWithdrawRequest)
+class TrainerWithdrawRequestAdmin(admin.ModelAdmin):
+    list_display = ("id", "trainer", "trainer_phone", "wallet", "amount", "status", "processed_by", "processed_at", "completed_at")
+    list_filter = ("status", "processed_at", "completed_at")
+    search_fields = ("trainer__phone", "trainer__name", "description", "admin_message")
+    readonly_fields = ("processed_at", "completed_at")
+    
+    fieldsets = (
+        ("اطلاعات درخواست", {
+            "fields": ("trainer", "wallet", "amount", "description")
+        }),
+        ("وضعیت", {
+            "fields": ("status", "admin_message", "processed_by", "processed_at", "completed_at")
+        }),
+    )
+    
+    actions = ["approve_requests", "reject_requests"]
+    
+    def trainer_phone(self, obj):
+        return obj.trainer.phone
+    trainer_phone.short_description = "شماره تلفن مربی"
+    
+    def approve_requests(self, request, queryset):
+        from django.utils import timezone
+        queryset.update(status='approved', processed_by=request.user, processed_at=timezone.now())
+    approve_requests.short_description = "تأیید درخواست‌های انتخاب شده"
+    
+    def reject_requests(self, request, queryset):
+        from django.utils import timezone
+        queryset.update(status='rejected', processed_by=request.user, processed_at=timezone.now())
+    reject_requests.short_description = "رد درخواست‌های انتخاب شده"
+    
+    def save_model(self, request, obj, form, change):
+        from django.db import transaction
+        from django.utils import timezone
+        from django.db.models import F
+        from finance.models import TrainerWallet, Transaction, TrainerWithdrawRequest
+        
+        with transaction.atomic():
+            if change:
+                try:
+                    old_obj = TrainerWithdrawRequest.objects.get(pk=obj.pk)
+                    if old_obj.status != 'completed' and obj.status == 'completed':
+                        if obj.wallet.balance < obj.amount:
+                            raise ValueError('موجودی کیف پول کافی نیست')
+                        
+                        TrainerWallet.objects.filter(pk=obj.wallet.pk).update(
+                            balance=F('balance') - obj.amount
+                        )
+                        
+                        Transaction.objects.create(
+                            trainer_wallet=obj.wallet,
+                            amount=obj.amount,
+                            type='debit',
+                            status='completed',
+                            description=f'برداشت مربی درخواست #{obj.id}',
+                            payment_id=None
+                        )
+                        
+                        obj.completed_at = timezone.now()
+                        obj.processed_at = timezone.now()
+                        obj.processed_by = request.user
+                except TrainerWithdrawRequest.DoesNotExist:
                     pass
             
             super().save_model(request, obj, form, change)

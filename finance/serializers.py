@@ -3,8 +3,9 @@ from datetime import timedelta
 
 from django.db import transaction
 from django.db.models import F, Q
+from django.contrib.contenttypes.models import ContentType
 
-from finance.models import Purchase, Wallet, AdminWallet, Transaction, WithdrawRequest
+from finance.models import Purchase, Wallet, AdminWallet, Transaction, WithdrawRequest, TrainerWallet
 from rest_framework import serializers
 from django.utils import timezone
 from discount.models import DiscountCode, PackageDiscount
@@ -13,13 +14,16 @@ from discount.models import DiscountCode, PackageDiscount
 class PurchaseSerializer(serializers.ModelSerializer):
     user_name = serializers.CharField(source='user.full_name', read_only=True)
     user_phone = serializers.CharField(source='user.phone', read_only=True)
-    package_title = serializers.CharField(source='package.title', read_only=True)
+    package_title = serializers.SerializerMethodField()
     verified_by_name = serializers.CharField(source='verified_by.full_name', read_only=True)
     # دریافت کد تخفیف به صورت رشته (اختیاری)
     discount_code = serializers.CharField(write_only=True, required=False, allow_blank=True, allow_null=True)
     admin_notes = serializers.CharField(read_only=True, required=False, allow_null=True)
     code_expire_date = serializers.SerializerMethodField(read_only=True)
     is_code_expired = serializers.SerializerMethodField(read_only=True)
+    purchase_type = serializers.CharField(read_only=True)
+    owner_name = serializers.SerializerMethodField()
+    gym_or_trainer_name = serializers.SerializerMethodField()
 
     class Meta:
         model = Purchase
@@ -35,7 +39,20 @@ class PurchaseSerializer(serializers.ModelSerializer):
             'verified_at',
             'verified_by',
             'final_amount',
+            'purchase_type',
+            'content_type',
+            'object_id',
         ]
+
+    def get_package_title(self, instance):
+        pkg = instance.get_package()
+        return pkg.title if pkg else ''
+
+    def get_owner_name(self, instance):
+        return instance.get_owner_name()
+
+    def get_gym_or_trainer_name(self, instance):
+        return instance.get_gym_or_trainer_name()
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
@@ -56,12 +73,14 @@ class PurchaseSerializer(serializers.ModelSerializer):
         return False
 
     def validate(self, data):
+        # Validate package (either gym or trainer)
         package = data.get('package')
+        trainer_package = data.get('trainer_package')
+        
+        if not package and not trainer_package:
+            raise serializers.ValidationError("Package or TrainerPackage is required")
 
-        if not package:
-            raise serializers.ValidationError("Package not found")
-
-        # اعتبارسنجی کد تخفیف (درصورت وجود)
+        # Validate discount code (if provided)
         discount_code_str = data.get('discount_code')
         if discount_code_str:
             code_str = discount_code_str.strip()
@@ -73,63 +92,81 @@ class PurchaseSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError({"discount_code": "کد تخفیف معتبر نیست یا ظرفیت آن تمام شده است"})
 
             user = self.context['request'].user
-            gym = package.gym
             
-            # Check if the discount is applicable to this package
-            if discount.gym and discount.gym_id != gym.id:
-                raise serializers.ValidationError({"discount_code": "این کد برای باشگاه انتخاب‌شده معتبر نیست"})
-            
-            # If packages are selected, check if this package is in them
-            if discount.packages.exists():
-                if package not in discount.packages.all():
-                    raise serializers.ValidationError({"discount_code": "این کد برای پکیج انتخاب‌شده معتبر نیست"})
+            # For gym packages, check gym match
+            if package:
+                gym = package.gym
+                if discount.gym and discount.gym_id != gym.id:
+                    raise serializers.ValidationError({"discount_code": "این کد برای باشگاه انتخاب‌شده معتبر نیست"})
+                
+                # If packages are selected, check if this package is in them
+                if discount.packages.exists():
+                    if package not in discount.packages.all():
+                        raise serializers.ValidationError({"discount_code": "این کد برای پکیج انتخاب‌شده معتبر نیست"})
             
             if not discount.can_user_use(user):
                 raise serializers.ValidationError({"discount_code": "شما مجاز به استفاده از این کد نیستید"})
 
-            # پاس کردن آبجکت برای create
+            # Pass object for create
             data['discount_code_obj'] = discount
 
         return data
 
     def create(self, validated_data):
-        package = validated_data['package']
+        package = validated_data.get('package')
+        trainer_package = validated_data.get('trainer_package')
         user = self.context['request'].user
-        total_amount = package.price
-        commission_rate = Decimal(str(package.commission_rate))
+        
+        # Determine package type and get common fields
+        if trainer_package:
+            purchase_type = 'trainer'
+            pkg = trainer_package
+            content_type = ContentType.objects.get_for_model(trainer_package.__class__)
+            object_id = trainer_package.pk
+        else:
+            purchase_type = 'gym'
+            pkg = package
+            content_type = ContentType.objects.get_for_model(package.__class__)
+            object_id = package.pk
+        
+        total_amount = pkg.price
+        commission_rate = Decimal(str(pkg.commission_rate))
 
-        # کمیسیون اولیه ادمین (سهم ادمین پیش از تخفیف)
+        # Initial admin commission (before discount)
         admin_commission_before_discount = total_amount * commission_rate
 
-        # کد تخفیف (اگر معتبر بود از validate تزریق شده)
+        # Discount code (if valid, injected from validate)
         discount_code_obj = validated_data.pop('discount_code_obj', None)
         if discount_code_obj:
             discount_code_obj = DiscountCode.objects.select_for_update().get(pk=discount_code_obj.pk)
             if not discount_code_obj.is_valid() or not discount_code_obj.can_user_use(user):
                 raise serializers.ValidationError({"discount_code": "کد تخفیف دیگر قابل استفاده نیست"})
 
-        # بررسی تخفیف پیش‌فرض پکیج
+        # Check package discount
         package_discount_obj = None
         from django.utils import timezone
         now = timezone.now()
-        package_discount_obj = package.discounts.filter(
-            is_active=True,
-        ).filter(
-            Q(start_date__isnull=True) | Q(start_date__lte=now),
-            Q(end_date__isnull=True) | Q(end_date__gte=now),
-        ).first()
+        
+        # Only gym packages have PackageDiscount
+        if purchase_type == 'gym':
+            package_discount_obj = pkg.discounts.filter(
+                is_active=True,
+            ).filter(
+                Q(start_date__isnull=True) | Q(start_date__lte=now),
+                Q(end_date__isnull=True) | Q(end_date__gte=now),
+            ).first()
 
-        # محاسبه مقدار تخفیف با توجه به نوع و محدودیت‌ها
+        # Calculate discount amount with limits
         discount_amount = Decimal('0')
         discount_source = None
         discount_details = []
 
-        # محاسبه تخفیف پکیج (اگر وجود داشته باشد)
+        # Calculate package discount (if exists)
         package_discount_amount = Decimal('0')
         if package_discount_obj:
             if package_discount_obj.discount_type == 'percent':
                 requested_percent = Decimal(str(package_discount_obj.value))
-                # برای سازگاری با داده‌های قدیمی: اگر مقدار کمتر از 1 بود، آن را به درصد تبدیل کن
+                # For backward compatibility: if value < 1, convert to percent
                 if requested_percent < Decimal('1'):
                     requested_percent = requested_percent * Decimal('100')
                 if package_discount_obj.source_type == 'admin':
@@ -148,13 +185,13 @@ class PurchaseSerializer(serializers.ModelSerializer):
                 package_discount_amount = effective_amount
                 discount_details.append(f"تخفیف پکیج: ({effective_amount} تومان از {package_discount_obj.source_type})")
 
-        # محاسبه تخفیف کد تخفیف (اگر وجود داشته باشد) - روی قیمت با تخفیف پکیج
+        # Calculate code discount (on price after package discount)
         code_discount_amount = Decimal('0')
         if discount_code_obj:
             price_after_package_discount = total_amount - package_discount_amount
             if discount_code_obj.discount_type == 'percent':
                 requested_percent = Decimal(str(discount_code_obj.value))
-                # برای سازگاری با داده‌های قدیمی: اگر مقدار کمتر از 1 بود، آن را به درصد تبدیل کن
+                # For backward compatibility: if value < 1, convert to percent
                 if requested_percent < Decimal('1'):
                     requested_percent = requested_percent * Decimal('100')
                 if discount_code_obj.source_type == 'admin':
@@ -173,45 +210,48 @@ class PurchaseSerializer(serializers.ModelSerializer):
                 code_discount_amount = effective_amount
                 discount_details.append(f"کد تخفیف: {discount_code_obj.code} ({effective_amount} تومان از {discount_code_obj.source_type})")
 
-        # جمع تخفیف‌ها (ترکیبی)
+        # Total discount (stacked)
         discount_amount = package_discount_amount + code_discount_amount
         
-        # تعیین منبع تخفیف برای محاسبه سهم‌ها (اولویت با کد تخفیف)
+        # Determine discount source for share calculation (code has priority)
         if discount_code_obj:
             discount_source = discount_code_obj.source_type
         elif package_discount_obj:
             discount_source = package_discount_obj.source_type
 
-        # محاسبه final_amount برای کاربر (نباید منفی شود)
+        # Calculate final_amount for user (should not be negative)
         final_amount = total_amount - discount_amount
         if final_amount < 0:
             final_amount = Decimal('0')
 
-        # اعمال تخفیف بر سهم‌ها بر اساس منبع تخفیف
+        # Apply discount to shares based on discount source
         if discount_source == 'admin':
-            # تخفیف از سهم ادمین کسر می‌شود و سهم باشگاه ثابت می‌ماند.
+            # Discount deducted from admin share; gym/trainer share stays fixed
             commission_amount = admin_commission_before_discount - min(discount_amount, admin_commission_before_discount)
             if commission_amount < 0:
                 commission_amount = Decimal('0')
             net_amount = total_amount - admin_commission_before_discount
         else:
-            # تخفیف باشگاه از سهم باشگاه کسر می‌شود؛ کمیسیون ادمین ثابت می‌ماند.
+            # Club/trainer discount deducted from their share; admin commission stays fixed
             commission_amount = admin_commission_before_discount
             net_amount = final_amount - commission_amount
             if net_amount < 0:
                 net_amount = Decimal('0')
 
-        # ساخت توضیحات ادمین
+        # Build admin notes
         admin_notes = f"قیمت اصلی: {total_amount} تومان\n"
         if discount_details:
             admin_notes += "\n".join(discount_details) + "\n"
         admin_notes += f"قیمت نهایی: {final_amount} تومان\n"
         admin_notes += f"کمیسیون ادمین: {commission_amount} تومان\n"
-        admin_notes += f"سهم باشگاه: {net_amount} تومان"
+        admin_notes += f"سهم {'مربی' if purchase_type == 'trainer' else 'باشگاه'}: {net_amount} تومان"
 
         purchase = Purchase.objects.create(
             user=user,
-            package=package,
+            purchase_type=purchase_type,
+            content_type=content_type,
+            object_id=object_id,
+            package=package,  # Keep for backward compatibility
             discount_code=discount_code_obj,
             total_amount=total_amount,
             commission_amount=commission_amount,
@@ -238,6 +278,25 @@ class WalletSerializer(serializers.ModelSerializer):
     
     def get_recent_transactions(self, obj):
         """آخرین 5 تراکنش کیف پول"""
+        recent_transactions = obj.transactions.order_by('-created_at')[:5]
+        return TransactionSerializer(recent_transactions, many=True).data
+
+
+class TrainerWalletSerializer(serializers.ModelSerializer):
+    """سریالایزر کیف پول مربی"""
+    trainer_name = serializers.CharField(source='trainer.name', read_only=True)
+    trainer_phone = serializers.CharField(source='trainer.phone', read_only=True)
+    transactions_count = serializers.SerializerMethodField()
+    recent_transactions = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = TrainerWallet
+        fields = ['id', 'trainer', 'trainer_name', 'trainer_phone', 'balance', 'updated_at', 'transactions_count', 'recent_transactions']
+    
+    def get_transactions_count(self, obj):
+        return obj.transactions.count()
+    
+    def get_recent_transactions(self, obj):
         recent_transactions = obj.transactions.order_by('-created_at')[:5]
         return TransactionSerializer(recent_transactions, many=True).data
 
@@ -344,8 +403,11 @@ class GymMemberSerializer(serializers.Serializer):
     user_id = serializers.IntegerField()
     user_name = serializers.CharField()
     user_phone = serializers.CharField()
-    gym_id = serializers.IntegerField()
-    gym_name = serializers.CharField()
+    purchase_type = serializers.CharField()
+    gym_id = serializers.IntegerField(allow_null=True)
+    gym_name = serializers.CharField(allow_blank=True)
+    trainer_id = serializers.IntegerField(allow_null=True)
+    trainer_name = serializers.CharField(allow_blank=True)
     package_id = serializers.IntegerField()
     package_title = serializers.CharField()
     payment_status = serializers.CharField()
@@ -362,7 +424,20 @@ class GymMemberSerializer(serializers.Serializer):
     def to_representation(self, instance):
         now = self.context.get('now') or timezone.now()
         purchase = instance
-        gym = purchase.package.gym
+        pkg = purchase.get_package()
+        
+        gym_id = None
+        gym_name = ''
+        trainer_id = None
+        trainer_name = ''
+        
+        if purchase.purchase_type == 'trainer':
+            trainer_id = pkg.trainer_id if pkg else None
+            trainer_name = pkg.trainer.name if pkg and hasattr(pkg, 'trainer') else ''
+        else:
+            gym_id = pkg.gym_id if pkg else None
+            gym_name = pkg.gym.name if pkg and hasattr(pkg, 'gym') else ''
+        
         expire_date = purchase.expire_date
         is_active = (
             purchase.payment_status == 'paid'
@@ -381,10 +456,13 @@ class GymMemberSerializer(serializers.Serializer):
             'user_id': purchase.user_id,
             'user_name': purchase.user.full_name or '',
             'user_phone': purchase.user.phone,
-            'gym_id': gym.id,
-            'gym_name': gym.name,
-            'package_id': purchase.package_id,
-            'package_title': purchase.package.title,
+            'purchase_type': purchase.purchase_type,
+            'gym_id': gym_id,
+            'gym_name': gym_name,
+            'trainer_id': trainer_id,
+            'trainer_name': trainer_name,
+            'package_id': purchase.object_id,
+            'package_title': purchase.get_package_title(),
             'payment_status': purchase.payment_status,
             'verification_status': purchase.verification_status,
             'membership_status': membership_status,
@@ -404,8 +482,11 @@ class PurchaseHistorySerializer(serializers.Serializer):
     user_id = serializers.IntegerField()
     user_name = serializers.CharField()
     user_phone = serializers.CharField()
-    gym_id = serializers.IntegerField()
-    gym_name = serializers.CharField()
+    purchase_type = serializers.CharField()
+    gym_id = serializers.IntegerField(allow_null=True)
+    gym_name = serializers.CharField(allow_blank=True)
+    trainer_id = serializers.IntegerField(allow_null=True)
+    trainer_name = serializers.CharField(allow_blank=True)
     package_id = serializers.IntegerField()
     package_title = serializers.CharField()
     package_duration = serializers.IntegerField()
@@ -433,8 +514,20 @@ class PurchaseHistorySerializer(serializers.Serializer):
     def to_representation(self, instance):
         now = self.context.get('now') or timezone.now()
         purchase = instance
-        gym = purchase.package.gym
+        pkg = purchase.get_package()
         discount = purchase.discount_code
+
+        gym_id = None
+        gym_name = ''
+        trainer_id = None
+        trainer_name = ''
+        
+        if purchase.purchase_type == 'trainer':
+            trainer_id = pkg.trainer_id if pkg else None
+            trainer_name = pkg.trainer.name if pkg and hasattr(pkg, 'trainer') else ''
+        else:
+            gym_id = pkg.gym_id if pkg else None
+            gym_name = pkg.gym.name if pkg and hasattr(pkg, 'gym') else ''
 
         start_date = purchase.verified_at if purchase.verification_status == 'verified' else None
         if start_date is None and purchase.payment_status == 'paid':
@@ -442,7 +535,7 @@ class PurchaseHistorySerializer(serializers.Serializer):
 
         end_date = purchase.expire_date
         if end_date is None and start_date is not None:
-            end_date = start_date + timedelta(days=purchase.package.duration)
+            end_date = start_date + timedelta(days=purchase.get_package_duration())
 
         is_active = (
             purchase.payment_status == 'paid'
@@ -479,11 +572,14 @@ class PurchaseHistorySerializer(serializers.Serializer):
             'user_id': purchase.user_id,
             'user_name': purchase.user.full_name or '',
             'user_phone': purchase.user.phone,
-            'gym_id': gym.id,
-            'gym_name': gym.name,
-            'package_id': purchase.package_id,
-            'package_title': purchase.package.title,
-            'package_duration': purchase.package.duration,
+            'purchase_type': purchase.purchase_type,
+            'gym_id': gym_id,
+            'gym_name': gym_name,
+            'trainer_id': trainer_id,
+            'trainer_name': trainer_name,
+            'package_id': purchase.object_id,
+            'package_title': purchase.get_package_title(),
+            'package_duration': purchase.get_package_duration(),
             'payment_status': purchase.payment_status,
             'verification_status': purchase.verification_status,
             'membership_status': membership_status,

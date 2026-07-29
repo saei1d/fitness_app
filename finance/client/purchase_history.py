@@ -19,14 +19,19 @@ class PurchaseHistoryView(APIView):
         user = request.user
         queryset = Purchase.objects.select_related(
             'user',
-            'package__group_package__gym',
+            'content_type',
             'discount_code',
             'verified_by',
         )
 
-        if not user.is_staff and getattr(user, 'role', None) != 'admin':
+        user_role = getattr(user, 'role', None)
+        
+        # Filter based on user role
+        if not user.is_staff and user_role != 'admin':
+            # Regular users see only their own purchases
             queryset = queryset.filter(user=user)
         else:
+            # Admin can filter by user_id
             user_id = request.query_params.get('user_id')
             if user_id:
                 queryset = queryset.filter(user_id=user_id)
@@ -37,7 +42,16 @@ class PurchaseHistoryView(APIView):
 
             gym_id = request.query_params.get('gym_id')
             if gym_id:
-                queryset = queryset.filter(package__group_package__gym_id=gym_id)
+                queryset = queryset.filter(purchase_type='gym', content_object__gym_id=gym_id)
+
+            trainer_id = request.query_params.get('trainer_id')
+            if trainer_id:
+                queryset = queryset.filter(purchase_type='trainer', content_object__trainer_id=trainer_id)
+
+        # Apply filters
+        purchase_type = request.query_params.get('purchase_type')
+        if purchase_type:
+            queryset = queryset.filter(purchase_type=purchase_type)
 
         payment_status = request.query_params.get('payment_status')
         if payment_status:
@@ -54,7 +68,7 @@ class PurchaseHistoryView(APIView):
             for purchase in queryset:
                 end_date = purchase.expire_date
                 if end_date is None and purchase.verified_at is not None:
-                    end_date = purchase.verified_at + timedelta(days=purchase.package.duration)
+                    end_date = purchase.verified_at + timedelta(days=purchase.get_package_duration())
 
                 is_active = (
                     purchase.payment_status == 'paid'
@@ -82,8 +96,7 @@ class PurchaseHistoryView(APIView):
             queryset = queryset.filter(
                 Q(user__phone__icontains=search)
                 | Q(user__full_name__icontains=search)
-                | Q(package__title__icontains=search)
-                | Q(package__group_package__gym__name__icontains=search)
+                | Q(content_object__title__icontains=search)
                 | Q(buyer_code__icontains=search)
                 | Q(discount_code__code__icontains=search)
             )

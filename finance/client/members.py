@@ -14,28 +14,55 @@ class IsOwnerOrAdminUser(permissions.BasePermission):
         return (
             request.user
             and request.user.is_authenticated
-            and (request.user.is_staff or getattr(request.user, 'role', None) in {'owner', 'admin'})
+            and (request.user.is_staff or getattr(request.user, 'role', None) in {'owner', 'admin', 'trainer'})
         )
 
 
 @extend_schema(tags=['member'])
 class GymMemberListView(APIView):
+    """لیست اعضای باشگاه و شاگردان مربی"""
     permission_classes = [IsOwnerOrAdminUser]
 
     def get(self, request):
         user = request.user
         queryset = Purchase.objects.select_related(
             'user',
-            'package__gym',
-            'verified_by',
+            'content_type',
         )
 
-        if not (user.is_staff or getattr(user, 'role', None) == 'admin'):
-            queryset = queryset.filter(package__gym__owner=user)
+        user_role = getattr(user, 'role', None)
+        
+        # Filter based on user role
+        if user.is_staff or user_role == 'admin':
+            # Admin sees all
+            pass
+        elif user_role == 'owner':
+            # Owner sees only gym purchases for their gyms
+            queryset = queryset.filter(
+                purchase_type='gym',
+                content_object__gym__owner=user
+            )
+        elif user_role == 'trainer':
+            # Trainer sees only their own trainer purchases
+            queryset = queryset.filter(
+                purchase_type='trainer',
+                content_object__trainer__user=user
+            )
+        else:
+            return Response({'error': 'Access denied'}, status=403)
+
+        # Apply filters
+        purchase_type = request.query_params.get('purchase_type')
+        if purchase_type:
+            queryset = queryset.filter(purchase_type=purchase_type)
 
         gym_id = request.query_params.get('gym_id')
         if gym_id:
-            queryset = queryset.filter(package__gym_id=gym_id)
+            queryset = queryset.filter(purchase_type='gym', content_object__gym_id=gym_id)
+
+        trainer_id = request.query_params.get('trainer_id')
+        if trainer_id:
+            queryset = queryset.filter(purchase_type='trainer', content_object__trainer_id=trainer_id)
 
         payment_status = request.query_params.get('payment_status')
         if payment_status:
@@ -55,7 +82,9 @@ class GymMemberListView(APIView):
 
         package_title = request.query_params.get('package_title')
         if package_title:
-            queryset = queryset.filter(package__title__icontains=package_title)
+            queryset = queryset.filter(
+                Q(content_object__title__icontains=package_title)
+            )
 
         buyer_code = request.query_params.get('buyer_code')
         if buyer_code:
@@ -66,23 +95,25 @@ class GymMemberListView(APIView):
             queryset = queryset.filter(
                 Q(user__phone__icontains=search)
                 | Q(user__full_name__icontains=search)
-                | Q(package__title__icontains=search)
-                | Q(package__gym__name__icontains=search)
+                | Q(content_object__title__icontains=search)
                 | Q(buyer_code__icontains=search)
             )
 
         queryset = queryset.order_by(
             '-purchase_date',
             '-id',
-            'package__gym_id',
-            'user_id',
-            '-verified_at',
         )
 
         now = timezone.now()
         grouped_memberships = {}
         for purchase in queryset:
-            key = (purchase.user_id, purchase.package.gym_id)
+            # Group by user and package owner (gym or trainer)
+            if purchase.purchase_type == 'trainer':
+                pkg = purchase.get_package()
+                key = (purchase.user_id, 'trainer', pkg.trainer_id if pkg else None)
+            else:
+                pkg = purchase.get_package()
+                key = (purchase.user_id, 'gym', pkg.gym_id if pkg else None)
             grouped_memberships.setdefault(key, []).append(purchase)
 
         def is_active_membership(purchase):

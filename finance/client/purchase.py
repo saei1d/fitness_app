@@ -18,7 +18,7 @@ from finance.models import AdminWallet, Purchase, Transaction, Wallet
 from finance.serializers import PurchaseSerializer
 
 
-def send_purchase_notification(phone, gym, package_title, buyer_code):
+def send_purchase_notification(phone, gym_or_trainer, package_title, buyer_code, is_trainer=False):
     import logging
     logger = logging.getLogger(__name__)
     
@@ -31,7 +31,7 @@ def send_purchase_notification(phone, gym, package_title, buyer_code):
     payload = {
         'bodyId':'487687' ,
         'to': phone,
-        'args': [gym,package_title ,'7',buyer_code]
+        'args': [gym_or_trainer, package_title ,'7',buyer_code]
     }
 
     try:
@@ -69,6 +69,8 @@ def _is_truthy(value):
 
 
 def _finalize_paid_purchase(*, purchase, transaction_obj, reference_id=None):
+    from finance.models import TrainerWallet
+    
     admin_wallet, _ = AdminWallet.objects.select_for_update().get_or_create(
         id=1,
         defaults={'balance': 0},
@@ -106,11 +108,21 @@ def _finalize_paid_purchase(*, purchase, transaction_obj, reference_id=None):
             # Create DiscountUsage record
             DiscountUsage.objects.create(discount=discount_code_obj, user=purchase.user)
 
+    # Send SMS notification
+    pkg = purchase.get_package()
+    is_trainer = purchase.purchase_type == 'trainer'
+    
+    if is_trainer:
+        gym_or_trainer_name = pkg.trainer.name if pkg else ''
+    else:
+        gym_or_trainer_name = pkg.gym.name if pkg else ''
+    
     send_purchase_notification(
         phone=purchase.user.phone,
-        gym=purchase.package.gym.name,
-        package_title=purchase.package.title,
+        gym_or_trainer=gym_or_trainer_name,
+        package_title=purchase.get_package_title(),
         buyer_code=purchase.buyer_code,
+        is_trainer=is_trainer,
     )
 
     return purchase
@@ -130,12 +142,20 @@ def _redirect_payload(purchase, outcome, reference_id=None):
     if purchase is None:
         return payload
 
-    package = getattr(purchase, 'package', None)
-    gym = None
-    try:
-        gym = purchase.package.gym
-    except Exception:
-        gym = None
+    pkg = purchase.get_package()
+    is_trainer = purchase.purchase_type == 'trainer'
+    
+    gym_id = None
+    gym_name = ''
+    trainer_id = None
+    trainer_name = ''
+    
+    if is_trainer:
+        trainer_id = pkg.trainer_id if pkg else None
+        trainer_name = pkg.trainer.name if pkg and hasattr(pkg, 'trainer') else ''
+    else:
+        gym_id = pkg.gym_id if pkg else None
+        gym_name = pkg.gym.name if pkg and hasattr(pkg, 'gym') else ''
 
     payload.update({
         'purchase_id': purchase.pk,
@@ -147,10 +167,13 @@ def _redirect_payload(purchase, outcome, reference_id=None):
         'commission_amount': str(purchase.commission_amount or ''),
         'net_amount': str(purchase.net_amount or ''),
         'reference_id': reference_id or purchase.payment_reference_id or '',
-        'package_id': package.pk if package else '',
-        'package_title': package.title if package else '',
-        'gym_id': gym.pk if gym else '',
-        'gym_name': gym.name if gym else '',
+        'package_id': purchase.object_id,
+        'package_title': purchase.get_package_title(),
+        'purchase_type': purchase.purchase_type,
+        'gym_id': gym_id,
+        'gym_name': gym_name,
+        'trainer_id': trainer_id,
+        'trainer_name': trainer_name,
     })
     return payload
 
@@ -331,6 +354,8 @@ class VerifyPurchaseView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
+        from finance.models import TrainerWallet
+        
         buyer_code = request.data.get('buyer_code')
         if not buyer_code:
             return Response({'error': 'buyer_code is required'}, status=400)
@@ -341,7 +366,7 @@ class VerifyPurchaseView(APIView):
         try:
             with transaction.atomic():
                 purchase = Purchase.objects.select_for_update().select_related(
-                    'package__gym__owner'
+                    'content_type'
                 ).filter(
                     buyer_code=buyer_code,
                     payment_status='paid',
@@ -354,23 +379,37 @@ class VerifyPurchaseView(APIView):
                 is_admin = request.user.is_staff or request.user.is_superuser
                 user_role = getattr(request.user, 'role', None)
                 
-                # بررسی دسترسی برای owner
-                if user_role == 'owner':
-                    if purchase.package.gym.owner != request.user:
-                        return Response({'error': 'This purchase does not belong to your gym'}, status=403)
+                # Get the actual package
+                pkg = purchase.get_package()
+                if not pkg:
+                    return Response({'error': 'Package not found'}, status=404)
                 
-                # بررسی دسترسی برای operator
-                elif user_role == 'operator':
-                    from gyms.models import GymOperator
-                    gym = purchase.package.gym
-                    if not GymOperator.objects.filter(
-                        gym=gym,
-                        operator=request.user,
-                        is_active=True
-                    ).exists():
-                        return Response({'error': 'You are not assigned to this gym'}, status=403)
+                # Handle trainer purchases differently
+                if purchase.purchase_type == 'trainer':
+                    # For trainer purchases, only the trainer or admin can verify
+                    if user_role == 'trainer':
+                        # Check if the trainer owns this purchase
+                        if pkg.trainer != request.user.trainer_profile:
+                            return Response({'error': 'This purchase does not belong to you'}, status=403)
+                    elif not is_admin:
+                        return Response({'error': 'Only the trainer or admin can verify trainer purchases'}, status=403)
+                else:
+                    # For gym purchases, owner/operator verification
+                    if user_role == 'owner':
+                        if pkg.gym.owner != request.user:
+                            return Response({'error': 'This purchase does not belong to your gym'}, status=403)
+                    
+                    elif user_role == 'operator':
+                        from gyms.models import GymOperator
+                        gym = pkg.gym
+                        if not GymOperator.objects.filter(
+                            gym=gym,
+                            operator=request.user,
+                            is_active=True
+                        ).exists():
+                            return Response({'error': 'You are not assigned to this gym'}, status=403)
 
-                # بررسی مهلت ۷ روزه برای وریفای کد (ادمین از این چک معاف است)
+                # Check 7-day code expiry (admin exempt)
                 CODE_EXPIRY_DAYS = 7
                 if not is_admin:
                     code_expire_date = purchase.purchase_date + timedelta(days=CODE_EXPIRY_DAYS)
@@ -385,42 +424,68 @@ class VerifyPurchaseView(APIView):
                 if admin_wallet.balance < purchase.net_amount:
                     return Response({'error': 'Admin wallet balance is not enough'}, status=400)
 
-                wallet, _ = Wallet.objects.select_for_update().get_or_create(
-                    owner=request.user,
-                    defaults={'balance': 0},
-                )
+                # Create or get the appropriate wallet
+                if purchase.purchase_type == 'trainer':
+                    trainer_wallet, _ = TrainerWallet.objects.select_for_update().get_or_create(
+                        trainer=pkg.trainer,
+                        defaults={'balance': 0},
+                    )
+                    wallet_obj = trainer_wallet
+                else:
+                    wallet, _ = Wallet.objects.select_for_update().get_or_create(
+                        owner=request.user,
+                        defaults={'balance': 0},
+                    )
+                    wallet_obj = wallet
 
                 purchase.verification_status = 'verified'
                 purchase.verified_at = timezone.now()
                 purchase.verified_by = request.user
                 if purchase.expire_date is None:
-                    purchase.expire_date = timezone.now() + timedelta(days=purchase.package.duration)
+                    purchase.expire_date = timezone.now() + timedelta(days=purchase.get_package_duration())
                 purchase.save(update_fields=['verification_status', 'verified_at', 'verified_by', 'expire_date'])
 
-                Transaction.objects.create(
-                    wallet=wallet,
-                    purchase=purchase,
-                    amount=purchase.net_amount,
-                    type='credit',
-                    status='completed',
-                    description=f'Purchase verification #{purchase.id} - code: {buyer_code}',
-                )
+                # Create credit transaction to gym/trainer wallet
+                if purchase.purchase_type == 'trainer':
+                    Transaction.objects.create(
+                        trainer_wallet=trainer_wallet,
+                        purchase=purchase,
+                        amount=purchase.net_amount,
+                        type='credit',
+                        status='completed',
+                        description=f'Trainer purchase verification #{purchase.id} - code: {buyer_code}',
+                    )
+                else:
+                    Transaction.objects.create(
+                        wallet=wallet,
+                        purchase=purchase,
+                        amount=purchase.net_amount,
+                        type='credit',
+                        status='completed',
+                        description=f'Purchase verification #{purchase.id} - code: {buyer_code}',
+                    )
 
+                # Create debit transaction from admin wallet
                 Transaction.objects.create(
                     admin_wallet=admin_wallet,
                     purchase=purchase,
                     amount=purchase.net_amount,
                     type='debit',
                     status='completed',
-                    description=f'Gym share payment for purchase #{purchase.id} - code: {buyer_code}',
+                    description=f'{"Trainer" if purchase.purchase_type == "trainer" else "Gym"} share payment for purchase #{purchase.id} - code: {buyer_code}',
                 )
 
-                Wallet.objects.filter(pk=wallet.pk).update(balance=F('balance') + purchase.net_amount)
+                # Update wallet balances atomically
+                if purchase.purchase_type == 'trainer':
+                    TrainerWallet.objects.filter(pk=trainer_wallet.pk).update(balance=F('balance') + purchase.net_amount)
+                else:
+                    Wallet.objects.filter(pk=wallet.pk).update(balance=F('balance') + purchase.net_amount)
+                
                 AdminWallet.objects.filter(pk=admin_wallet.pk).update(balance=F('balance') - purchase.net_amount)
 
                 return Response({
                     'message': 'Purchase verified successfully',
-                    'purchase': PurchaseSerializer(purchase).data,
+                    'purchase': PurchaseSerializer(purchase, context={'request': request}).data,
                 }, status=200)
 
         except AdminWallet.DoesNotExist:
