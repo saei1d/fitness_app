@@ -10,6 +10,11 @@ from ..serializers import ReviewSerializer, AdminReviewSerializer
 class IsReviewOwnerOrReadOnly(permissions.BasePermission):
     """اجازه ویرایش فقط به نویسنده‌ی نظر"""
 
+    def has_permission(self, request, view):
+        if request.method in permissions.SAFE_METHODS:
+            return True
+        return request.user and request.user.is_authenticated
+
     def has_object_permission(self, request, view, obj):
         if request.method in permissions.SAFE_METHODS:
             return True
@@ -29,7 +34,7 @@ class IsStaffOrReadOnly(permissions.BasePermission):
 class ReviewViewSet(viewsets.ModelViewSet):
     queryset = Review.objects.all().select_related('user', 'gym', 'reply_to')
     serializer_class = ReviewSerializer
-    permission_classes = [permissions.IsAuthenticated, IsReviewOwnerOrReadOnly]
+    permission_classes = [IsReviewOwnerOrReadOnly]
 
     def get_serializer_class(self):
         if self.action in ['blocked_reviews', 'banned_users_reviews'] and self.request.user.is_staff:
@@ -44,7 +49,7 @@ class ReviewViewSet(viewsets.ModelViewSet):
         ).select_related('user', 'gym', 'reply_to')
 
         # فقط برای کاربران عادی، نظرات کاربران بن‌شده را فیلتر کن
-        if not self.request.user.is_staff:
+        if self.request.user.is_authenticated and not self.request.user.is_staff:
             queryset = queryset.filter(user__is_banned_from_reviews=False)
 
         return queryset
