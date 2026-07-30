@@ -49,7 +49,21 @@ class GymAdmin(admin.ModelAdmin):
 
     def save_model(self, request, obj, form, change):
         with transaction.atomic():
-            super().save_model(request, obj, form, change)
+            try:
+                super().save_model(request, obj, form, change)
+            except (FileNotFoundError, OSError) as e:
+                # If file deletion fails due to incorrect path, continue with save
+                # This happens when database has wrong path for old banner
+                if 'banner' in str(e) or 'No such file' in str(e):
+                    # Clear the banner field to avoid the error and retry
+                    if change:
+                        old_obj = Gym.objects.get(pk=obj.pk)
+                        old_obj.banner = None
+                        old_obj.save(update_fields=['banner'])
+                        super().save_model(request, obj, form, change)
+                else:
+                    raise
+            
             if obj.owner_id:
                 promote_gym_owner(obj.owner)
 
