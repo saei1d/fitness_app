@@ -16,4 +16,7 @@ COPY . .
 
 RUN DEBUG=True python manage.py collectstatic --noinput
 
+# Create media directory
+RUN mkdir -p /app/media
+
 CMD ["gunicorn", "--bind", "0.0.0.0:8000", "fitness.wsgi:application"]

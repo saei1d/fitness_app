@@ -216,10 +216,9 @@ CORS_ALLOWED_ORIGINS = _get_list(os.getenv('CORS_ALLOWED_ORIGINS', ''))
 if not DEBUG and CORS_ALLOW_ALL_ORIGINS:
     raise ImproperlyConfigured('CORS_ALLOW_ALL_ORIGINS cannot be True in production. Set CORS_ALLOWED_ORIGINS instead.')
 
-# In production we keep uploads under the collected static tree so the
-# container can mount a persistent volume at /app/staticfiles/media.
+# Media files (user uploads) - separate from static files
 MEDIA_URL = '/media/'
-MEDIA_ROOT = '/app/staticfiles/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 CSRF_TRUSTED_ORIGINS = _get_list(os.getenv('CSRF_TRUSTED_ORIGINS', ''))
 
