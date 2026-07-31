@@ -18,11 +18,9 @@ class IsAdminOrReadOnly(permissions.BasePermission):
     """فقط ادمین می‌تواند ایجاد/ویرایش کند، بقیه فقط خواندن"""
     
     def has_permission(self, request, view):
-        # اجازه دسترسی بدون احراز هویت برای لیست و جزئیات مربی‌ها
-        if hasattr(view, 'action') and view.action in ['list', 'retrieve']:
-            return True
+        # اجازه دسترسی بدون احراز هویت برای لیست و جزئیات
         if request.method in permissions.SAFE_METHODS:
-            return request.user and request.user.is_authenticated
+            return True
         return request.user and request.user.is_authenticated and request.user.is_staff
 
 
@@ -48,14 +46,31 @@ class TrainerViewSet(viewsets.ModelViewSet):
         description='نمایش لیست تمام مربی‌های فعال'
     )
     def list(self, request, *args, **kwargs):
-        return super().list(request, *args, **kwargs)
+        try:
+            return super().list(request, *args, **kwargs)
+        except Exception as e:
+            return Response(
+                {'detail': 'خطا در دریافت لیست مربی‌ها', 'error': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
     
     @extend_schema(
         summary='جزئیات مربی',
         description='نمایش جزئیات کامل یک مربی به همراه نظرات'
     )
     def retrieve(self, request, *args, **kwargs):
-        return super().retrieve(request, *args, **kwargs)
+        try:
+            return super().retrieve(request, *args, **kwargs)
+        except Trainer.DoesNotExist:
+            return Response(
+                {'detail': 'مربی یافت نشد'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            return Response(
+                {'detail': 'خطا در دریافت جزئیات مربی', 'error': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
     
     @extend_schema(
         summary='ایجاد مربی جدید',
@@ -81,33 +96,43 @@ class TrainerViewSet(viewsets.ModelViewSet):
 
 class TrainerGroupPackageViewSet(viewsets.ModelViewSet):
     """ViewSet برای مدیریت گروه پکیج‌های مربی"""
-    queryset = TrainerGroupPackage.objects.all().select_related('trainer')
+    queryset = TrainerGroupPackage.objects.all()
     serializer_class = TrainerGroupPackageSerializer
     permission_classes = [IsAdminOrReadOnly]
     filter_backends = [SearchFilter]
-    search_fields = ['title', 'trainer__name']
-    filterset_fields = ['trainer']
+    search_fields = ['title']
+    filterset_fields = []
     
     @extend_schema(tags=['Trainer Package'])
     def list(self, request, *args, **kwargs):
-        return super().list(request, *args, **kwargs)
+        try:
+            return super().list(request, *args, **kwargs)
+        except Exception as e:
+            return Response(
+                {'detail': 'خطا در دریافت لیست گروه پکیج‌ها', 'error': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 
 class TrainerPackageViewSet(viewsets.ModelViewSet):
     """ViewSet برای مدیریت پکیج‌های مربی"""
-    queryset = TrainerPackage.objects.all().select_related(
-        'group_package__trainer'
-    )
+    queryset = TrainerPackage.objects.all()
     serializer_class = TrainerPackageSerializer
     permission_classes = [IsAdminOrReadOnly]
     filter_backends = [SearchFilter, OrderingFilter]
-    search_fields = ['title', 'group_package__title', 'group_package__trainer__name']
+    search_fields = ['title']
     ordering_fields = ['price', 'duration', 'sessions', 'order_homepage']
-    filterset_fields = ['group_package', 'gender']
+    filterset_fields = ['gender']
     
     @extend_schema(tags=['Trainer Package'])
     def list(self, request, *args, **kwargs):
-        return super().list(request, *args, **kwargs)
+        try:
+            return super().list(request, *args, **kwargs)
+        except Exception as e:
+            return Response(
+                {'detail': 'خطا در دریافت لیست پکیج‌های مربی', 'error': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 
 class TrainerReviewViewSet(viewsets.ModelViewSet):
@@ -116,7 +141,7 @@ class TrainerReviewViewSet(viewsets.ModelViewSet):
         deleted=False,
         blocked=False
     ).select_related('user', 'trainer', 'reply_to')
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsAdminOrReadOnly]
     filter_backends = [OrderingFilter]
     ordering_fields = ['created_at', 'rating']
     filterset_fields = ['trainer', 'rating']
@@ -137,37 +162,83 @@ class TrainerReviewViewSet(viewsets.ModelViewSet):
     
     @extend_schema(tags=['Trainer Review'])
     def list(self, request, *args, **kwargs):
-        return super().list(request, *args, **kwargs)
+        try:
+            return super().list(request, *args, **kwargs)
+        except Exception as e:
+            return Response(
+                {'detail': 'خطا در دریافت لیست نظرات', 'error': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
     
     @extend_schema(tags=['Trainer Review'])
     def retrieve(self, request, *args, **kwargs):
-        return super().retrieve(request, *args, **kwargs)
+        try:
+            return super().retrieve(request, *args, **kwargs)
+        except TrainerReview.DoesNotExist:
+            return Response(
+                {'detail': 'نظر یافت نشد'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            return Response(
+                {'detail': 'خطا در دریافت جزئیات نظر', 'error': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
     
     @extend_schema(tags=['Trainer Review'])
     def create(self, request, *args, **kwargs):
-        return super().create(request, *args, **kwargs)
+        try:
+            return super().create(request, *args, **kwargs)
+        except Exception as e:
+            return Response(
+                {'detail': 'خطا در ایجاد نظر', 'error': str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
     
     @extend_schema(tags=['Trainer Review'])
     def update(self, request, *args, **kwargs):
-        return super().update(request, *args, **kwargs)
+        try:
+            return super().update(request, *args, **kwargs)
+        except Exception as e:
+            return Response(
+                {'detail': 'خطا در ویرایش نظر', 'error': str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
     
     @extend_schema(tags=['Trainer Review'])
     def destroy(self, request, *args, **kwargs):
-        return super().destroy(request, *args, **kwargs)
+        try:
+            return super().destroy(request, *args, **kwargs)
+        except Exception as e:
+            return Response(
+                {'detail': 'خطا در حذف نظر', 'error': str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
     
-    @action(detail=True, methods=['post'])
+    @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated])
     def report(self, request, pk=None):
         """گزارش نظر توسط مربی"""
-        review = self.get_object()
-        user = request.user
-        
-        # بررسی اینکه کاربر مربی است
-        if not hasattr(user, 'trainer_profile') or user.trainer_profile != review.trainer:
+        try:
+            review = self.get_object()
+            user = request.user
+            
+            # بررسی اینکه کاربر مربی است
+            if not hasattr(user, 'trainer_profile') or user.trainer_profile != review.trainer:
+                return Response(
+                    {'detail': 'فقط مربی مربوطه می‌تواند گزارش دهد.'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+            
+            review.is_reported = True
+            review.save(update_fields=['is_reported'])
+            return Response({'detail': 'نظر با موفقیت گزارش شد.'})
+        except TrainerReview.DoesNotExist:
             return Response(
-                {'detail': 'فقط مربی مربوطه می‌تواند گزارش دهد.'},
-                status=status.HTTP_403_FORBIDDEN
+                {'detail': 'نظر یافت نشد'},
+                status=status.HTTP_404_NOT_FOUND
             )
-        
-        review.is_reported = True
-        review.save(update_fields=['is_reported'])
-        return Response({'detail': 'نظر با موفقیت گزارش شد.'})
+        except Exception as e:
+            return Response(
+                {'detail': 'خطا در گزارش نظر', 'error': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )

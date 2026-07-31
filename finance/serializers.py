@@ -9,6 +9,7 @@ from finance.models import Purchase, Wallet, AdminWallet, Transaction, WithdrawR
 from rest_framework import serializers
 from django.utils import timezone
 from discount.models import DiscountCode, PackageDiscount
+from trainers.models import TrainerPackage
 
 
 class PurchaseSerializer(serializers.ModelSerializer):
@@ -24,6 +25,13 @@ class PurchaseSerializer(serializers.ModelSerializer):
     purchase_type = serializers.CharField(read_only=True)
     owner_name = serializers.SerializerMethodField()
     gym_or_trainer_name = serializers.SerializerMethodField()
+    # Field for trainer package booking
+    trainer_package = serializers.PrimaryKeyRelatedField(
+        queryset=TrainerPackage.objects.all(),
+        write_only=True,
+        required=False,
+        allow_null=True
+    )
 
     class Meta:
         model = Purchase
@@ -42,6 +50,7 @@ class PurchaseSerializer(serializers.ModelSerializer):
             'purchase_type',
             'content_type',
             'object_id',
+            'package',
         ]
 
     def get_package_title(self, instance):
