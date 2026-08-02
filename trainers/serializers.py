@@ -7,14 +7,17 @@ from django.conf import settings
 class TrainerSerializer(serializers.ModelSerializer):
     """Serializer برای نمایش لیست مربی‌ها"""
     active_gyms_names = serializers.SerializerMethodField()
+    phone = serializers.CharField(source='user.phone', read_only=True)
     
     class Meta:
         model = Trainer
         fields = [
             'id',
+            'user',
             'name',
             'phone',
             'image',
+            'homepage_image',
             'specializations',
             'teaching_experience_years',
             'certifications',
@@ -31,6 +34,7 @@ class TrainerSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = [
             'id',
+            'phone',
             'average_rating',
             'reviews_count',
             'created_at',
@@ -45,14 +49,17 @@ class TrainerDetailSerializer(serializers.ModelSerializer):
     active_gyms = serializers.SerializerMethodField()
     reviews = serializers.SerializerMethodField()
     packages = serializers.SerializerMethodField()
+    phone = serializers.CharField(source='user.phone', read_only=True)
     
     class Meta:
         model = Trainer
         fields = [
             'id',
+            'user',
             'name',
             'phone',
             'image',
+            'homepage_image',
             'specializations',
             'teaching_experience_years',
             'certifications',
@@ -70,6 +77,7 @@ class TrainerDetailSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = [
             'id',
+            'phone',
             'average_rating',
             'reviews_count',
             'created_at',

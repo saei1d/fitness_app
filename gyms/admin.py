@@ -323,7 +323,7 @@ class TrainerWalletAdmin(admin.ModelAdmin):
     )
     
     def trainer_phone(self, obj):
-        return obj.trainer.phone
+        return obj.trainer.user.phone
     trainer_phone.short_description = "شماره تلفن مربی"
     
     def transactions_count(self, obj):
@@ -335,7 +335,7 @@ class TrainerWalletAdmin(admin.ModelAdmin):
 class TrainerWithdrawRequestAdmin(admin.ModelAdmin):
     list_display = ("id", "trainer", "trainer_phone", "wallet", "amount", "status", "processed_by", "processed_at", "completed_at")
     list_filter = ("status", "processed_at", "completed_at")
-    search_fields = ("trainer__phone", "trainer__name", "description", "admin_message")
+    search_fields = ("trainer__user__phone", "trainer__name", "description", "admin_message")
     readonly_fields = ("processed_at", "completed_at")
     
     fieldsets = (
@@ -350,7 +350,7 @@ class TrainerWithdrawRequestAdmin(admin.ModelAdmin):
     actions = ["approve_requests", "reject_requests"]
     
     def trainer_phone(self, obj):
-        return obj.trainer.phone
+        return obj.trainer.user.phone
     trainer_phone.short_description = "شماره تلفن مربی"
     
     def approve_requests(self, request, queryset):

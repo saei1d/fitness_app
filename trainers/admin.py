@@ -40,12 +40,36 @@ class TrainerAdminForm(forms.ModelForm):
 @admin.register(Trainer)
 class TrainerAdmin(admin.ModelAdmin):
     form = TrainerAdminForm
-    list_display = ['name', 'phone', 'average_rating', 'reviews_count', 'active_students_count', 'order_homepage', 'is_active', 'created_at']
+    list_display = ['name', 'user', 'image', 'homepage_image', 'average_rating', 'reviews_count', 'active_students_count', 'order_homepage', 'is_active', 'created_at']
     list_filter = ['is_active', 'created_at']
-    search_fields = ['name', 'phone', 'bio']
+    search_fields = ['name', 'user__phone', 'bio']
     filter_horizontal = ['active_gyms']
     readonly_fields = ['average_rating', 'reviews_count', 'created_at', 'updated_at']
     list_editable = ['order_homepage']
+    fieldsets = (
+        ('اطلاعات پایه', {
+            'fields': ('user', 'name', 'bio', 'is_active')
+        }),
+        ('تصاویر', {
+            'fields': ('image', 'homepage_image')
+        }),
+        ('تخصص‌ها و مدارک', {
+            'fields': ('specializations', 'teaching_experience_years', 'certifications', 'special_expertise')
+        }),
+        ('باشگاه‌ها', {
+            'fields': ('active_gyms',)
+        }),
+        ('آمار', {
+            'fields': ('active_students_count', 'average_rating', 'reviews_count')
+        }),
+        ('تنظیمات نمایش', {
+            'fields': ('order_homepage',)
+        }),
+        ('زمان', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
 
 
 @admin.register(TrainerGroupPackage)

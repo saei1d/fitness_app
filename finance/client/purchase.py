@@ -389,7 +389,7 @@ class VerifyPurchaseView(APIView):
                     # For trainer purchases, only the trainer or admin can verify
                     if user_role == 'trainer':
                         # Check if the trainer owns this purchase
-                        if pkg.trainer != request.user.trainer_profile:
+                        if not hasattr(request.user, 'trainer_profile') or pkg.trainer != request.user.trainer_profile:
                             return Response({'error': 'This purchase does not belong to you'}, status=403)
                     elif not is_admin:
                         return Response({'error': 'Only the trainer or admin can verify trainer purchases'}, status=403)

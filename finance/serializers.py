@@ -294,7 +294,7 @@ class WalletSerializer(serializers.ModelSerializer):
 class TrainerWalletSerializer(serializers.ModelSerializer):
     """سریالایزر کیف پول مربی"""
     trainer_name = serializers.CharField(source='trainer.name', read_only=True)
-    trainer_phone = serializers.CharField(source='trainer.phone', read_only=True)
+    trainer_phone = serializers.CharField(source='trainer.user.phone', read_only=True)
     transactions_count = serializers.SerializerMethodField()
     recent_transactions = serializers.SerializerMethodField()
     

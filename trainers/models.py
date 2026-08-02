@@ -1,6 +1,7 @@
 from django.db import models
 from django.core.validators import FileExtensionValidator
 from gyms.models import Gym
+from accounts.models import User
 import os
 
 
@@ -9,12 +10,23 @@ def trainer_image_upload_path(instance, filename):
     return os.path.join("trainers", "images", trainer_id, filename)
 
 
+def trainer_homepage_image_upload_path(instance, filename):
+    trainer_id = str(instance.id) if instance.id else 'temp'
+    return os.path.join("trainers", "homepage", trainer_id, filename)
+
+
 class Trainer(models.Model):
     """مدل مربی"""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='trainer_profile', null=True, blank=True)
     name = models.CharField(max_length=255)
-    phone = models.CharField(max_length=20)
     image = models.ImageField(
         upload_to=trainer_image_upload_path,
+        null=True,
+        blank=True,
+        validators=[FileExtensionValidator(allowed_extensions=['jpg', 'jpeg', 'png', 'webp'])]
+    )
+    homepage_image = models.ImageField(
+        upload_to=trainer_homepage_image_upload_path,
         null=True,
         blank=True,
         validators=[FileExtensionValidator(allowed_extensions=['jpg', 'jpeg', 'png', 'webp'])]
@@ -79,7 +91,8 @@ class Trainer(models.Model):
         verbose_name_plural = "Trainers"
     
     def __str__(self):
-        return f"{self.name} ({self.phone})"
+        phone = self.user.phone if self.user else "No user"
+        return f"{self.name} ({phone})"
     
     def update_rating(self):
         """به‌روزرسانی امتیاز میانگین"""
@@ -128,7 +141,8 @@ class TrainerPackage(models.Model):
     )
     price = models.DecimalField(
         max_digits=15,
-        decimal_places=2
+        decimal_places=2,
+        help_text="rials"
     )
     duration = models.IntegerField(
         help_text="Duration in days"
