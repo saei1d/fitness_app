@@ -43,7 +43,11 @@ def _handle_payment_status(instance, created):
         pass
 
     buyer = instance.user
-    package = instance.package
+    package = instance.get_package()
+    
+    if not package:
+        logger.error(f"Package not found for purchase {instance.pk}, skipping notification")
+        return
 
     if gym is not None:
         title = f"خرید جدید در {gym.name} توسط {buyer.full_name or buyer.phone}"
@@ -88,7 +92,11 @@ def _handle_verification_status(instance, created):
         return
 
     buyer = instance.user
-    package = instance.package
+    package = instance.get_package()
+    
+    if not package:
+        logger.error(f"Package not found for purchase {instance.pk}, skipping notification")
+        return
 
     # Resolve expire_date
     expire = 'نامشخص'
@@ -108,7 +116,10 @@ def _handle_verification_status(instance, created):
     # Resolve owner
     owner = None
     try:
-        owner = instance.package.gym.owner
+        if instance.purchase_type == 'trainer':
+            owner = package.trainer.user if hasattr(package, 'trainer') else None
+        else:
+            owner = package.gym.owner if hasattr(package, 'gym') else None
     except Exception:
         pass
 

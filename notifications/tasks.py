@@ -31,7 +31,7 @@ def send_plan_expiry_notifications():
         purchases = Purchase.objects.filter(
             expire_date__date=target_date,
             verification_status='verified',
-        ).select_related('user', 'package')
+        ).select_related('user', 'package').prefetch_related('content_type')
 
         for purchase in purchases:
             already_notified = Notification.objects.filter(
@@ -41,9 +41,14 @@ def send_plan_expiry_notifications():
             ).exists()
 
             if not already_notified:
-                title = f"{title_prefix}: {purchase.package.title}"
+                package = purchase.get_package()
+                if not package:
+                    logger.error(f"Package not found for purchase {purchase.pk}, skipping notification")
+                    continue
+                    
+                title = f"{title_prefix}: {package.title}"
                 message = (
-                    f"تاریخ انقضای پلن '{purchase.package.title}': "
+                    f"تاریخ انقضای پلن '{package.title}': "
                     f"{purchase.expire_date.strftime('%Y-%m-%d')}"
                 )
                 data = {"purchase_id": purchase.pk}
