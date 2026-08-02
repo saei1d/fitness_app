@@ -110,12 +110,16 @@ def _finalize_paid_purchase(*, purchase, transaction_obj, reference_id=None):
 
     # Send SMS notification
     pkg = purchase.get_package()
+    if not pkg:
+        logger.error(f"Package not found for purchase {purchase.id}, cannot send notification")
+        return purchase
+    
     is_trainer = purchase.purchase_type == 'trainer'
     
     if is_trainer:
-        gym_or_trainer_name = pkg.trainer.name if pkg else ''
+        gym_or_trainer_name = pkg.trainer.name if pkg and hasattr(pkg, 'trainer') else ''
     else:
-        gym_or_trainer_name = pkg.gym.name if pkg else ''
+        gym_or_trainer_name = pkg.gym.name if pkg and hasattr(pkg, 'gym') else ''
     
     send_purchase_notification(
         phone=purchase.user.phone,
@@ -143,6 +147,10 @@ def _redirect_payload(purchase, outcome, reference_id=None):
         return payload
 
     pkg = purchase.get_package()
+    if not pkg:
+        logger.error(f"Package not found for purchase {purchase.id} in redirect payload")
+        return payload
+    
     is_trainer = purchase.purchase_type == 'trainer'
     
     gym_id = None
@@ -151,10 +159,10 @@ def _redirect_payload(purchase, outcome, reference_id=None):
     trainer_name = ''
     
     if is_trainer:
-        trainer_id = pkg.trainer_id if pkg else None
+        trainer_id = pkg.trainer_id if pkg and hasattr(pkg, 'trainer') else None
         trainer_name = pkg.trainer.name if pkg and hasattr(pkg, 'trainer') else ''
     else:
-        gym_id = pkg.gym_id if pkg else None
+        gym_id = pkg.gym_id if pkg and hasattr(pkg, 'gym') else None
         gym_name = pkg.gym.name if pkg and hasattr(pkg, 'gym') else ''
 
     payload.update({
@@ -293,8 +301,18 @@ class PaymentCallbackView(APIView):
                             logger.info(f"Fetched package via generic FK: {purchase.content_object}")
                         else:
                             logger.error(f"get_object_for_this_type returned None for content_type={purchase.content_type}, object_id={purchase.object_id}")
+                            return Response({
+                                'error': 'Package not found. Please contact support.',
+                                'authority': authority,
+                                'status': gateway_status
+                            }, status=500)
                     except Exception as e:
                         logger.error(f"Failed to fetch generic FK: {e}", exc_info=True)
+                        return Response({
+                            'error': 'Failed to load package. Please contact support.',
+                            'authority': authority,
+                            'status': gateway_status
+                        }, status=500)
                 
                 trans = Transaction.objects.select_for_update().filter(
                     purchase=purchase,
