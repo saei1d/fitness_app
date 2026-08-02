@@ -2,16 +2,18 @@ from decimal import Decimal
 from datetime import timedelta
 from unittest.mock import patch
 
+from django.contrib.contenttypes.models import ContentType
 from django.utils import timezone
 from django.test import TestCase
 from rest_framework.test import APIClient
 
 from accounts.models import User
 from finance.client.gateway import PaymentRequestResult, PaymentVerificationResult
-from finance.models import AdminWallet, Purchase, Transaction, Wallet
+from finance.models import AdminWallet, Purchase, Transaction, Wallet, TrainerWallet
 from discount.models import DiscountCode, PackageDiscount
-from gyms.models import Gym
+from gyms.models import Gym, GymOperator
 from packages.models import GroupPackage, Package
+from trainers.models import Trainer, TrainerGroupPackage, TrainerPackage
 
 
 class PurchaseFlowTests(TestCase):
@@ -105,6 +107,65 @@ class PurchaseFlowTests(TestCase):
         self.assertEqual(verify.status_code, 200)
         self.assertEqual(Wallet.objects.get(owner=self.owner).balance, Decimal('90.00'))
         self.assertEqual(AdminWallet.objects.get(id=1).balance, Decimal('10.00'))
+
+    def test_trainer_verify_with_generic_purchase_succeeds(self):
+        trainer_user = User.objects.create_user(phone='09120000003', role='trainer', full_name='Trainer User')
+        trainer = Trainer.objects.create(user=trainer_user, name='Trainer One')
+        trainer_group = TrainerGroupPackage.objects.create(title='Trainer Monthly')
+        trainer_package = TrainerPackage.objects.create(
+            trainer=trainer,
+            group_package=trainer_group,
+            title='Coach Plan',
+            gender='male',
+            price=Decimal('100.00'),
+            duration=30,
+            commission_rate=0.10,
+        )
+        AdminWallet.objects.create(id=1, balance=Decimal('90.00'))
+        purchase = Purchase.objects.create(
+            user=self.customer,
+            purchase_type='trainer',
+            content_type=ContentType.objects.get_for_model(TrainerPackage),
+            object_id=trainer_package.id,
+            buyer_code='555555',
+            payment_status='paid',
+            verification_status='pending',
+            total_amount=Decimal('100.00'),
+            commission_amount=Decimal('10.00'),
+            net_amount=Decimal('90.00'),
+            final_amount=Decimal('100.00'),
+        )
+
+        self.client.force_authenticate(trainer_user)
+        response = self.client.post('/api/v1/verify-by-gym/', {'buyer_code': purchase.buyer_code}, format='json')
+
+        self.assertEqual(response.status_code, 200)
+        purchase.refresh_from_db()
+        self.assertEqual(purchase.verification_status, 'verified')
+        self.assertEqual(TrainerWallet.objects.get(trainer=trainer).balance, Decimal('90.00'))
+
+    def test_operator_verify_credits_gym_owner_wallet(self):
+        operator = User.objects.create_user(phone='09120000004', role='operator', full_name='Gym Operator')
+        GymOperator.objects.create(gym=self.gym, operator=operator, is_active=True)
+        AdminWallet.objects.create(id=1, balance=Decimal('90.00'))
+        purchase = Purchase.objects.create(
+            user=self.customer,
+            package=self.package,
+            buyer_code='666666',
+            payment_status='paid',
+            verification_status='pending',
+            total_amount=Decimal('100.00'),
+            commission_amount=Decimal('10.00'),
+            net_amount=Decimal('90.00'),
+            final_amount=Decimal('100.00'),
+        )
+
+        self.client.force_authenticate(operator)
+        response = self.client.post('/api/v1/verify-by-gym/', {'buyer_code': purchase.buyer_code}, format='json')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(Wallet.objects.get(owner=self.owner).balance, Decimal('90.00'))
+        self.assertFalse(Wallet.objects.filter(owner=operator).exists())
 
 
 class GymMemberListTests(TestCase):

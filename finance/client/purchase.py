@@ -437,9 +437,9 @@ class VerifyPurchaseView(APIView):
 
         try:
             with transaction.atomic():
-                purchase = Purchase.objects.select_for_update().select_related(
-                    'content_type'
-                ).filter(
+                # Avoid locking through nullable joins; PostgreSQL rejects FOR UPDATE
+                # on the nullable side of an outer join.
+                purchase = Purchase.objects.select_for_update().filter(
                     buyer_code=buyer_code,
                     payment_status='paid',
                     verification_status='pending',
@@ -457,13 +457,14 @@ class VerifyPurchaseView(APIView):
                 
                 if purchase.purchase_type == 'trainer':
                     if user_role == 'trainer':
-                        if not hasattr(request.user, 'trainer_profile') or pkg.trainer != request.user.trainer_profile:
+                        if pkg.trainer.user_id != request.user.id:
                             return Response({'error': 'This purchase does not belong to you'}, status=403)
                     elif not is_admin:
                         return Response({'error': 'Only the trainer or admin can verify trainer purchases'}, status=403)
                 else:
+                    wallet_owner = pkg.gym.owner
                     if user_role == 'owner':
-                        if pkg.gym.owner != request.user:
+                        if wallet_owner != request.user:
                             return Response({'error': 'This purchase does not belong to your gym'}, status=403)
                     
                     elif user_role == 'operator':
@@ -498,7 +499,7 @@ class VerifyPurchaseView(APIView):
                     wallet_obj = trainer_wallet
                 else:
                     wallet, _ = Wallet.objects.select_for_update().get_or_create(
-                        owner=request.user,
+                        owner=wallet_owner,
                         defaults={'balance': 0},
                     )
                     wallet_obj = wallet
