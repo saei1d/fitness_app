@@ -259,10 +259,18 @@ class PaymentCallbackView(APIView):
 
         try:
             with transaction.atomic():
+                # select_for_update with nullable foreign keys causes PostgreSQL error
+                # only select_related non-nullable fields
                 purchase = Purchase.objects.select_for_update().select_related(
                     'user',
-                    'package',
                 ).get(payment_authority=authority)
+                
+                # Fetch package separately if needed (nullable field)
+                if purchase.package_id:
+                    purchase.package = purchase._meta.get_field('package').related_model.objects.filter(
+                        id=purchase.package_id
+                    ).first()
+                
                 trans = Transaction.objects.select_for_update().filter(
                     purchase=purchase,
                     status='pending',
@@ -324,7 +332,14 @@ class PaymentCallbackView(APIView):
         except PaymentGatewayError as exc:
             return Response({'error': str(exc)}, status=502)
         except Exception as exc:
-            return Response({'error': str(exc)}, status=500)
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Payment callback error for authority {authority}: {str(exc)}", exc_info=True)
+            return Response({
+                'error': 'Payment processing failed. Please contact support with your payment details.',
+                'authority': authority,
+                'status': gateway_status
+            }, status=500)
 
     def _respond(self, purchase, outcome, reference_id=None):
         payload = _redirect_payload(purchase, outcome, reference_id)
