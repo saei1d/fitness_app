@@ -1,6 +1,7 @@
 from django.contrib import admin
 from django import forms
 from .models import Trainer, TrainerGroupPackage, TrainerPackage, TrainerReview
+from finance.models import TrainerWallet
 import json
 
 
@@ -70,6 +71,10 @@ class TrainerAdmin(admin.ModelAdmin):
             'classes': ('collapse',)
         }),
     )
+
+    def save_model(self, request, obj, form, change):
+        super().save_model(request, obj, form, change)
+        TrainerWallet.objects.get_or_create(trainer=obj)
 
 
 @admin.register(TrainerGroupPackage)

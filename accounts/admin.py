@@ -1,6 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from .models import User, OTP
+from finance.models import Wallet
 
 # Unregister the default User if it's already registered
 try:
@@ -32,6 +33,11 @@ class UserAdmin(BaseUserAdmin):
     )
     
     filter_horizontal = ("groups", "user_permissions")
+
+    def save_model(self, request, obj, form, change):
+        super().save_model(request, obj, form, change)
+        if obj.role == 'owner':
+            Wallet.objects.get_or_create(owner=obj)
 
 
 @admin.register(OTP)
