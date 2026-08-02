@@ -460,12 +460,15 @@ class VerifyPurchaseView(APIView):
                     from trainers.models import Trainer
                     try:
                         user_trainer = Trainer.objects.get(user=request.user)
+                        logger.info(f"User trainer: {user_trainer.id}, Package trainer: {pkg.trainer.id}")
                         if user_trainer.id == pkg.trainer.id:
                             # Trainer can verify their own packages
+                            logger.info(f"Trainer {user_trainer.name} verified their own package")
                             pass
                         elif not is_admin:
                             return Response({'error': 'Only the trainer or admin can verify trainer purchases'}, status=403)
                     except Trainer.DoesNotExist:
+                        logger.warning(f"User {request.user.id} is not a trainer")
                         if not is_admin:
                             return Response({'error': 'Only the trainer or admin can verify trainer purchases'}, status=403)
                 else:
@@ -504,10 +507,12 @@ class VerifyPurchaseView(APIView):
                     return Response({'error': 'Admin wallet balance is not enough'}, status=400)
 
                 if purchase.purchase_type == 'trainer':
-                    trainer_wallet, _ = TrainerWallet.objects.select_for_update().get_or_create(
+                    logger.info(f"Processing trainer purchase, trainer: {pkg.trainer.id}, trainer name: {pkg.trainer.name}")
+                    trainer_wallet, created = TrainerWallet.objects.select_for_update().get_or_create(
                         trainer=pkg.trainer,
                         defaults={'balance': 0},
                     )
+                    logger.info(f"Trainer wallet: {trainer_wallet.id}, created: {created}, balance: {trainer_wallet.balance}")
                     wallet_obj = trainer_wallet
                 else:
                     wallet, _ = Wallet.objects.select_for_update().get_or_create(
@@ -522,6 +527,7 @@ class VerifyPurchaseView(APIView):
                 if purchase.expire_date is None:
                     purchase.expire_date = timezone.now() + timedelta(days=purchase.get_package_duration())
                 purchase.save(update_fields=['verification_status', 'verified_at', 'verified_by', 'expire_date'])
+                logger.info(f"Purchase {purchase.id} verified by {request.user.full_name or request.user.phone}, type: {purchase.purchase_type}, net_amount: {purchase.net_amount}")
 
                 if purchase.purchase_type == 'trainer':
                     Transaction.objects.create(
@@ -553,10 +559,16 @@ class VerifyPurchaseView(APIView):
 
                 if purchase.purchase_type == 'trainer':
                     TrainerWallet.objects.filter(pk=trainer_wallet.pk).update(balance=F('balance') + purchase.net_amount)
+                    trainer_wallet.refresh_from_db(fields=['balance'])
+                    logger.info(f"Updated trainer wallet {trainer_wallet.id} balance to: {trainer_wallet.balance}")
                 else:
                     Wallet.objects.filter(pk=wallet.pk).update(balance=F('balance') + purchase.net_amount)
+                    wallet.refresh_from_db(fields=['balance'])
+                    logger.info(f"Updated gym wallet {wallet.id} balance to: {wallet.balance}")
                 
                 AdminWallet.objects.filter(pk=admin_wallet.pk).update(balance=F('balance') - purchase.net_amount)
+                admin_wallet.refresh_from_db(fields=['balance'])
+                logger.info(f"Updated admin wallet balance to: {admin_wallet.balance}")
 
                 return Response({
                     'message': 'Purchase verified successfully',
