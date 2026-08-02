@@ -266,9 +266,14 @@ class PaymentCallbackView(APIView):
                 # only select_related non-nullable fields
                 purchase = Purchase.objects.select_for_update().select_related(
                     'user',
-                    'content_type',
                 ).get(payment_authority=authority)
                 logger.info(f"Found purchase {purchase.id} with payment_status={purchase.payment_status}, purchase_type={purchase.purchase_type}")
+                
+                # Fetch content_type separately (nullable field)
+                if purchase.content_type_id:
+                    from django.contrib.contenttypes.models import ContentType
+                    purchase.content_type = ContentType.objects.filter(id=purchase.content_type_id).first()
+                    logger.info(f"Fetched content_type: {purchase.content_type}")
                 
                 # Fetch package separately if needed (nullable field)
                 if purchase.package_id:
