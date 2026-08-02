@@ -78,7 +78,9 @@ class Purchase(models.Model):
         """Get the actual package (either gym or trainer)"""
         if self.content_object:
             return self.content_object
-        return self.package
+        if self.package:
+            return self.package
+        return None
 
     def get_package_title(self):
         pkg = self.get_package()

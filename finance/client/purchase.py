@@ -289,9 +289,12 @@ class PaymentCallbackView(APIView):
                         purchase.content_object = purchase.content_type.get_object_for_this_type(
                             id=purchase.object_id
                         )
-                        logger.info(f"Fetched package via generic FK: {purchase.content_object}")
+                        if purchase.content_object:
+                            logger.info(f"Fetched package via generic FK: {purchase.content_object}")
+                        else:
+                            logger.error(f"get_object_for_this_type returned None for content_type={purchase.content_type}, object_id={purchase.object_id}")
                     except Exception as e:
-                        logger.error(f"Failed to fetch generic FK: {e}")
+                        logger.error(f"Failed to fetch generic FK: {e}", exc_info=True)
                 
                 trans = Transaction.objects.select_for_update().filter(
                     purchase=purchase,
