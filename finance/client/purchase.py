@@ -284,7 +284,7 @@ class PaymentCallbackView(APIView):
                 
                 # Fetch generic foreign key content if trainer package
                 # This is the primary way to get the package for trainer purchases
-                if purchase.content_type_id and purchase.object_id:
+                if purchase.content_type and purchase.object_id:
                     try:
                         purchase.content_object = purchase.content_type.get_object_for_this_type(
                             id=purchase.object_id
