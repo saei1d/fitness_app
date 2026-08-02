@@ -258,18 +258,35 @@ class PaymentCallbackView(APIView):
             return Response({'error': 'authority is required'}, status=400)
 
         try:
+            import logging
+            logger = logging.getLogger(__name__)
+            
             with transaction.atomic():
                 # select_for_update with nullable foreign keys causes PostgreSQL error
                 # only select_related non-nullable fields
                 purchase = Purchase.objects.select_for_update().select_related(
                     'user',
+                    'content_type',
                 ).get(payment_authority=authority)
+                logger.info(f"Found purchase {purchase.id} with payment_status={purchase.payment_status}, purchase_type={purchase.purchase_type}")
                 
                 # Fetch package separately if needed (nullable field)
                 if purchase.package_id:
                     purchase.package = purchase._meta.get_field('package').related_model.objects.filter(
                         id=purchase.package_id
                     ).first()
+                    logger.info(f"Fetched gym package: {purchase.package}")
+                
+                # Fetch generic foreign key content if trainer package
+                # This is the primary way to get the package for trainer purchases
+                if purchase.content_type_id and purchase.object_id:
+                    try:
+                        purchase.content_object = purchase.content_type.get_object_for_this_type(
+                            id=purchase.object_id
+                        )
+                        logger.info(f"Fetched package via generic FK: {purchase.content_object}")
+                    except Exception as e:
+                        logger.error(f"Failed to fetch generic FK: {e}")
                 
                 trans = Transaction.objects.select_for_update().filter(
                     purchase=purchase,
@@ -279,6 +296,7 @@ class PaymentCallbackView(APIView):
                     trans = Transaction.objects.select_for_update().filter(
                         purchase=purchase,
                     ).order_by('-id').first()
+                logger.info(f"Transaction: {trans.id if trans else None}")
 
                 if purchase.payment_status == 'paid':
                     return self._respond(purchase, 'already_paid')
@@ -297,7 +315,10 @@ class PaymentCallbackView(APIView):
                         purchase.save(update_fields=['payment_status'])
                     return self._respond(purchase, 'failed')
 
+                logger.info(f"Verifying payment with amount={purchase.final_amount}, authority={authority}")
                 verification = verify_payment(amount=purchase.final_amount, authority=authority)
+                logger.info(f"Verification result: success={verification.success}, ref_id={verification.reference_id}")
+                
                 if not verification.success:
                     if trans is not None:
                         _mark_payment_failed(
@@ -311,6 +332,7 @@ class PaymentCallbackView(APIView):
                     return self._respond(purchase, 'failed')
 
                 if trans is None:
+                    logger.info("Creating new transaction")
                     trans = Transaction.objects.create(
                         purchase=purchase,
                         amount=purchase.final_amount,
@@ -319,6 +341,7 @@ class PaymentCallbackView(APIView):
                         description=f'Gateway payment for purchase #{purchase.id}',
                     )
 
+                logger.info("Finalizing paid purchase")
                 _finalize_paid_purchase(
                     purchase=purchase,
                     transaction_obj=trans,
@@ -328,17 +351,18 @@ class PaymentCallbackView(APIView):
                 return self._respond(purchase, 'success', verification.reference_id)
 
         except Purchase.DoesNotExist:
+            logger.error(f"Purchase not found for authority: {authority}")
             return self._respond(None, 'not_found')
         except PaymentGatewayError as exc:
+            logger.error(f"Payment gateway error: {str(exc)}")
             return Response({'error': str(exc)}, status=502)
         except Exception as exc:
-            import logging
-            logger = logging.getLogger(__name__)
             logger.error(f"Payment callback error for authority {authority}: {str(exc)}", exc_info=True)
             return Response({
                 'error': 'Payment processing failed. Please contact support with your payment details.',
                 'authority': authority,
-                'status': gateway_status
+                'status': gateway_status,
+                'error_details': str(exc) if settings.DEBUG else None
             }, status=500)
 
     def _respond(self, purchase, outcome, reference_id=None):
