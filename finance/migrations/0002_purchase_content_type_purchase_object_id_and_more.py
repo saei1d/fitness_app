@@ -11,7 +11,7 @@ class Migration(migrations.Migration):
         ('contenttypes', '0002_remove_content_type_name'),
         ('finance', '0001_initial'),
         ('packages', '0001_initial'),
-        ('trainers', '0002_consolidated_changes'),
+        ('trainers', '0001_initial'),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
