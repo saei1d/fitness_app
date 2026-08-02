@@ -50,7 +50,6 @@ class PurchaseSerializer(serializers.ModelSerializer):
             'purchase_type',
             'content_type',
             'object_id',
-            'package',
         ]
 
     def get_package_title(self, instance):
