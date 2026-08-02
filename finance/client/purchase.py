@@ -456,15 +456,25 @@ class VerifyPurchaseView(APIView):
                     return Response({'error': 'Package not found'}, status=404)
                 
                 if purchase.purchase_type == 'trainer':
-                    if user_role == 'trainer':
-                        if pkg.trainer.user_id != request.user.id:
-                            return Response({'error': 'This purchase does not belong to you'}, status=403)
-                    elif not is_admin:
-                        return Response({'error': 'Only the trainer or admin can verify trainer purchases'}, status=403)
+                    # Check if user is the trainer who owns this package
+                    from trainers.models import Trainer
+                    try:
+                        user_trainer = Trainer.objects.get(user=request.user)
+                        if user_trainer.id == pkg.trainer.id:
+                            # Trainer can verify their own packages
+                            pass
+                        elif not is_admin:
+                            return Response({'error': 'Only the trainer or admin can verify trainer purchases'}, status=403)
+                    except Trainer.DoesNotExist:
+                        if not is_admin:
+                            return Response({'error': 'Only the trainer or admin can verify trainer purchases'}, status=403)
                 else:
+                    # Gym purchases - only gym owner or operator can verify
                     wallet_owner = pkg.gym.owner
                     if user_role == 'owner':
-                        if wallet_owner != request.user:
+                        # Check if user is actually a gym owner (not a trainer with owner role)
+                        from gyms.models import Gym
+                        if not Gym.objects.filter(owner=request.user, id=pkg.gym.id).exists():
                             return Response({'error': 'This purchase does not belong to your gym'}, status=403)
                     
                     elif user_role == 'operator':
@@ -476,6 +486,8 @@ class VerifyPurchaseView(APIView):
                             is_active=True
                         ).exists():
                             return Response({'error': 'You are not assigned to this gym'}, status=403)
+                    elif not is_admin:
+                        return Response({'error': 'Only gym owner, operator, or admin can verify gym purchases'}, status=403)
 
                 CODE_EXPIRY_DAYS = 7
                 if not is_admin:
