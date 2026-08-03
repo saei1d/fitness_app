@@ -42,6 +42,59 @@ class GymListCreateView(generics.ListCreateAPIView):
             return [permissions.IsAdminUser()]
         return [permissions.AllowAny()]
 
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        
+        # Filter by gender based on packages
+        gender = self.request.query_params.get('gender')
+        if gender:
+            queryset = queryset.filter(packages__gender=gender).distinct()
+        
+        # Filter by price range based on packages
+        min_price = self.request.query_params.get('min_price')
+        max_price = self.request.query_params.get('max_price')
+        
+        if min_price:
+            queryset = queryset.filter(packages__price__gte=min_price).distinct()
+        if max_price:
+            queryset = queryset.filter(packages__price__lte=max_price).distinct()
+        
+        return queryset
+
+    @extend_schema(
+        summary="لیست باشگاه‌ها",
+        description=(
+            "لیست تمام باشگاه‌ها را برمی‌گرداند. بدون احراز هویت قابل دسترسی است. "
+            "فیلترها بر اساس پکیج‌های هر باشگاه اعمال می‌شوند:\n"
+            "- gender: فیلتر بر اساس جنسیت پکیج (male/female)\n"
+            "- min_price: حداقل قیمت پکیج\n"
+            "- max_price: حداکثر قیمت پکیج"
+        ),
+        parameters=[
+            {
+                'name': 'gender',
+                'type': str,
+                'required': False,
+                'description': 'فیلتر جنسیت پکیج (male/female)',
+            },
+            {
+                'name': 'min_price',
+                'type': float,
+                'required': False,
+                'description': 'حداقل قیمت پکیج',
+            },
+            {
+                'name': 'max_price',
+                'type': float,
+                'required': False,
+                'description': 'حداکثر قیمت پکیج',
+            },
+        ],
+        responses=GymSerializer,
+    )
+    def get(self, request, *args, **kwargs):
+        return self.list(request, *args, **kwargs)
+
     @extend_schema(
         summary="ایجاد باشگاه جدید",
         description=(
