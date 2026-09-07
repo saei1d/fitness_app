@@ -1,31 +1,46 @@
 from drf_spectacular.utils import extend_schema
-from rest_framework.views import APIView
+from rest_framework import generics, permissions, status
 from rest_framework.response import Response
-from rest_framework import status, permissions
 from ..models import Gym
 from ..serializers import GymSerializer
+from .crud import DefaultPagination
 from django.db.models import ExpressionWrapper, FloatField
 from django.db.models.functions import ACos, Cos, Radians, Sin
 
 
 @extend_schema(tags=['nearest_gym'])
-class NearestGymsView(APIView):
+class NearestGymsView(generics.ListAPIView):
     permission_classes = [permissions.AllowAny]
+    serializer_class = GymSerializer
+    pagination_class = DefaultPagination
 
     @extend_schema(
-        request=GymSerializer,
+        parameters=[
+            {
+                'name': 'latitude',
+                'type': float,
+                'required': True,
+                'description': 'مختصات عرض جغرافیایی کاربر',
+            },
+            {
+                'name': 'longitude',
+                'type': float,
+                'required': True,
+                'description': 'مختصات طول جغرافیایی کاربر',
+            },
+        ],
         responses={200: GymSerializer(many=True)},
-        description="فقط lat , lon کاربر را ارسال کنید"
+        description="باشگاه‌های نزدیک را با فاصله‌ی مرتب شده برمی‌گرداند. از پارامترهای latitude و longitude در کوئری استرینگ استفاده کنید."
     )
-    def post(self, request, *args, **kwargs):
+    def get(self, request, *args, **kwargs):
         try:
-            # دریافت مختصات کاربر از بدنه درخواست
-            user_lat = float(request.data.get('latitude'))
-            user_lon = float(request.data.get('longitude'))
+            # دریافت مختصات کاربر از کوئری پارامترها
+            user_lat = float(request.query_params.get('latitude'))
+            user_lon = float(request.query_params.get('longitude'))
 
             # محاسبه فاصله با استفاده از فرمول Haversine در SQL
             # فرمول: 6371 * ACOS(COS(RADIANS(lat1)) * COS(RADIANS(lat2)) * COS(RADIANS(lon2) - RADIANS(lon1)) + SIN(RADIANS(lat1)) * SIN(RADIANS(lat2)))
-            nearest_gyms = Gym.objects.annotate(
+            queryset = Gym.objects.annotate(
                 distance=ExpressionWrapper(
                     6371 * ACos(
                         Cos(Radians(user_lat)) * Cos(Radians('latitude')) * 
@@ -34,12 +49,17 @@ class NearestGymsView(APIView):
                     ),
                     output_field=FloatField()
                 )
-            ).filter(latitude__isnull=False, longitude__isnull=False).order_by('distance')[:5]
+            ).filter(latitude__isnull=False, longitude__isnull=False).order_by('distance')
 
-            # سریالایز کردن باشگاه‌ها (فاصله درون Serializer محاسبه می‌شود)
-            serializer = GymSerializer(nearest_gyms, many=True, context={'request': request})
+            # اعمال pagination
+            page = self.paginate_queryset(queryset)
+            if page is not None:
+                serializer = self.get_serializer(page, many=True)
+                return self.get_paginated_response(serializer.data)
 
-            return Response({'gyms': serializer.data}, status=status.HTTP_200_OK)
+            # اگر pagination غیرفعال باشد
+            serializer = self.get_serializer(queryset, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
 
         except (ValueError, TypeError):
             return Response(
