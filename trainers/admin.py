@@ -45,7 +45,7 @@ class TrainerAdmin(admin.ModelAdmin):
     list_filter = ['is_active', 'created_at']
     search_fields = ['name', 'user__phone', 'bio']
     filter_horizontal = ['active_gyms']
-    readonly_fields = ['average_rating', 'reviews_count', 'created_at', 'updated_at']
+    readonly_fields = ['reviews_count', 'created_at', 'updated_at']
     list_editable = ['order_homepage']
     fieldsets = (
         ('اطلاعات پایه', {
