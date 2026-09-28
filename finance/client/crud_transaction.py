@@ -3,7 +3,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.generics import ListCreateAPIView, RetrieveUpdateDestroyAPIView
 from drf_spectacular.utils import extend_schema
-from finance.models import Transaction, Wallet
+from finance.models import Transaction, Wallet, TrainerWallet
 from finance.serializers import TransactionSerializer
 
 
@@ -12,35 +12,50 @@ class IsAdminOrOwnerReadOnly(permissions.BasePermission):
         # همه لاگین باشند
         if not request.user or not request.user.is_authenticated:
             return False
-        
+
         # بررسی رول کاربر
         user = request.user
-        
+
         # ادمین و سوپر یوزر دسترسی کامل دارند
         if user.is_staff:
             return True
-        
+
         # owner فقط مشاهده دارد
         role = getattr(user, 'role', None)
         if role == 'owner':
             return True
-        
+
+        # trainer فقط مشاهده دارد
+        if role == 'trainer':
+            return True
+
         return False
 
     def has_object_permission(self, request, view, obj: Transaction):
         user = request.user
-        
+
         # ادمین و سوپر یوزر دسترسی کامل دارند
         if user.is_staff:
             return True
-        
+
         # owner فقط مشاهده برای تراکنش‌های کیف پول خودش
         role = getattr(user, 'role', None)
         if role == 'owner':
             if request.method in permissions.SAFE_METHODS:
                 if obj.wallet and obj.wallet.owner_id == user.id:
                     return True
-        
+
+        # trainer فقط مشاهده برای تراکنش‌های کیف پول خودش
+        if role == 'trainer':
+            if request.method in permissions.SAFE_METHODS:
+                from trainers.models import Trainer
+                try:
+                    trainer = Trainer.objects.get(user=user)
+                    if obj.trainer_wallet and obj.trainer_wallet.trainer == trainer:
+                        return True
+                except Trainer.DoesNotExist:
+                    pass
+
         return False
 
 
@@ -68,11 +83,11 @@ class TransactionListCreateView(ListCreateAPIView):
 
     def get_queryset(self):
         user = self.request.user
-        
+
         # ادمین و سوپر یوزر همه تراکنش‌ها را می‌بینند
         if user.is_staff:
             return Transaction.objects.select_related('wallet__owner', 'admin_wallet', 'purchase').all().order_by('-id')
-        
+
         # owner فقط تراکنش‌های کیف پول خودش را می‌بیند
         role = getattr(user, 'role', None)
         if role == 'owner':
@@ -81,7 +96,18 @@ class TransactionListCreateView(ListCreateAPIView):
                 return Transaction.objects.filter(wallet=wallet).select_related('wallet__owner', 'admin_wallet', 'purchase').order_by('-id')
             except Wallet.DoesNotExist:
                 return Transaction.objects.none()
-        
+
+        # trainer فقط تراکنش‌های کیف پول خودش را می‌بیند
+        if role == 'trainer':
+            from trainers.models import Trainer
+            try:
+                trainer = Trainer.objects.get(user=user)
+                from finance.models import TrainerWallet
+                wallet = TrainerWallet.objects.get(trainer=trainer)
+                return Transaction.objects.filter(trainer_wallet=wallet).select_related('trainer_wallet__trainer', 'admin_wallet', 'purchase').order_by('-id')
+            except (Trainer.DoesNotExist, TrainerWallet.DoesNotExist):
+                return Transaction.objects.none()
+
         return Transaction.objects.none()
 
     def perform_create(self, serializer):

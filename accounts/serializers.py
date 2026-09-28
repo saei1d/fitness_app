@@ -1,16 +1,27 @@
 from rest_framework import serializers
 from .models import User, OTP
+from .validators import convert_persian_to_english_digits
 from datetime import datetime
 from django.utils import timezone
 from drf_spectacular.utils import extend_schema_field, OpenApiTypes
 
 
+class PhoneNumberField(serializers.CharField):
+    """
+    Custom field that converts Persian digits to English digits
+    """
+    def to_internal_value(self, data):
+        # Convert Persian digits to English digits
+        data = convert_persian_to_english_digits(data)
+        return super().to_internal_value(data)
+
+
 class RequestOTPSerializer(serializers.Serializer):
-    phone = serializers.CharField()
+    phone = PhoneNumberField()
 
 
 class VerifyOTPSerializer(serializers.Serializer):
-    phone = serializers.CharField()
+    phone = PhoneNumberField()
     code = serializers.CharField()
 
 class EditProfileSerializer(serializers.ModelSerializer):
@@ -83,7 +94,7 @@ class CheckAuthResponseSerializer(serializers.Serializer):
 
 
 class MakeUserStaffRequestSerializer(serializers.Serializer):
-    phone = serializers.CharField()
+    phone = PhoneNumberField()
     is_staff = serializers.BooleanField(required=False, default=True)
 
 

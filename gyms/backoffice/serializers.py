@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from accounts.models import User
+from accounts.validators import convert_persian_to_english_digits
 from gyms.models import GymOperator
 from gyms.models import Gym
 
@@ -8,18 +9,28 @@ class GymOperatorSerializer(serializers.ModelSerializer):
     gym_name = serializers.CharField(source='gym.name', read_only=True)
     operator_name = serializers.CharField(source='operator.full_name', read_only=True)
     operator_phone = serializers.CharField(source='operator.phone', read_only=True)
-    
+
     class Meta:
         model = GymOperator
         fields = [
-            'id', 'gym', 'gym_name', 'operator', 'operator_name', 
+            'id', 'gym', 'gym_name', 'operator', 'operator_name',
             'operator_phone', 'is_active', 'created_at'
         ]
         read_only_fields = ['created_at']
 
 
+class PhoneNumberField(serializers.CharField):
+    """
+    Custom field that converts Persian digits to English digits
+    """
+    def to_internal_value(self, data):
+        # Convert Persian digits to English digits
+        data = convert_persian_to_english_digits(data)
+        return super().to_internal_value(data)
+
+
 class GymOperatorCreateSerializer(serializers.ModelSerializer):
-    operator_phone = serializers.CharField(write_only=True)
+    operator_phone = PhoneNumberField(write_only=True)
     
     class Meta:
         model = GymOperator

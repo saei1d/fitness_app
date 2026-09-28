@@ -2,39 +2,52 @@ from rest_framework import permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from drf_spectacular.utils import extend_schema
-from finance.models import Wallet
-from finance.serializers import WalletSerializer
+from finance.models import Wallet, TrainerWallet
+from finance.serializers import WalletSerializer, TrainerWalletSerializer
 
 
 class IsOwnerOrAdmin(permissions.BasePermission):
-    """دسترسی owner به کیف پول خودش و admin به همه کیف پول‌ها"""
-    
+    """دسترسی owner و trainer به کیف پول خودشان و admin به همه کیف پول‌ها"""
+
     def has_permission(self, request, view):
         if not request.user or not request.user.is_authenticated:
             return False
-        
+
         # admin به همه دسترسی دارد
         if request.user.is_staff:
             return True
-        
+
         # owner فقط به کیف پول خودش دسترسی دارد
         if request.user.role == 'owner':
             return True
-        
+
+        # trainer فقط به کیف پول خودش دسترسی دارد
+        if request.user.role == 'trainer':
+            return True
+
         return False
-    
+
     def has_object_permission(self, request, view, obj):
         if not request.user or not request.user.is_authenticated:
             return False
-        
+
         # admin به همه دسترسی دارد
         if request.user.is_staff:
             return True
-        
+
         # owner فقط به کیف پول خودش دسترسی دارد
         if request.user.role == 'owner':
             return obj.owner == request.user
-        
+
+        # trainer فقط به کیف پول خودش دسترسی دارد
+        if request.user.role == 'trainer':
+            from trainers.models import Trainer
+            try:
+                trainer = Trainer.objects.get(user=request.user)
+                return obj.trainer == trainer
+            except Trainer.DoesNotExist:
+                return False
+
         return False
 
 
@@ -100,10 +113,68 @@ class WalletListView(APIView):
                     )
                 serializer = WalletSerializer(wallet)
                 return Response(serializer.data, status=status.HTTP_200_OK)
+            elif request.user.role == 'trainer':
+                # trainer فقط کیف پول خودش را می‌بیند
+                from trainers.models import Trainer
+                try:
+                    trainer = Trainer.objects.get(user=request.user)
+                    wallet = TrainerWallet.objects.filter(trainer=trainer).first()
+                    if not wallet:
+                        return Response(
+                            {'error': 'کیف پولی برای شما یافت نشد'},
+                            status=status.HTTP_404_NOT_FOUND
+                        )
+                    serializer = TrainerWalletSerializer(wallet)
+                    return Response(serializer.data, status=status.HTTP_200_OK)
+                except Trainer.DoesNotExist:
+                    return Response(
+                        {'error': 'مربی‌گری برای شما یافت نشد'},
+                        status=status.HTTP_404_NOT_FOUND
+                    )
             else:
                 return Response(
                     {'error': 'شما دسترسی لازم برای مشاهده کیف پول را ندارید'},
                     status=status.HTTP_403_FORBIDDEN
+                )
+
+        except Exception as e:
+            return Response(
+                {'error': f'خطا در دریافت اطلاعات کیف پول: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+@extend_schema(
+    tags=['Wallet'],
+    summary='کیف پول مربی',
+    description='نمایش کیف پول مربی جاری'
+)
+class TrainerWalletListView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        try:
+            if request.user.role != 'trainer':
+                return Response(
+                    {'error': 'این endpoint فقط برای مربیان است'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+
+            from trainers.models import Trainer
+            try:
+                trainer = Trainer.objects.get(user=request.user)
+                wallet = TrainerWallet.objects.filter(trainer=trainer).first()
+                if not wallet:
+                    return Response(
+                        {'error': 'کیف پولی برای شما یافت نشد'},
+                        status=status.HTTP_404_NOT_FOUND
+                    )
+                serializer = TrainerWalletSerializer(wallet)
+                return Response(serializer.data, status=status.HTTP_200_OK)
+            except Trainer.DoesNotExist:
+                return Response(
+                    {'error': 'مربی‌گری برای شما یافت نشد'},
+                    status=status.HTTP_404_NOT_FOUND
                 )
 
         except Exception as e:

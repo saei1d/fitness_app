@@ -5,7 +5,7 @@ from django.db import transaction
 from django.db.models import F, Q
 from django.contrib.contenttypes.models import ContentType
 
-from finance.models import Purchase, Wallet, AdminWallet, Transaction, WithdrawRequest, TrainerWallet
+from finance.models import Purchase, Wallet, AdminWallet, Transaction, WithdrawRequest, TrainerWallet, TrainerWithdrawRequest
 from rest_framework import serializers
 from django.utils import timezone
 from discount.models import DiscountCode, PackageDiscount
@@ -361,6 +361,49 @@ class WithdrawRequestSerializer(serializers.ModelSerializer):
         return withdraw_request
 
 
+class TrainerWithdrawRequestSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TrainerWithdrawRequest
+        fields = '__all__'
+        read_only_fields = ['trainer', 'wallet', 'status']
+
+    def validate(self, attrs):
+        request = self.context.get('request')
+        if request is None:
+            raise serializers.ValidationError("Request context is missing")
+
+        user = request.user
+        if not user.is_authenticated:
+            raise serializers.ValidationError("Authentication required")
+
+        if getattr(user, 'role', None) != 'trainer':
+            raise serializers.ValidationError("Only trainers can request withdrawals")
+
+        trainer = self.context.get('trainer')
+        wallet = self.context.get('wallet')
+
+        if trainer is None:
+            raise serializers.ValidationError("Trainer context is missing")
+        if wallet is None:
+            raise serializers.ValidationError("Wallet context is missing")
+
+        amount = attrs.get('amount')
+        if amount is None:
+            raise serializers.ValidationError({"amount": "Amount is required"})
+        if amount <= 0:
+            raise serializers.ValidationError({"amount": "Amount must be greater than zero"})
+        if amount > wallet.balance:
+            raise serializers.ValidationError({"amount": "Amount exceeds wallet balance"})
+
+        return attrs
+
+    def create(self, validated_data):
+        trainer = self.context['trainer']
+        wallet = self.context['wallet']
+        withdraw_request = TrainerWithdrawRequest.objects.create(trainer=trainer, wallet=wallet, **validated_data)
+        return withdraw_request
+
+
 class AdminWithdrawUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = WithdrawRequest
@@ -368,6 +411,37 @@ class AdminWithdrawUpdateSerializer(serializers.ModelSerializer):
 
     def validate(self, attrs):
         request = self.context.get('request')
+        if request is None:
+            raise serializers.ValidationError("Request context is missing")
+
+        if not request.user.is_staff:
+            raise serializers.ValidationError("Only admin can update withdraw requests")
+
+        new_status = attrs.get('status')
+        if new_status not in ['pending', 'approved', 'rejected', 'completed']:
+            raise serializers.ValidationError({"status": "Invalid status"})
+
+        return attrs
+
+
+class AdminTrainerWithdrawUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TrainerWithdrawRequest
+        fields = ['status', 'admin_message']
+
+    def validate(self, attrs):
+        request = self.context.get('request')
+        if request is None:
+            raise serializers.ValidationError("Request context is missing")
+
+        if not request.user.is_staff:
+            raise serializers.ValidationError("Only admin can update trainer withdraw requests")
+
+        new_status = attrs.get('status')
+        if new_status not in ['pending', 'approved', 'rejected', 'completed']:
+            raise serializers.ValidationError({"status": "Invalid status"})
+
+        return attrs
         if request is None:
             raise serializers.ValidationError("Request context is missing")
 

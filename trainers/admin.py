@@ -1,6 +1,7 @@
 from django.contrib import admin
 from django import forms
 from .models import Trainer, TrainerGroupPackage, TrainerPackage, TrainerReview
+from .services import promote_trainer
 from finance.models import TrainerWallet
 import json
 
@@ -41,15 +42,15 @@ class TrainerAdminForm(forms.ModelForm):
 @admin.register(Trainer)
 class TrainerAdmin(admin.ModelAdmin):
     form = TrainerAdminForm
-    list_display = ['name', 'user', 'image', 'homepage_image', 'average_rating', 'reviews_count', 'active_students_count', 'order_homepage', 'is_active', 'created_at']
+    list_display = ['name', 'user', 'image', 'homepage_image', 'contact_method', 'average_rating', 'reviews_count', 'active_students_count', 'order_homepage', 'is_active', 'created_at']
     list_filter = ['is_active', 'created_at']
-    search_fields = ['name', 'user__phone', 'bio']
+    search_fields = ['name', 'user__phone', 'bio', 'contact_method']
     filter_horizontal = ['active_gyms']
     readonly_fields = ['reviews_count', 'created_at', 'updated_at']
     list_editable = ['order_homepage']
     fieldsets = (
         ('اطلاعات پایه', {
-            'fields': ('user', 'name', 'bio', 'is_active')
+            'fields': ('user', 'name', 'bio', 'contact_method', 'is_active')
         }),
         ('تصاویر', {
             'fields': ('image', 'homepage_image')
@@ -74,7 +75,7 @@ class TrainerAdmin(admin.ModelAdmin):
 
     def save_model(self, request, obj, form, change):
         super().save_model(request, obj, form, change)
-        TrainerWallet.objects.get_or_create(trainer=obj)
+        promote_trainer(obj)
 
 
 @admin.register(TrainerGroupPackage)

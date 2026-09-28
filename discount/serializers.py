@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import DiscountCode, DiscountUsage, PackageDiscount
+from .models import DiscountCode, DiscountUsage, PackageDiscount, TrainerDiscountCode, TrainerDiscountUsage, TrainerPackageDiscount
 
 
 class DiscountCodeSerializer(serializers.ModelSerializer):
@@ -199,5 +199,216 @@ class PackageDiscountSerializer(serializers.ModelSerializer):
             # Owner can only use club source
             if source_type != 'club':
                 raise serializers.ValidationError("مالک باشگاه فقط می‌تواند تخفیف با منبع 'club' ایجاد/ویرایش کند")
+
+        return attrs
+
+
+class TrainerDiscountCodeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TrainerDiscountCode
+        fields = [
+            'id', 'code', 'discount_type', 'value', 'trainer', 'packages', 'source_type',
+            'start_date', 'end_date', 'usage_limit', 'used_count',
+            'per_user_limit', 'is_active', 'created_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'used_count', 'created_at', 'updated_at']
+        extra_kwargs = {
+            'code': {
+                'help_text': 'کد تخفیف یکتا (مثال: TRAINER2024)'
+            },
+            'discount_type': {
+                'help_text': 'نوع تخفیف: percent (درصدی) یا amount (مبلغ ثابت)'
+            },
+            'value': {
+                'help_text': 'مقدار تخفیف (برای درصد: 0-100، برای مبلغ: مقدار به ریال)'
+            },
+            'trainer': {
+                'help_text': 'مربی مرتبط (برای source_type=trainer الزامی، برای admin=null)'
+            },
+            'packages': {
+                'help_text': 'پکیج‌های مرتبط (اگر خالی باشد، تمام پکیج‌های مربی اعمال می‌شود)'
+            },
+            'source_type': {
+                'help_text': 'منبع کسر تخفیف: trainer (از سهم مربی) یا admin (از سهم ادمین)'
+            },
+            'start_date': {
+                'help_text': 'تاریخ شروع اعتبار (اختیاری)'
+            },
+            'end_date': {
+                'help_text': 'تاریخ پایان اعتبار (اختیاری)'
+            },
+            'usage_limit': {
+                'help_text': 'تعداد مجاز کل استفاده (اختیاری)'
+            },
+            'per_user_limit': {
+                'help_text': 'تعداد مجاز استفاده هر کاربر (اختیاری)'
+            },
+            'is_active': {
+                'help_text': 'وضعیت فعال بودن کد تخفیف'
+            }
+        }
+
+    def validate_code(self, value):
+        """بررسی یکتایی کد تخفیف، با استثناء رکورد در حال ویرایش"""
+        qs = TrainerDiscountCode.objects.filter(code=value)
+        instance = getattr(self, 'instance', None)
+        if instance is not None:
+            qs = qs.exclude(pk=instance.pk)
+        if qs.exists():
+            raise serializers.ValidationError("این کد تخفیف قبلاً استفاده شده است.")
+        return value
+
+    def validate(self, attrs):
+        """اعتبارسنجی کلی + قواعد دسترسی ساخت/ویرایش"""
+        start_date = attrs.get('start_date')
+        end_date = attrs.get('end_date')
+
+        if start_date and end_date and start_date >= end_date:
+            raise serializers.ValidationError("تاریخ شروع باید قبل از تاریخ پایان باشد")
+
+        request = self.context.get('request')
+        if not request or not request.user or not request.user.is_authenticated:
+            return attrs
+
+        user = request.user
+
+        # Determine effective values (for update may be missing from attrs)
+        source_type = attrs.get('source_type')
+        trainer = attrs.get('trainer')
+        packages = attrs.get('packages', [])
+
+        if self.instance is not None:
+            # On update, fallback to existing values
+            if source_type is None:
+                source_type = self.instance.source_type
+            if trainer is None:
+                trainer = self.instance.trainer
+            if not packages:
+                packages = list(self.instance.packages.all())
+
+        # Trainers constraints
+        if not user.is_staff and getattr(user, 'role', None) == 'trainer':
+            # Trainer can only work with their own packages
+            from trainers.models import Trainer
+            try:
+                trainer_profile = Trainer.objects.get(user=user)
+                if trainer is None:
+                    raise serializers.ValidationError("مربی باید برای خودش کد تخفیف بسازد")
+                if trainer != trainer_profile:
+                    raise serializers.ValidationError("شما فقط می‌توانید برای خودتان کد تخفیف بسازید/ویرایش کنید")
+            except Trainer.DoesNotExist:
+                raise serializers.ValidationError("پروفایل مربی برای شما یافت نشد")
+
+            # Trainer can only use trainer source
+            if source_type != 'trainer':
+                raise serializers.ValidationError("مربی فقط می‌تواند کد با منبع 'trainer' ایجاد/ویرایش کند")
+
+            # All packages must belong to the trainer
+            for pkg in packages:
+                if pkg.trainer != trainer_profile:
+                    raise serializers.ValidationError("تمام پکیج‌ها باید متعلق به شما باشند")
+
+        # If source_type is admin, trainer must be null (by business rule); if trainer, trainer required
+        if source_type == 'admin' and trainer is not None:
+            raise serializers.ValidationError("برای کدهای منبع ادمین نباید مربی انتخاب شود")
+        if source_type == 'trainer' and trainer is None:
+            raise serializers.ValidationError("برای کدهای منبع مربی انتخاب مربی الزامی است")
+
+        # If packages are selected and trainer is set, packages must belong to trainer
+        if trainer and packages:
+            for pkg in packages:
+                if pkg.trainer != trainer:
+                    raise serializers.ValidationError("تمام پکیج‌ها باید متعلق به مربی انتخاب‌شده باشند")
+
+        return attrs
+
+
+class TrainerDiscountUsageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TrainerDiscountUsage
+        fields = ['id', 'discount', 'user', 'used_at']
+        read_only_fields = ['id', 'user', 'used_at']
+        extra_kwargs = {
+            'discount': {
+                'help_text': 'کد تخفیف استفاده شده'
+            },
+            'user': {
+                'help_text': 'کاربری که از کد استفاده کرده'
+            },
+            'used_at': {
+                'help_text': 'زمان استفاده از کد تخفیف'
+            }
+        }
+
+
+class TrainerPackageDiscountSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TrainerPackageDiscount
+        fields = [
+            'id', 'package', 'discount_type', 'value', 'source_type',
+            'start_date', 'end_date', 'is_active', 'created_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
+        extra_kwargs = {
+            'package': {
+                'help_text': 'پکیج مربی مورد نظر'
+            },
+            'discount_type': {
+                'help_text': 'نوع تخفیف: percent (درصدی) یا amount (مبلغ ثابت)'
+            },
+            'value': {
+                'help_text': 'مقدار تخفیف (برای درصد: 0-100، برای مبلغ: مقدار به ریال)'
+            },
+            'source_type': {
+                'help_text': 'منبع کسر تخفیف: trainer (از سهم مربی) یا admin (از سهم ادمین)'
+            },
+            'start_date': {
+                'help_text': 'تاریخ شروع اعتبار (اختیاری)'
+            },
+            'end_date': {
+                'help_text': 'تاریخ پایان اعتبار (اختیاری)'
+            },
+            'is_active': {
+                'help_text': 'وضعیت فعال بودن تخفیف'
+            }
+        }
+
+    def validate(self, attrs):
+        """اعتبارسنجی کلی + قواعد دسترسی ساخت/ویرایش"""
+        start_date = attrs.get('start_date')
+        end_date = attrs.get('end_date')
+
+        if start_date and end_date and start_date >= end_date:
+            raise serializers.ValidationError("تاریخ شروع باید قبل از تاریخ پایان باشد")
+
+        request = self.context.get('request')
+        if not request or not request.user or not request.user.is_authenticated:
+            return attrs
+
+        user = request.user
+        package = attrs.get('package')
+        source_type = attrs.get('source_type')
+
+        if self.instance is not None:
+            # On update, fallback to existing values
+            if package is None:
+                package = self.instance.package
+            if source_type is None:
+                source_type = self.instance.source_type
+
+        # Trainers constraints
+        if not user.is_staff and getattr(user, 'role', None) == 'trainer':
+            # Trainer can only work with their own packages
+            from trainers.models import Trainer
+            try:
+                trainer_profile = Trainer.objects.get(user=user)
+                if package.trainer != trainer_profile:
+                    raise serializers.ValidationError("شما فقط می‌توانید برای پکیج‌های خودتان تخفیف بسازید/ویرایش کنید")
+            except Trainer.DoesNotExist:
+                raise serializers.ValidationError("پروفایل مربی برای شما یافت نشد")
+
+            # Trainer can only use trainer source
+            if source_type != 'trainer':
+                raise serializers.ValidationError("مربی فقط می‌تواند تخفیف با منبع 'trainer' ایجاد/ویرایش کند")
 
         return attrs

@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import DiscountCode, DiscountUsage, PackageDiscount
+from .models import DiscountCode, DiscountUsage, PackageDiscount, TrainerDiscountCode, TrainerDiscountUsage, TrainerPackageDiscount
 from django.utils import timezone
 
 
@@ -74,7 +74,7 @@ class PackageDiscountAdmin(admin.ModelAdmin):
     list_filter = ('discount_type', 'source_type', 'is_active', 'created_at')
     search_fields = ('package__title', 'package__gym__name')
     readonly_fields = ('created_at', 'updated_at', 'is_valid_display')
-    
+
     fieldsets = (
         ("اطلاعات اصلی", {
             "fields": ("package", "discount_type", "value", "source_type")
@@ -89,7 +89,107 @@ class PackageDiscountAdmin(admin.ModelAdmin):
             "fields": ("created_at", "updated_at")
         }),
     )
-    
+
+    def is_valid_display(self, obj):
+        now = timezone.now()
+        if not obj.is_active:
+            return False
+        if obj.start_date and obj.start_date > now:
+            return False
+        if obj.end_date and obj.end_date < now:
+            return False
+        return True
+    is_valid_display.short_description = "معتبر"
+    is_valid_display.boolean = True
+
+
+class TrainerDiscountUsageInline(admin.TabularInline):
+    model = TrainerDiscountUsage
+    extra = 0
+    readonly_fields = ("used_at",)
+    can_delete = False
+
+
+@admin.register(TrainerDiscountCode)
+class TrainerDiscountCodeAdmin(admin.ModelAdmin):
+    list_display = ('id', 'code', 'discount_type', 'value', 'trainer', 'source_type', 'is_active', 'is_valid_display', 'used_count', 'usage_limit', 'created_at')
+    list_filter = ('discount_type', 'source_type', 'is_active', 'created_at')
+    search_fields = ('code', 'trainer__name')
+    readonly_fields = ('used_count', 'created_at', 'updated_at', 'is_valid_display')
+    inlines = [TrainerDiscountUsageInline]
+
+    def get_form(self, request, obj=None, **kwargs):
+        form = super().get_form(request, obj, **kwargs)
+        if obj and obj.trainer:
+            from trainers.models import TrainerPackage
+            form.base_fields['packages'].queryset = TrainerPackage.objects.filter(trainer=obj.trainer)
+        return form
+
+    fieldsets = (
+        ("اطلاعات اصلی", {
+            "fields": ("code", "discount_type", "value", "trainer", "packages", "source_type")
+        }),
+        ("محدودیت‌ها", {
+            "fields": ("usage_limit", "per_user_limit", "start_date", "end_date")
+        }),
+        ("وضعیت", {
+            "fields": ("is_active", "is_valid_display", "used_count")
+        }),
+        ("تاریخ‌ها", {
+            "fields": ("created_at", "updated_at")
+        }),
+    )
+
+    def is_valid_display(self, obj):
+        now = timezone.now()
+        if not obj.is_active:
+            return False
+        if obj.start_date and obj.start_date > now:
+            return False
+        if obj.end_date and obj.end_date < now:
+            return False
+        if obj.usage_limit and obj.used_count >= obj.usage_limit:
+            return False
+        return True
+    is_valid_display.short_description = "معتبر"
+    is_valid_display.boolean = True
+
+
+@admin.register(TrainerDiscountUsage)
+class TrainerDiscountUsageAdmin(admin.ModelAdmin):
+    list_display = ('id', 'discount', 'user', 'user_phone', 'used_at')
+    list_filter = ('used_at', 'discount__code')
+    search_fields = ('discount__code', 'user__phone', 'user__full_name')
+    readonly_fields = ("used_at",)
+    ordering = ("-used_at",)
+
+    def user_phone(self, obj):
+        return obj.user.phone
+    user_phone.short_description = "شماره تلفن"
+
+
+@admin.register(TrainerPackageDiscount)
+class TrainerPackageDiscountAdmin(admin.ModelAdmin):
+    list_display = ('id', 'package', 'discount_type', 'value', 'source_type', 'is_active', 'is_valid_display', 'created_at')
+    list_filter = ('discount_type', 'source_type', 'is_active', 'created_at')
+    search_fields = ('package__title', 'package__trainer__name')
+    readonly_fields = ('created_at', 'updated_at', 'is_valid_display')
+
+    fieldsets = (
+        ("اطلاعات اصلی", {
+            "fields": ("package", "discount_type", "value", "source_type")
+        }),
+        ("محدودیت‌ها", {
+            "fields": ("start_date", "end_date")
+        }),
+        ("وضعیت", {
+            "fields": ("is_active", "is_valid_display")
+        }),
+        ("تاریخ‌ها", {
+            "fields": ("created_at", "updated_at")
+        }),
+    )
+
     def is_valid_display(self, obj):
         now = timezone.now()
         if not obj.is_active:

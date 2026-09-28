@@ -70,6 +70,13 @@ class Trainer(models.Model):
         blank=True,
         help_text="تیتر کوتاه زیر اسم مربی"
     )
+
+    # راه ارتباطی
+    contact_method = models.CharField(
+        max_length=255,
+        blank=True,
+        help_text="راه ارتباطی با مربی (مثل: اینستاگرام، تلگرام، واتساپ، شماره تلفن)"
+    )
     
     # امتیاز و نظرات
     average_rating = models.FloatField(default=0.0)

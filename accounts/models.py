@@ -42,6 +42,7 @@ class User(AbstractBaseUser, PermissionsMixin):
         ('owner', 'Owner'),
         ('admin', 'Admin'),
         ('operator', 'Operator'),
+        ('trainer', 'Trainer'),
     ]
 
     phone = models.CharField(max_length=20, unique=True, validators=[validate_iranian_phone_number])

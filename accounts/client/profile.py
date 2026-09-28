@@ -2,7 +2,7 @@ from accounts.imports import *
 
 
 def _profile_photo_access_allowed(user):
-    return getattr(user, 'role', None) in {'customer', 'owner'}
+    return getattr(user, 'role', None) in {'customer', 'owner', 'trainer'}
 
 
 @extend_schema(tags=['EditProfile'])

@@ -8,7 +8,7 @@ class TrainerSerializer(serializers.ModelSerializer):
     """Serializer برای نمایش لیست مربی‌ها"""
     active_gyms_names = serializers.SerializerMethodField()
     phone = serializers.CharField(source='user.phone', read_only=True)
-    
+
     class Meta:
         model = Trainer
         fields = [
@@ -26,6 +26,7 @@ class TrainerSerializer(serializers.ModelSerializer):
             'active_gyms_names',
             'active_students_count',
             'bio',
+            'contact_method',
             'average_rating',
             'reviews_count',
             'order_homepage',
@@ -50,7 +51,7 @@ class TrainerDetailSerializer(serializers.ModelSerializer):
     reviews = serializers.SerializerMethodField()
     packages = serializers.SerializerMethodField()
     phone = serializers.CharField(source='user.phone', read_only=True)
-    
+
     class Meta:
         model = Trainer
         fields = [
@@ -67,6 +68,7 @@ class TrainerDetailSerializer(serializers.ModelSerializer):
             'active_gyms',
             'active_students_count',
             'bio',
+            'contact_method',
             'average_rating',
             'reviews_count',
             'created_at',

@@ -2,6 +2,7 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from .models import User, OTP
 from finance.models import Wallet
+from trainers.models import Trainer
 
 # Unregister the default User if it's already registered
 try:
@@ -38,6 +39,14 @@ class UserAdmin(BaseUserAdmin):
         super().save_model(request, obj, form, change)
         if obj.role == 'owner':
             Wallet.objects.get_or_create(owner=obj)
+        elif obj.role == 'trainer':
+            # Create TrainerWallet if the user has a Trainer profile
+            try:
+                trainer = Trainer.objects.get(user=obj)
+                from finance.models import TrainerWallet
+                TrainerWallet.objects.get_or_create(trainer=trainer)
+            except Trainer.DoesNotExist:
+                pass  # User doesn't have a Trainer profile yet
 
 
 @admin.register(OTP)

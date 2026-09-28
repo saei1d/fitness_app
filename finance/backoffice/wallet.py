@@ -5,7 +5,7 @@ from rest_framework.permissions import IsAuthenticated
 from drf_spectacular.utils import extend_schema
 from decimal import Decimal
 from django.db import transaction
-from finance.models import Wallet, Transaction, Purchase,AdminWallet
+from finance.models import Wallet, Transaction, Purchase, AdminWallet, TrainerWallet
 from finance.serializers import *
 from accounts.models import User
 
@@ -309,7 +309,7 @@ class AdminPurchaseDetailView(APIView):
 class AdminWalletTransactionsView(APIView):
     """تراکنش‌های کیف پول ادمین"""
     permission_classes = [IsStaffPermission]
-    
+
     @extend_schema(
         tags=['Admin Wallet'],
         summary='تراکنش‌های کیف پول ادمین',
@@ -323,11 +323,217 @@ class AdminWalletTransactionsView(APIView):
             return Response(serializer.data, status=status.HTTP_200_OK)
         except AdminWallet.DoesNotExist:
             return Response(
-                {'error': 'کیف پول ادمین یافت نشد'}, 
+                {'error': 'کیف پول ادمین یافت نشد'},
                 status=status.HTTP_404_NOT_FOUND
             )
         except Exception as e:
             return Response(
-                {'error': f'خطا در دریافت تراکنش‌ها: {str(e)}'}, 
+                {'error': f'خطا در دریافت تراکنش‌ها: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+class AdminTrainerWalletListView(APIView):
+    """لیست همه کیف پول‌های مربی برای admin"""
+    permission_classes = [IsStaffPermission]
+
+    @extend_schema(
+        tags=['Admin Trainer Wallet'],
+        summary='لیست کیف پول‌های مربی',
+        description='نمایش همه کیف پول‌های مربی برای admin'
+    )
+    def get(self, request):
+        try:
+            trainer_wallets = TrainerWallet.objects.select_related('trainer__user').all()
+            serializer = TrainerWalletSerializer(trainer_wallets, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response(
+                {'error': f'خطا در دریافت لیست کیف پول‌های مربی: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+class AdminTrainerWalletDetailView(APIView):
+    """جزئیات کیف پول مربی برای admin"""
+    permission_classes = [IsStaffPermission]
+
+    @extend_schema(
+        tags=['Admin Trainer Wallet'],
+        summary='جزئیات کیف پول مربی',
+        description='نمایش جزئیات کیف پول مربی خاص'
+    )
+    def get(self, request, pk):
+        try:
+            wallet = TrainerWallet.objects.select_related('trainer__user').get(pk=pk)
+            serializer = TrainerWalletSerializer(wallet)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except TrainerWallet.DoesNotExist:
+            return Response(
+                {'error': 'کیف پول مربی مورد نظر یافت نشد'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            return Response(
+                {'error': f'خطا در دریافت اطلاعات کیف پول مربی: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+class AdminTrainerWalletBalanceUpdateView(APIView):
+    """به‌روزرسانی موجودی کیف پول مربی توسط admin"""
+    permission_classes = [IsStaffPermission]
+
+    @extend_schema(
+        tags=['Admin Trainer Wallet'],
+        summary='به‌روزرسانی موجودی کیف پول مربی',
+        description='افزایش یا کاهش موجودی کیف پول مربی توسط admin',
+        request={
+            'type': 'object',
+            'properties': {
+                'operation': {
+                    'type': 'string',
+                    'enum': ['add', 'subtract', 'set'],
+                    'description': 'نوع عملیات: add (افزایش), subtract (کاهش), set (تنظیم مستقیم)'
+                },
+                'amount': {
+                    'type': 'number',
+                    'description': 'مقدار'
+                },
+                'description': {
+                    'type': 'string',
+                    'description': 'توضیحات عملیات'
+                }
+            },
+            'required': ['operation', 'amount']
+        }
+    )
+    def post(self, request, pk):
+        try:
+            wallet = TrainerWallet.objects.get(pk=pk)
+            operation = request.data.get('operation')
+            amount = Decimal(str(request.data.get('amount', 0)))
+            description = request.data.get('description', '')
+
+            if operation not in ['add', 'subtract', 'set']:
+                return Response(
+                    {'error': 'عملیات نامعتبر. عملیات مجاز: add, subtract, set'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            if amount <= 0:
+                return Response(
+                    {'error': 'مقدار باید بزرگتر از صفر باشد'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            with transaction.atomic():
+                old_balance = wallet.balance
+
+                if operation == 'add':
+                    wallet.balance += amount
+                    transaction_type = 'credit'
+                    transaction_description = f'افزایش موجودی کیف پول مربی توسط admin: {description}'
+                elif operation == 'subtract':
+                    if wallet.balance < amount:
+                        return Response(
+                            {'error': 'موجودی کافی نیست'},
+                            status=status.HTTP_400_BAD_REQUEST
+                        )
+                    wallet.balance -= amount
+                    transaction_type = 'debit'
+                    transaction_description = f'کاهش موجودی کیف پول مربی توسط admin: {description}'
+                elif operation == 'set':
+                    wallet.balance = amount
+                    transaction_type = 'credit' if amount > old_balance else 'debit'
+                    transaction_description = f'تنظیم مستقیم موجودی کیف پول مربی توسط admin: {description}'
+
+                wallet.save()
+
+                # ایجاد تراکنش
+                Transaction.objects.create(
+                    trainer_wallet=wallet,
+                    amount=abs(amount - old_balance) if operation == 'set' else amount,
+                    type=transaction_type,
+                    status='completed',
+                    description=transaction_description,
+                    payment_id=None
+                )
+
+                return Response({
+                    'message': 'موجودی کیف پول مربی با موفقیت به‌روزرسانی شد',
+                    'old_balance': float(old_balance),
+                    'new_balance': float(wallet.balance),
+                    'operation': operation,
+                    'amount': float(amount)
+                }, status=status.HTTP_200_OK)
+
+        except TrainerWallet.DoesNotExist:
+            return Response(
+                {'error': 'کیف پول مربی مورد نظر یافت نشد'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            return Response(
+                {'error': f'خطا در به‌روزرسانی موجودی: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+class AdminTrainerWalletTransactionsView(APIView):
+    """لیست تراکنش‌های کیف پول مربی برای admin"""
+    permission_classes = [IsStaffPermission]
+
+    @extend_schema(
+        tags=['Admin Trainer Wallet'],
+        summary='تراکنش‌های کیف پول مربی',
+        description='نمایش تراکنش‌های کیف پول مربی خاص'
+    )
+    def get(self, request, pk):
+        try:
+            wallet = TrainerWallet.objects.get(pk=pk)
+            transactions = wallet.transactions.all().order_by('-created_at')
+            serializer = TransactionSerializer(transactions, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except TrainerWallet.DoesNotExist:
+            return Response(
+                {'error': 'کیف پول مربی مورد نظر یافت نشد'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            return Response(
+                {'error': f'خطا در دریافت تراکنش‌ها: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+class AdminTrainerWalletSearchView(APIView):
+    """جستجوی کیف پول مربی بر اساس مربی"""
+    permission_classes = [IsStaffPermission]
+
+    @extend_schema(
+        tags=['Admin Trainer Wallet'],
+        summary='جستجوی کیف پول مربی',
+        description='جستجوی کیف پول مربی بر اساس شماره تلفن یا نام مربی'
+    )
+    def get(self, request):
+        try:
+            phone = request.query_params.get('phone')
+            name = request.query_params.get('name')
+
+            wallets = TrainerWallet.objects.select_related('trainer__user').all()
+
+            if phone:
+                wallets = wallets.filter(trainer__user__phone__icontains=phone)
+
+            if name:
+                wallets = wallets.filter(trainer__name__icontains=name)
+
+            serializer = TrainerWalletSerializer(wallets, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response(
+                {'error': f'خطا در جستجوی کیف پول‌های مربی: {str(e)}'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )

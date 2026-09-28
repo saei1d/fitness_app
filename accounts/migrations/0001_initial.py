@@ -41,7 +41,7 @@ class Migration(migrations.Migration):
                 ('is_staff', models.BooleanField(default=False)),
                 ('is_phone_verified', models.BooleanField(default=False)),
                 ('date_joined', models.DateTimeField(default=django.utils.timezone.now)),
-                ('role', models.CharField(choices=[('customer', 'Customer'), ('owner', 'Owner'), ('admin', 'Admin'), ('operator', 'Operator')], default='customer', max_length=20)),
+                ('role', models.CharField(choices=[('customer', 'Customer'), ('owner', 'Owner'), ('admin', 'Admin'), ('operator', 'Operator'), ('trainer', 'Trainer')], default='customer', max_length=20)),
                 ('avatar', models.ImageField(blank=True, null=True, upload_to='accounts/avatars/', validators=[django.core.validators.FileExtensionValidator(allowed_extensions=['jpg', 'jpeg', 'png', 'webp']), accounts.file_validators.validate_avatar_size])),
                 ('referral_code', models.CharField(blank=True, max_length=20, unique=True)),
                 ('referred_by', models.CharField(blank=True, max_length=20, null=True)),

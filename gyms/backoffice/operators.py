@@ -213,7 +213,7 @@ class ChangeUserRoleView(APIView):
             
             # تغییر role و is_staff
             user.role = new_role
-            if new_role in ['admin', 'operator', 'owner']:
+            if new_role in ['admin', 'operator', 'owner', 'trainer']:
                 user.is_staff = True
             else:
                 user.is_staff = False

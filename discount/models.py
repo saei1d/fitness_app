@@ -3,6 +3,7 @@ from django.utils import timezone
 from django.conf import settings
 from gyms.models import Gym
 from packages.models import Package
+from trainers.models import Trainer
 
 
 
@@ -123,6 +124,133 @@ class PackageDiscount(models.Model):
 
     def is_valid(self, now=None):
         """بررسی اعتبار تخفیف پکیج"""
+        now = now or timezone.now()
+        if not self.is_active:
+            return False
+        if self.start_date and self.start_date > now:
+            return False
+        if self.end_date and self.end_date < now:
+            return False
+        return True
+
+
+class TrainerDiscountCode(models.Model):
+    """کد تخفیف برای مربیان"""
+    DISCOUNT_TYPE_CHOICES = [
+        ('percent', 'درصدی'),
+        ('amount', 'مبلغ ثابت'),
+    ]
+
+    SOURCE_TYPE_CHOICES = [
+        ('trainer', 'از سهم مربی'),
+        ('admin', 'از سهم ادمین'),
+    ]
+
+    code = models.CharField(max_length=50, unique=True, verbose_name="کد تخفیف")
+    discount_type = models.CharField(max_length=10, choices=DISCOUNT_TYPE_CHOICES, verbose_name="نوع تخفیف")
+    value = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="مقدار تخفیف", help_text="برای درصدی: عدد کامل وارد کنید (مثلاً 5 برای 5٪) - برای مبلغ ثابت: مبلغ را به تومان وارد کنید")
+
+    trainer = models.ForeignKey(Trainer, on_delete=models.CASCADE, null=True, blank=True,
+                              verbose_name="مربی مرتبط (درصورت وجود)")
+
+    packages = models.ManyToManyField('trainers.TrainerPackage', blank=True, related_name="discount_codes",
+                                       verbose_name="پکیج‌های مرتبط")
+
+    source_type = models.CharField(max_length=10, choices=SOURCE_TYPE_CHOICES, verbose_name="نوع کسر تخفیف")
+
+    start_date = models.DateTimeField(null=True, blank=True, verbose_name="شروع اعتبار")
+    end_date = models.DateTimeField(null=True, blank=True, verbose_name="پایان اعتبار")
+
+    usage_limit = models.PositiveIntegerField(null=True, blank=True, verbose_name="تعداد مجاز کل استفاده")
+    used_count = models.PositiveIntegerField(default=0, verbose_name="تعداد استفاده‌شده")
+
+    per_user_limit = models.PositiveIntegerField(null=True, blank=True, verbose_name="تعداد مجاز استفاده هر کاربر")
+
+    is_active = models.BooleanField(default=True, verbose_name="فعال")
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "کد تخفیف مربی"
+        verbose_name_plural = "کدهای تخفیف مربی"
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return self.code
+
+    def is_valid(self, now=None):
+        """بررسی اعتبار کلی کد تخفیف."""
+        now = now or timezone.now()
+        if not self.is_active:
+            return False
+        if self.start_date and self.start_date > now:
+            return False
+        if self.end_date and self.end_date < now:
+            return False
+        if self.usage_limit is not None and self.used_count >= self.usage_limit:
+            return False
+        return True
+
+    def can_user_use(self, user):
+        """بررسی اینکه کاربر خاصی مجاز به استفاده از این کد هست یا نه"""
+        if not self.is_valid():
+            return False
+        if self.per_user_limit is None:
+            return True
+        user_usage_count = TrainerDiscountUsage.objects.filter(user=user, discount=self).count()
+        return user_usage_count < self.per_user_limit
+
+
+class TrainerDiscountUsage(models.Model):
+    """ثبت استفاده کاربران از کد تخفیف مربی"""
+    discount = models.ForeignKey(TrainerDiscountCode, on_delete=models.CASCADE)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    used_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "استفاده از کد تخفیف مربی"
+        verbose_name_plural = "استفاده‌های کاربران از کد تخفیف مربی"
+
+    def __str__(self):
+        return f"{self.user} → {self.discount.code}"
+
+
+class TrainerPackageDiscount(models.Model):
+    """تخفیف پیش‌فرض روی پکیج‌های مربی (بدون نیاز به کد)"""
+    DISCOUNT_TYPE_CHOICES = [
+        ('percent', 'درصدی'),
+        ('amount', 'مبلغ ثابت'),
+    ]
+
+    SOURCE_TYPE_CHOICES = [
+        ('trainer', 'از سهم مربی'),
+        ('admin', 'از سهم ادمین'),
+    ]
+
+    package = models.ForeignKey('trainers.TrainerPackage', on_delete=models.CASCADE, related_name="discounts",
+                                verbose_name="پکیج مربی")
+    discount_type = models.CharField(max_length=10, choices=DISCOUNT_TYPE_CHOICES, verbose_name="نوع تخفیف")
+    value = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="مقدار تخفیف", help_text="برای درصدی: عدد کامل وارد کنید (مثلاً 5 برای 5٪) - برای مبلغ ثابت: مبلغ را به تومان وارد کنید")
+    source_type = models.CharField(max_length=10, choices=SOURCE_TYPE_CHOICES, verbose_name="نوع کسر تخفیف")
+
+    start_date = models.DateTimeField(null=True, blank=True, verbose_name="شروع اعتبار")
+    end_date = models.DateTimeField(null=True, blank=True, verbose_name="پایان اعتبار")
+    is_active = models.BooleanField(default=True, verbose_name="فعال")
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "تخفیف پکیج مربی"
+        verbose_name_plural = "تخفیف‌های پکیج مربی"
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.package.title} - {self.get_discount_type_display()} {self.value}"
+
+    def is_valid(self, now=None):
+        """بررسی اعتبار تخفیف پکیج مربی"""
         now = now or timezone.now()
         if not self.is_active:
             return False
