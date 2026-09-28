@@ -2,9 +2,9 @@ from rest_framework import permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from drf_spectacular.utils import extend_schema
-from ..serializers import AdminTrainerWithdrawUpdateSerializer, TrainerWithdrawRequestSerializer
+from ..serializers import AdminWithdrawUpdateSerializer, AdminTrainerWithdrawUpdateSerializer, TrainerWithdrawRequestSerializer, WithdrawRequestSerializer
 from django.db import transaction
-from finance.models import TrainerWithdrawRequest, TrainerWallet
+from finance.models import TrainerWithdrawRequest, TrainerWallet, WithdrawRequest, Transaction
 
 
 @extend_schema(tags=['Admin Withdraw Request'])
@@ -133,8 +133,8 @@ class AdminTrainerWithdrawRequestView(APIView):
     serializer_class = AdminTrainerWithdrawUpdateSerializer
 
     @extend_schema(
-        request=AdminWithdrawUpdateSerializer,
-        responses={200: AdminWithdrawUpdateSerializer, 400: dict, 404: dict},
+        request=AdminTrainerWithdrawUpdateSerializer,
+        responses={200: AdminTrainerWithdrawUpdateSerializer, 400: dict, 404: dict},
         summary='به‌روزرسانی درخواست برداشت مربی',
         description='به‌روزرسانی وضعیت درخواست برداشت مربی توسط admin (approve/reject/complete)'
     )
