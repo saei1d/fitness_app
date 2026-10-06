@@ -40,13 +40,13 @@ class GymMemberListView(APIView):
             # Owner sees only gym purchases for their gyms
             queryset = queryset.filter(
                 purchase_type='gym',
-                content_object__gym__owner=user
+                package_generic__gym__owner=user
             )
         elif user_role == 'trainer':
             # Trainer sees only their own trainer purchases
             queryset = queryset.filter(
                 purchase_type='trainer',
-                content_object__trainer__user=user
+                trainer_package_generic__trainer__user=user
             )
         else:
             return Response({'error': 'Access denied'}, status=403)
@@ -58,11 +58,11 @@ class GymMemberListView(APIView):
 
         gym_id = request.query_params.get('gym_id')
         if gym_id:
-            queryset = queryset.filter(purchase_type='gym', content_object__gym_id=gym_id)
+            queryset = queryset.filter(purchase_type='gym', package_generic__gym_id=gym_id)
 
         trainer_id = request.query_params.get('trainer_id')
         if trainer_id:
-            queryset = queryset.filter(purchase_type='trainer', content_object__trainer_id=trainer_id)
+            queryset = queryset.filter(purchase_type='trainer', trainer_package_generic__trainer_id=trainer_id)
 
         payment_status = request.query_params.get('payment_status')
         if payment_status:
@@ -83,7 +83,8 @@ class GymMemberListView(APIView):
         package_title = request.query_params.get('package_title')
         if package_title:
             queryset = queryset.filter(
-                Q(content_object__title__icontains=package_title)
+                Q(package_generic__title__icontains=package_title)
+                | Q(trainer_package_generic__title__icontains=package_title)
             )
 
         buyer_code = request.query_params.get('buyer_code')
@@ -95,7 +96,8 @@ class GymMemberListView(APIView):
             queryset = queryset.filter(
                 Q(user__phone__icontains=search)
                 | Q(user__full_name__icontains=search)
-                | Q(content_object__title__icontains=search)
+                | Q(package_generic__title__icontains=search)
+                | Q(trainer_package_generic__title__icontains=search)
                 | Q(buyer_code__icontains=search)
             )
 

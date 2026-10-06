@@ -1,7 +1,9 @@
 from django.db import models
 from django.core.validators import FileExtensionValidator
+from django.contrib.contenttypes.fields import GenericRelation
 from gyms.models import Gym
 from accounts.models import User
+from finance.models import Purchase
 import os
 
 
@@ -165,6 +167,14 @@ class TrainerPackage(models.Model):
     order_homepage = models.IntegerField(
         default=0,
         help_text="Order for homepage display (0 = use default sorting)"
+    )
+    
+    # Generic relation for reverse queries from Purchase
+    purchases_generic = GenericRelation(
+        Purchase,
+        content_type_field='content_type',
+        object_id_field='object_id',
+        related_query_name='trainer_package_generic'
     )
 
     created_at = models.DateTimeField(auto_now_add=True)

@@ -89,7 +89,7 @@ class TransactionInline(admin.TabularInline):
 class PurchaseAdmin(admin.ModelAdmin):
     list_display = ("id", "user", "user_phone", "purchase_type", "package_display", "payment_status", "verification_status", "buyer_code", "total_amount", "final_amount", "purchase_date", "expire_date", "verified_at")
     list_filter = ("purchase_type", "payment_status", "verification_status", "purchase_date", "verified_at", "expire_date")
-    search_fields = ("user__phone", "user__full_name", "content_object__title", "buyer_code")
+    search_fields = ("user__phone", "user__full_name", "package_generic__title", "trainer_package_generic__title", "buyer_code")
     readonly_fields = ("total_amount", "commission_amount", "net_amount", "buyer_code", "verified_at", "verified_by", "purchase_date", "purchase_type", "content_type", "object_id")
     inlines = [TransactionInline]
     

@@ -42,11 +42,11 @@ class PurchaseHistoryView(APIView):
 
             gym_id = request.query_params.get('gym_id')
             if gym_id:
-                queryset = queryset.filter(purchase_type='gym', content_object__gym_id=gym_id)
+                queryset = queryset.filter(purchase_type='gym', package_generic__gym_id=gym_id)
 
             trainer_id = request.query_params.get('trainer_id')
             if trainer_id:
-                queryset = queryset.filter(purchase_type='trainer', content_object__trainer_id=trainer_id)
+                queryset = queryset.filter(purchase_type='trainer', trainer_package_generic__trainer_id=trainer_id)
 
         # Apply filters
         purchase_type = request.query_params.get('purchase_type')
@@ -96,7 +96,8 @@ class PurchaseHistoryView(APIView):
             queryset = queryset.filter(
                 Q(user__phone__icontains=search)
                 | Q(user__full_name__icontains=search)
-                | Q(content_object__title__icontains=search)
+                | Q(package_generic__title__icontains=search)
+                | Q(trainer_package_generic__title__icontains=search)
                 | Q(buyer_code__icontains=search)
                 | Q(discount_code__code__icontains=search)
             )

@@ -1,5 +1,7 @@
 from django.db import models
+from django.contrib.contenttypes.fields import GenericRelation
 from gyms.models import Gym
+from finance.models import Purchase
 
 class GroupPackage(models.Model):
     title = models.CharField(max_length=100)
@@ -21,6 +23,14 @@ class Package(models.Model):
     sessions = models.IntegerField(default=0, help_text="Number of sessions")
     order_homepage = models.IntegerField(default=0, help_text="Order for homepage display (0 = use default sorting)")
     dedicated = models.BooleanField(default=False, help_text="پکیج اختصاصی برای باشگاه")
+    
+    # Generic relation for reverse queries from Purchase
+    purchases_generic = GenericRelation(
+        Purchase,
+        content_type_field='content_type',
+        object_id_field='object_id',
+        related_query_name='package_generic'
+    )
 
 
 

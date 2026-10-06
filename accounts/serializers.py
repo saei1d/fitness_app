@@ -51,6 +51,7 @@ class EditProfileSerializer(serializers.ModelSerializer):
 
 class UserDetailSerializer(serializers.ModelSerializer):
     avatar_url = serializers.SerializerMethodField(read_only=True)
+    trainer_id = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = User
@@ -68,6 +69,7 @@ class UserDetailSerializer(serializers.ModelSerializer):
             'is_active',
             'date_joined',
             'avatar_url',
+            'trainer_id',
         ]
 
     @extend_schema_field(OpenApiTypes.URI)
@@ -77,6 +79,11 @@ class UserDetailSerializer(serializers.ModelSerializer):
         request = self.context.get('request')
         url = obj.avatar.url
         return request.build_absolute_uri(url) if request else url
+
+    def get_trainer_id(self, obj):
+        if hasattr(obj, 'trainer_profile') and obj.trainer_profile:
+            return obj.trainer_profile.id
+        return None
 
 
 class ProfilePhotoUploadSerializer(serializers.Serializer):
