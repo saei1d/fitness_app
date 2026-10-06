@@ -3,7 +3,6 @@ from django.utils import timezone
 from django.conf import settings
 from gyms.models import Gym
 from packages.models import Package
-from trainers.models import Trainer
 
 
 
@@ -150,7 +149,7 @@ class TrainerDiscountCode(models.Model):
     discount_type = models.CharField(max_length=10, choices=DISCOUNT_TYPE_CHOICES, verbose_name="نوع تخفیف")
     value = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="مقدار تخفیف", help_text="برای درصدی: عدد کامل وارد کنید (مثلاً 5 برای 5٪) - برای مبلغ ثابت: مبلغ را به تومان وارد کنید")
 
-    trainer = models.ForeignKey(Trainer, on_delete=models.CASCADE, null=True, blank=True,
+    trainer = models.ForeignKey('trainers.Trainer', on_delete=models.CASCADE, null=True, blank=True,
                               verbose_name="مربی مرتبط (درصورت وجود)")
 
     packages = models.ManyToManyField('trainers.TrainerPackage', blank=True, related_name="discount_codes",
