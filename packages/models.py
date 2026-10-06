@@ -1,7 +1,6 @@
 from django.db import models
 from django.contrib.contenttypes.fields import GenericRelation
 from gyms.models import Gym
-from finance.models import Purchase
 
 class GroupPackage(models.Model):
     title = models.CharField(max_length=100)
@@ -26,7 +25,7 @@ class Package(models.Model):
     
     # Generic relation for reverse queries from Purchase
     purchases_generic = GenericRelation(
-        Purchase,
+        'finance.Purchase',
         content_type_field='content_type',
         object_id_field='object_id',
         related_query_name='package_generic'

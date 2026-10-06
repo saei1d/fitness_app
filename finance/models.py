@@ -4,7 +4,6 @@ from django.core.exceptions import ValidationError
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from accounts.models import User
-from packages.models import Package
 from discount.models import DiscountCode
 
 
@@ -36,7 +35,7 @@ class Purchase(models.Model):
     content_object = GenericForeignKey('content_type', 'object_id')
     
     # Keep package field for backward compatibility (gym packages)
-    package = models.ForeignKey(Package, on_delete=models.CASCADE, related_name='purchases', null=True, blank=True)
+    package = models.ForeignKey('packages.Package', on_delete=models.CASCADE, related_name='purchases', null=True, blank=True)
     
     buyer_code = models.CharField(max_length=100, null=True, blank=True, unique=True)
     payment_authority = models.CharField(max_length=128, null=True, blank=True, unique=True)

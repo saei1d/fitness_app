@@ -1,7 +1,4 @@
 from django.db import migrations
-from django.contrib.contenttypes.fields import GenericRelation
-
-#for test
 
 class Migration(migrations.Migration):
 
@@ -10,14 +7,8 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.AddField(
-            model_name='package',
-            name='purchases_generic',
-            field=GenericRelation(
-                'finance.Purchase',
-                content_type_field='content_type',
-                object_id_field='object_id',
-                related_query_name='package_generic'
-            ),
-        ),
+        # GenericRelation doesn't create a database field
+        # It's just a reverse relation wrapper
+        # So we don't need to add anything to the database
+        migrations.RunPython(migrations.RunPython.noop, migrations.RunPython.noop),
     ]
