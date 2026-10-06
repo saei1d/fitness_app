@@ -1,6 +1,7 @@
 from django.db import migrations
 from django.contrib.contenttypes.fields import GenericRelation
 
+#for test
 
 class Migration(migrations.Migration):
 
