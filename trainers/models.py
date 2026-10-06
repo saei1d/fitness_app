@@ -18,7 +18,7 @@ def trainer_homepage_image_upload_path(instance, filename):
 
 class Trainer(models.Model):
     """مدل مربی"""
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='trainer_profile', null=True, blank=True)
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='trainer_profile', null=True, blank=True)
     name = models.CharField(max_length=255)
     image = models.ImageField(
         upload_to=trainer_image_upload_path,
