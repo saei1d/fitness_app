@@ -124,7 +124,8 @@ class TrainerPackageSerializer(serializers.ModelSerializer):
     """Serializer برای پکیج مربی"""
     trainer_name = serializers.CharField(source='trainer.name', read_only=True)
     group_package_title = serializers.CharField(source='group_package.title', read_only=True)
-    
+    discount = serializers.SerializerMethodField()
+
     class Meta:
         model = TrainerPackage
         fields = [
@@ -141,8 +142,28 @@ class TrainerPackageSerializer(serializers.ModelSerializer):
             'commission_rate',
             'sessions',
             'order_homepage',
+            'discount',
         ]
         read_only_fields = ['id']
+
+    def get_discount(self, obj):
+        """بررسی و بازگرداندن تخفیف فعال روی پکیج مربی"""
+        from django.utils import timezone
+        from django.db.models import Q
+        now = timezone.now()
+        active_discount = obj.discounts.filter(
+            Q(is_active=True) &
+            (Q(start_date__lte=now) | Q(start_date__isnull=True)) &
+            (Q(end_date__gte=now) | Q(end_date__isnull=True))
+        ).first()
+        if active_discount:
+            return {
+                'id': active_discount.id,
+                'discount_type': active_discount.discount_type,
+                'value': str(active_discount.value),
+                'source_type': active_discount.source_type
+            }
+        return None
 
 
 class TrainerReviewSerializer(serializers.ModelSerializer):
