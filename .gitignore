@@ -15,3 +15,5 @@ test1.py
 */migrations/*.pyc
 !*/migrations/__init__.py
 .kiro
+.windsurf
+
