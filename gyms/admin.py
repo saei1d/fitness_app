@@ -241,14 +241,21 @@ class TransactionAdmin(admin.ModelAdmin):
 
 @admin.register(WithdrawRequest)
 class WithdrawRequestAdmin(admin.ModelAdmin):
-    list_display = ("id", "user", "user_phone", "wallet", "amount", "status", "processed_by", "processed_at", "completed_at")
+    list_display = (
+        "id", "user", "user_phone", "user_card_number", "wallet", "amount",
+        "status", "processed_by", "processed_at", "completed_at",
+    )
     list_filter = ("status", "processed_at", "completed_at")
-    search_fields = ("user__phone", "user__full_name", "description", "admin_message")
-    readonly_fields = ("processed_at", "completed_at")
+    list_select_related = ("user", "wallet")
+    search_fields = ("user__phone", "user__full_name", "user__card_number", "description", "admin_message")
+    readonly_fields = ("processed_at", "completed_at", "user_card_number")
     
     fieldsets = (
         ("اطلاعات درخواست", {
             "fields": ("user", "wallet", "amount", "description")
+        }),
+        ("اطلاعات تسویه", {
+            "fields": ("user_card_number",)
         }),
         ("وضعیت", {
             "fields": ("status", "admin_message", "processed_by", "processed_at", "completed_at")
@@ -260,6 +267,13 @@ class WithdrawRequestAdmin(admin.ModelAdmin):
     def user_phone(self, obj):
         return obj.user.phone
     user_phone.short_description = "شماره تلفن"
+
+    def user_card_number(self, obj):
+        card_number = obj.user.card_number
+        if not card_number:
+            return "-"
+        return " ".join(card_number[i:i + 4] for i in range(0, len(card_number), 4))
+    user_card_number.short_description = "شماره کارت"
     
     def approve_requests(self, request, queryset):
         from django.utils import timezone
@@ -342,14 +356,21 @@ class TrainerWalletAdmin(admin.ModelAdmin):
 
 @admin.register(TrainerWithdrawRequest)
 class TrainerWithdrawRequestAdmin(admin.ModelAdmin):
-    list_display = ("id", "trainer", "trainer_phone", "wallet", "amount", "status", "processed_by", "processed_at", "completed_at")
+    list_display = (
+        "id", "trainer", "trainer_phone", "trainer_card_number", "wallet", "amount",
+        "status", "processed_by", "processed_at", "completed_at",
+    )
     list_filter = ("status", "processed_at", "completed_at")
-    search_fields = ("trainer__user__phone", "trainer__name", "description", "admin_message")
-    readonly_fields = ("processed_at", "completed_at")
+    list_select_related = ("trainer__user", "wallet")
+    search_fields = ("trainer__user__phone", "trainer__name", "trainer__user__card_number", "description", "admin_message")
+    readonly_fields = ("processed_at", "completed_at", "trainer_card_number")
     
     fieldsets = (
         ("اطلاعات درخواست", {
             "fields": ("trainer", "wallet", "amount", "description")
+        }),
+        ("اطلاعات تسویه", {
+            "fields": ("trainer_card_number",)
         }),
         ("وضعیت", {
             "fields": ("status", "admin_message", "processed_by", "processed_at", "completed_at")
@@ -361,6 +382,14 @@ class TrainerWithdrawRequestAdmin(admin.ModelAdmin):
     def trainer_phone(self, obj):
         return obj.trainer.user.phone
     trainer_phone.short_description = "شماره تلفن مربی"
+
+    def trainer_card_number(self, obj):
+        user = obj.trainer.user if obj.trainer_id else None
+        card_number = user.card_number if user else None
+        if not card_number:
+            return "-"
+        return " ".join(card_number[i:i + 4] for i in range(0, len(card_number), 4))
+    trainer_card_number.short_description = "شماره کارت"
     
     def approve_requests(self, request, queryset):
         from django.utils import timezone

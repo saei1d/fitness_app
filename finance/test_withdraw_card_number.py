@@ -126,3 +126,35 @@ class WithdrawCardNumberTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data[0]['card_number'], '6037991234567890')
+
+    def test_django_admin_changelist_shows_owner_card_number(self):
+        self.owner.card_number = '6037991234567890'
+        self.owner.save(update_fields=['card_number'])
+        WithdrawRequest.objects.create(
+            user=self.owner,
+            wallet=Wallet.objects.get(owner=self.owner),
+            amount=Decimal('1000'),
+        )
+
+        admin = User.objects.create_superuser(phone='09120000015', password='test-pass')
+        self.api.force_login(admin)
+        response = self.api.get('/admin/finance/withdrawrequest/')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, '6037 9912 3456 7890')
+
+    def test_django_admin_changelist_shows_trainer_card_number(self):
+        self.trainer_user.card_number = '6037991234567890'
+        self.trainer_user.save(update_fields=['card_number'])
+        TrainerWithdrawRequest.objects.create(
+            trainer=self.trainer,
+            wallet=TrainerWallet.objects.get(trainer=self.trainer),
+            amount=Decimal('1000'),
+        )
+
+        admin = User.objects.create_superuser(phone='09120000016', password='test-pass')
+        self.api.force_login(admin)
+        response = self.api.get('/admin/finance/trainerwithdrawrequest/')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, '6037 9912 3456 7890')
