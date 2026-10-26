@@ -1,6 +1,6 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework import permissions
+from accounts.permissions import IsPlatformAdmin
 from django.utils import timezone
 from django.db.models import Sum, Count, Q
 from finance.models import Purchase
@@ -8,7 +8,7 @@ from finance.models import Purchase
 
 class MonthlyStatsAPIView(APIView):
     """API برای نمایش آمار ماهانه - باشگاه و مربی برتر"""
-    permission_classes = [permissions.IsAdminUser]
+    permission_classes = [IsPlatformAdmin]
     
     def get(self, request):
         now = timezone.now()
@@ -41,7 +41,7 @@ class MonthlyStatsAPIView(APIView):
 
 class GymGenderSalesAPIView(APIView):
     """API برای نمایش فروش باشگاه‌ها بر اساس gender در یک ماه گذشته"""
-    permission_classes = [permissions.IsAdminUser]
+    permission_classes = [IsPlatformAdmin]
     
     def get(self, request):
         from django.utils import timezone

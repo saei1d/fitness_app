@@ -1,4 +1,5 @@
 from django.contrib import admin
+from accounts.permissions import is_platform_admin
 from django.urls import path
 from django.http import JsonResponse
 from django.contrib.auth import get_user_model
@@ -8,7 +9,7 @@ User = get_user_model()
 
 def monthly_stats_admin_view(request):
     """Admin view برای نمایش آمار ماهانه - فراخوانی API مستقیم"""
-    if not request.user.is_staff:
+    if not is_platform_admin(request.user):
         return JsonResponse({'error': 'Unauthorized'}, status=403)
     
     # فراخوانی مستقیم API بدون HTTP request
@@ -25,7 +26,7 @@ def monthly_stats_admin_view(request):
 
 def gym_gender_sales_admin_view(request):
     """Admin view برای نمایش فروش باشگاه‌ها بر اساس gender - فراخوانی API مستقیم"""
-    if not request.user.is_staff:
+    if not is_platform_admin(request.user):
         return JsonResponse({'error': 'Unauthorized'}, status=403)
     
     # فراخوانی مستقیم API بدون HTTP request

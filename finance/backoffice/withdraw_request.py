@@ -2,8 +2,14 @@ from rest_framework import permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from drf_spectacular.utils import extend_schema
-from ..serializers import AdminWithdrawUpdateSerializer, AdminTrainerWithdrawUpdateSerializer, TrainerWithdrawRequestSerializer, WithdrawRequestSerializer
+from ..serializers import (
+    AdminTrainerWithdrawRequestReadSerializer,
+    AdminTrainerWithdrawUpdateSerializer,
+    AdminWithdrawRequestReadSerializer,
+    AdminWithdrawUpdateSerializer,
+)
 from django.db import transaction
+from accounts.permissions import is_platform_admin
 from finance.models import TrainerWithdrawRequest, TrainerWallet, WithdrawRequest, Transaction
 
 
@@ -32,23 +38,36 @@ class AdminWithdrawRequestView(APIView):
 
         if new_status == 'completed':
             with transaction.atomic():
-                wallet = instance.wallet
-                amount = instance.amount
-                if amount > wallet.balance:
-                    return Response({"amount": "Amount exceeds wallet balance at completion"}, status=status.HTTP_400_BAD_REQUEST)
-                wallet.balance -= amount
-                wallet.save()
-                Transaction.objects.create(
-                    wallet=wallet,
-                    amount=amount,
-                    type='debit',
-                    status='completed',
-                    description=f"Withdrawal completed. Request #{instance.id}. " + request.data.get('admin_message', '')
-                )
+                locked = WithdrawRequest.objects.select_for_update().select_related('wallet').get(pk=pk)
+                if locked.status in ('pending', 'approved'):
+                    wallet = locked.wallet.__class__.objects.select_for_update().get(pk=locked.wallet_id)
+                    amount = locked.amount
+                    if amount > wallet.balance:
+                        return Response({"amount": "Amount exceeds wallet balance at completion"}, status=status.HTTP_400_BAD_REQUEST)
+                    wallet.balance -= amount
+                    wallet.save()
+                    Transaction.objects.create(
+                        wallet=wallet,
+                        amount=amount,
+                        type='debit',
+                        status='completed',
+                        description=f"Withdrawal completed. Request #{locked.id}. " + request.data.get('admin_message', '')
+                    )
+                elif locked.status != 'completed':
+                    return Response({"detail": "این درخواست قابل نهایی شدن نیست"}, status=status.HTTP_400_BAD_REQUEST)
+                serializer.instance = locked
                 serializer.save()
+                instance = locked
         else:
-            serializer.save()
+            with transaction.atomic():
+                locked = WithdrawRequest.objects.select_for_update().get(pk=pk)
+                if locked.status == 'completed':
+                    return Response({"detail": "درخواست برداشت نهایی شده و قابل تغییر نیست"}, status=status.HTTP_400_BAD_REQUEST)
+                serializer.instance = locked
+                serializer.save()
+                instance = locked
 
+        instance.refresh_from_db()
         return Response(self.serializer_class(instance).data, status=status.HTTP_200_OK)
 
 
@@ -56,7 +75,7 @@ class IsStaffPermission(permissions.BasePermission):
     """دسترسی فقط برای staff users"""
     
     def has_permission(self, request, view):
-        return request.user and request.user.is_authenticated and request.user.is_staff
+        return is_platform_admin(getattr(request, "user", None))
 
 
 class AdminWithdrawRequestListView(APIView):
@@ -91,7 +110,7 @@ class AdminWithdrawRequestListView(APIView):
             ordering = request.query_params.get('ordering', '-id')
             withdraw_requests = withdraw_requests.order_by(ordering)
             
-            serializer = WithdrawRequestSerializer(withdraw_requests, many=True)
+            serializer = AdminWithdrawRequestReadSerializer(withdraw_requests, many=True)
             return Response(serializer.data, status=status.HTTP_200_OK)
             
         except Exception as e:
@@ -113,7 +132,7 @@ class AdminWithdrawRequestDetailView(APIView):
     def get(self, request, pk):
         try:
             withdraw_request = WithdrawRequest.objects.select_related('user', 'wallet__owner').get(pk=pk)
-            serializer = WithdrawRequestSerializer(withdraw_request)
+            serializer = AdminWithdrawRequestReadSerializer(withdraw_request)
             return Response(serializer.data, status=status.HTTP_200_OK)
         except WithdrawRequest.DoesNotExist:
             return Response(
@@ -152,23 +171,36 @@ class AdminTrainerWithdrawRequestView(APIView):
 
         if new_status == 'completed':
             with transaction.atomic():
-                wallet = instance.wallet
-                amount = instance.amount
-                if amount > wallet.balance:
-                    return Response({"amount": "Amount exceeds wallet balance at completion"}, status=status.HTTP_400_BAD_REQUEST)
-                wallet.balance -= amount
-                wallet.save()
-                Transaction.objects.create(
-                    trainer_wallet=wallet,
-                    amount=amount,
-                    type='debit',
-                    status='completed',
-                    description=f"Trainer withdrawal completed. Request #{instance.id}. " + request.data.get('admin_message', '')
-                )
+                locked = TrainerWithdrawRequest.objects.select_for_update().select_related('wallet').get(pk=pk)
+                if locked.status in ('pending', 'approved'):
+                    wallet = locked.wallet.__class__.objects.select_for_update().get(pk=locked.wallet_id)
+                    amount = locked.amount
+                    if amount > wallet.balance:
+                        return Response({"amount": "Amount exceeds wallet balance at completion"}, status=status.HTTP_400_BAD_REQUEST)
+                    wallet.balance -= amount
+                    wallet.save()
+                    Transaction.objects.create(
+                        trainer_wallet=wallet,
+                        amount=amount,
+                        type='debit',
+                        status='completed',
+                        description=f"Trainer withdrawal completed. Request #{locked.id}. " + request.data.get('admin_message', '')
+                    )
+                elif locked.status != 'completed':
+                    return Response({"detail": "این درخواست قابل نهایی شدن نیست"}, status=status.HTTP_400_BAD_REQUEST)
+                serializer.instance = locked
                 serializer.save()
+                instance = locked
         else:
-            serializer.save()
+            with transaction.atomic():
+                locked = TrainerWithdrawRequest.objects.select_for_update().get(pk=pk)
+                if locked.status == 'completed':
+                    return Response({"detail": "درخواست برداشت نهایی شده و قابل تغییر نیست"}, status=status.HTTP_400_BAD_REQUEST)
+                serializer.instance = locked
+                serializer.save()
+                instance = locked
 
+        instance.refresh_from_db()
         return Response(self.serializer_class(instance).data, status=status.HTTP_200_OK)
 
 
@@ -204,7 +236,7 @@ class AdminTrainerWithdrawRequestListView(APIView):
             ordering = request.query_params.get('ordering', '-id')
             withdraw_requests = withdraw_requests.order_by(ordering)
 
-            serializer = TrainerWithdrawRequestSerializer(withdraw_requests, many=True)
+            serializer = AdminTrainerWithdrawRequestReadSerializer(withdraw_requests, many=True)
             return Response(serializer.data, status=status.HTTP_200_OK)
 
         except Exception as e:
@@ -226,7 +258,7 @@ class AdminTrainerWithdrawRequestDetailView(APIView):
     def get(self, request, pk):
         try:
             withdraw_request = TrainerWithdrawRequest.objects.select_related('trainer__user', 'wallet').get(pk=pk)
-            serializer = TrainerWithdrawRequestSerializer(withdraw_request)
+            serializer = AdminTrainerWithdrawRequestReadSerializer(withdraw_request)
             return Response(serializer.data, status=status.HTTP_200_OK)
         except TrainerWithdrawRequest.DoesNotExist:
             return Response(

@@ -8,13 +8,14 @@ from django.db import transaction
 from finance.models import Wallet, Transaction, Purchase, AdminWallet, TrainerWallet
 from finance.serializers import *
 from accounts.models import User
+from accounts.permissions import is_platform_admin
 
 
 class IsStaffPermission(permissions.BasePermission):
     """دسترسی فقط برای staff users"""
     
     def has_permission(self, request, view):
-        return request.user and request.user.is_authenticated and request.user.is_staff
+        return is_platform_admin(getattr(request, "user", None))
 
 
 class AdminWalletListView(APIView):

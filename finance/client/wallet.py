@@ -2,6 +2,7 @@ from rest_framework import permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from drf_spectacular.utils import extend_schema
+from accounts.permissions import is_platform_admin, operator_covers_owner, operator_owner_ids
 from finance.models import Wallet, TrainerWallet
 from finance.serializers import WalletSerializer, TrainerWalletSerializer
 
@@ -14,7 +15,7 @@ class IsOwnerOrAdmin(permissions.BasePermission):
             return False
 
         # admin به همه دسترسی دارد
-        if request.user.is_staff:
+        if is_platform_admin(request.user):
             return True
 
         # owner فقط به کیف پول خودش دسترسی دارد
@@ -25,6 +26,10 @@ class IsOwnerOrAdmin(permissions.BasePermission):
         if request.user.role == 'trainer':
             return True
 
+        # متصدی فقط کیف پول باشگاه خودش را می‌بیند، نه همه کیف پول‌ها
+        if request.user.role == 'operator':
+            return True
+
         return False
 
     def has_object_permission(self, request, view, obj):
@@ -32,7 +37,7 @@ class IsOwnerOrAdmin(permissions.BasePermission):
             return False
 
         # admin به همه دسترسی دارد
-        if request.user.is_staff:
+        if is_platform_admin(request.user):
             return True
 
         # owner فقط به کیف پول خودش دسترسی دارد
@@ -62,11 +67,13 @@ class WalletDetailView(APIView):
     def get(self, request, pk):
         try:
             # اگر کاربر admin است، می‌تواند هر کیف پولی را ببیند
-            if request.user.is_staff:
+            if is_platform_admin(request.user):
                 wallet = Wallet.objects.get(pk=pk)
             # اگر کاربر owner است، فقط کیف پول خودش را می‌تواند ببیند
             elif request.user.role == 'owner':
                 wallet = Wallet.objects.get(pk=pk, owner=request.user)
+            elif request.user.role == 'operator' and operator_covers_owner(request.user, Wallet.objects.filter(pk=pk).values_list('owner_id', flat=True).first()):
+                wallet = Wallet.objects.get(pk=pk)
             else:
                 return Response(
                     {'error': 'شما دسترسی لازم برای مشاهده این کیف پول را ندارید'}, 
@@ -98,9 +105,13 @@ class WalletListView(APIView):
 
     def get(self, request):
         try:
-            if request.user.is_staff:
+            if is_platform_admin(request.user):
                 # admin می‌تواند همه کیف پول‌ها را ببیند
                 wallets = Wallet.objects.all()
+                serializer = WalletSerializer(wallets, many=True)
+                return Response(serializer.data, status=status.HTTP_200_OK)
+            if request.user.role == 'operator':
+                wallets = Wallet.objects.filter(owner_id__in=operator_owner_ids(request.user))
                 serializer = WalletSerializer(wallets, many=True)
                 return Response(serializer.data, status=status.HTTP_200_OK)
             elif request.user.role == 'owner':

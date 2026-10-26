@@ -14,6 +14,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from accounts.permissions import is_platform_admin
 from finance.client.gateway import PaymentGatewayError, verify_payment
 from finance.models import AdminWallet, Purchase, Transaction, Wallet
 from finance.serializers import PurchaseSerializer
@@ -432,7 +433,7 @@ class VerifyPurchaseView(APIView):
         if not buyer_code:
             return Response({'error': 'buyer_code is required'}, status=400)
 
-        if not (request.user.role in ['owner', 'operator', 'trainer'] or request.user.is_staff or request.user.is_superuser):
+        if not (request.user.role in ['owner', 'operator', 'trainer'] or is_platform_admin(request.user)):
             return Response({'error': 'Only gym owners, operators, trainers, and admins can verify purchases'}, status=403)
 
         try:
@@ -448,7 +449,7 @@ class VerifyPurchaseView(APIView):
                 if not purchase:
                     return Response({'error': 'Purchase not found or already processed'}, status=404)
 
-                is_admin = request.user.is_staff or request.user.is_superuser
+                is_admin = is_platform_admin(request.user)
                 user_role = getattr(request.user, 'role', None)
                 
                 pkg = purchase.get_package()

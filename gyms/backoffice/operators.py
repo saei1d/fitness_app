@@ -70,8 +70,11 @@ class GymOperatorCreateView(APIView):
                 with transaction.atomic():
                     # تغییر role کاربر به operator
                     operator_user = serializer.validated_data['operator']
+                    previous_role = operator_user.role
                     operator_user.role = 'operator'
-                    operator_user.is_staff = True
+                    # متصدی جدید پرچم ادمین جنگو نمی‌گیرد. ادمین پلتفرم اگر این نقش را بگیرد، ورود پنل جنگو را از دست نمی‌دهد.
+                    if not operator_user.is_superuser and previous_role != 'admin':
+                        operator_user.is_staff = False
                     operator_user.save()
                     
                     # ایجاد ارتباط متصدی با باشگاه
@@ -157,7 +160,8 @@ class GymOperatorDetailView(APIView):
             # تغییر role کاربر به customer
             operator_user = gym_operator.operator
             operator_user.role = 'customer'
-            operator_user.is_staff = False
+            if not operator_user.is_superuser:
+                operator_user.is_staff = False
             operator_user.save()
             
             gym_operator.delete()
@@ -211,9 +215,9 @@ class ChangeUserRoleView(APIView):
                     status=status.HTTP_404_NOT_FOUND
                 )
             
-            # تغییر role و is_staff
+            # فقط نقش ادمین پلتفرم پرچم کارمند جنگو می‌گیرد.
             user.role = new_role
-            if new_role in ['admin', 'operator', 'owner', 'trainer']:
+            if user.is_superuser or new_role == 'admin':
                 user.is_staff = True
             else:
                 user.is_staff = False

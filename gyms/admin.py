@@ -89,7 +89,8 @@ class TransactionInline(admin.TabularInline):
 class PurchaseAdmin(admin.ModelAdmin):
     list_display = ("id", "user", "user_phone", "purchase_type", "package_display", "payment_status", "verification_status", "buyer_code", "total_amount", "final_amount", "purchase_date", "expire_date", "verified_at")
     list_filter = ("purchase_type", "payment_status", "verification_status", "purchase_date", "verified_at", "expire_date")
-    search_fields = ("user__phone", "user__full_name", "package_generic__title", "trainer_package_generic__title", "buyer_code")
+    search_fields = ("user__phone", "user__full_name", "package_generic__title", "package__gym__name", "package_generic__gym__name", "trainer_package_generic__title", "buyer_code")
+    list_select_related = ("user", "package__gym")
     readonly_fields = ("total_amount", "commission_amount", "net_amount", "buyer_code", "verified_at", "verified_by", "purchase_date", "purchase_type", "content_type", "object_id")
     inlines = [TransactionInline]
     
@@ -113,11 +114,19 @@ class PurchaseAdmin(admin.ModelAdmin):
     user_phone.short_description = "شماره تلفن"
     
     def package_display(self, obj):
-        pkg = obj.get_package()
-        if pkg:
-            return f"{pkg.title} ({obj.purchase_type})"
-        return "-"
-    package_display.short_description = "پکیج"
+        pkg = obj.package if obj.package_id else obj.get_package()
+        if not pkg:
+            return "-"
+        if obj.purchase_type == "trainer":
+            trainer = getattr(pkg, "trainer", None)
+            place = trainer.name if trainer else ""
+        else:
+            gym = getattr(pkg, "gym", None)
+            place = gym.name if gym else ""
+        if place:
+            return f"{pkg.title} — {place}"
+        return pkg.title
+    package_display.short_description = "پکیج و باشگاه"
     
     actions = ["mark_as_verified", "mark_as_rejected"]
     

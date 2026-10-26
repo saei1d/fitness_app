@@ -1,4 +1,5 @@
 from accounts.imports import *
+from accounts.permissions import is_platform_admin
 from accounts.serializers import UserDetailSerializer
 from drf_spectacular.utils import extend_schema
 
@@ -11,7 +12,7 @@ class UsersList(APIView):
     )
     
     def get(self, request):
-        if not request.user.is_staff:
+        if not is_platform_admin(request.user):
             return Response({'detail': 'شما مجوز دسترسی ندارید.'}, status=status.HTTP_403_FORBIDDEN)
         users = User.objects.all()
         serializer = UserDetailSerializer(users, many=True)

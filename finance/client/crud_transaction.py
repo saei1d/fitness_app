@@ -3,6 +3,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.generics import ListCreateAPIView, RetrieveUpdateDestroyAPIView
 from drf_spectacular.utils import extend_schema
+from accounts.permissions import is_platform_admin, operator_covers_owner, operator_owner_ids
 from finance.models import Transaction, Wallet, TrainerWallet
 from finance.serializers import TransactionSerializer
 
@@ -17,7 +18,10 @@ class IsAdminOrOwnerReadOnly(permissions.BasePermission):
         user = request.user
 
         # ادمین و سوپر یوزر دسترسی کامل دارند
-        if user.is_staff:
+        if is_platform_admin(user):
+            return True
+
+        if getattr(user, "role", None) == "operator" and request.method in permissions.SAFE_METHODS:
             return True
 
         # owner فقط مشاهده دارد
@@ -35,8 +39,12 @@ class IsAdminOrOwnerReadOnly(permissions.BasePermission):
         user = request.user
 
         # ادمین و سوپر یوزر دسترسی کامل دارند
-        if user.is_staff:
+        if is_platform_admin(user):
             return True
+
+        if getattr(user, "role", None) == "operator" and request.method in permissions.SAFE_METHODS:
+            owner_id = obj.wallet.owner_id if obj.wallet_id else None
+            return operator_covers_owner(user, owner_id)
 
         # owner فقط مشاهده برای تراکنش‌های کیف پول خودش
         role = getattr(user, 'role', None)
@@ -85,7 +93,7 @@ class TransactionListCreateView(ListCreateAPIView):
         user = self.request.user
 
         # ادمین و سوپر یوزر همه تراکنش‌ها را می‌بینند
-        if user.is_staff:
+        if is_platform_admin(user):
             return Transaction.objects.select_related('wallet__owner', 'admin_wallet', 'purchase').all().order_by('-id')
 
         # owner فقط تراکنش‌های کیف پول خودش را می‌بیند
@@ -108,12 +116,17 @@ class TransactionListCreateView(ListCreateAPIView):
             except (Trainer.DoesNotExist, TrainerWallet.DoesNotExist):
                 return Transaction.objects.none()
 
+        if role == 'operator':
+            return Transaction.objects.filter(
+                wallet__owner_id__in=operator_owner_ids(user),
+            ).select_related('wallet__owner', 'admin_wallet', 'purchase').order_by('-id')
+
         return Transaction.objects.none()
 
     def perform_create(self, serializer):
         # فقط ادمین و سوپر یوزر اجازه ایجاد/ویرایش/حذف دارند
         user = self.request.user
-        if not user.is_staff:
+        if not is_platform_admin(user):
             raise permissions.PermissionDenied("Only admin can create transactions")
         serializer.save()
 
@@ -164,7 +177,7 @@ class TransactionDetailView(RetrieveUpdateDestroyAPIView):
 
     def perform_update(self, serializer):
         user = self.request.user
-        if not user.is_staff:
+        if not is_platform_admin(user):
             raise permissions.PermissionDenied("Only admin can update transactions")
         if serializer.instance.status == 'completed':
             raise permissions.PermissionDenied("Completed transactions are immutable")
@@ -172,7 +185,7 @@ class TransactionDetailView(RetrieveUpdateDestroyAPIView):
 
     def perform_destroy(self, instance):
         user = self.request.user
-        if not user.is_staff:
+        if not is_platform_admin(user):
             raise permissions.PermissionDenied("Only admin can delete transactions")
         if instance.status == 'completed':
             raise permissions.PermissionDenied("Completed transactions are immutable")

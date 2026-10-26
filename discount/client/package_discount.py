@@ -1,3 +1,4 @@
+from accounts.permissions import is_platform_admin
 from rest_framework import viewsets, permissions
 from drf_spectacular.utils import extend_schema, extend_schema_view
 from ..models import PackageDiscount
@@ -14,9 +15,9 @@ class IsAdminOrOwnerPermission(permissions.BasePermission):
             return True
 
         # عملیات نوشتن فقط برای staff یا owner
-        if request.user.is_staff:
+        if is_platform_admin(request.user):
             return True
-        if getattr(request.user, 'role', None) == 'owner':
+        if getattr(request.user, 'role', None) in ('owner', 'operator'):
             return True
         return False
 
@@ -25,13 +26,23 @@ class IsAdminOrOwnerPermission(permissions.BasePermission):
             return False
 
         # ادمین به همه دسترسی دارد
-        if request.user.is_staff:
+        if is_platform_admin(request.user):
             return True
 
         # owner فقط به تخفیف‌های پکیج‌های باشگاه خودش دسترسی دارد
         if request.user.role == 'owner':
             if obj.package.gym.owner == request.user:
                 return True
+
+        if request.user.role == 'operator':
+            from gyms.models import GymOperator
+            if request.method not in permissions.SAFE_METHODS and obj.source_type == 'admin':
+                return False
+            return GymOperator.objects.filter(
+                gym=obj.package.gym,
+                operator=request.user,
+                is_active=True,
+            ).exists()
 
         return False
 
@@ -95,10 +106,17 @@ class PackageDiscountViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         user = self.request.user
 
-        if user.is_staff:
+        if is_platform_admin(user):
             return PackageDiscount.objects.all().select_related(
                 'package', 'package__gym', 'package__gym__owner'
             )
+        elif user.role == 'operator':
+            return PackageDiscount.objects.filter(
+                package__gym__operators__operator=user,
+                package__gym__operators__is_active=True,
+            ).select_related(
+                'package', 'package__gym', 'package__gym__owner'
+            ).distinct()
         elif user.role == 'owner':
             return PackageDiscount.objects.filter(
                 package__gym__owner=user

@@ -2,6 +2,7 @@ from drf_spectacular.utils import extend_schema
 from rest_framework import generics
 from rest_framework.response import Response
 
+from accounts.permissions import IsPlatformAdmin
 from ..models import Gym, Package, GroupPackage
 from ..serializers import *
 from rest_framework import status, permissions
@@ -14,7 +15,7 @@ class GroupPackageListCreateView(generics.ListCreateAPIView):
     
     def get_permissions(self):
         if self.request.method == 'POST':
-            permission_classes = [permissions.IsAdminUser]
+            permission_classes = [IsPlatformAdmin]
         else:
             permission_classes = [permissions.AllowAny]
         return [permission() for permission in permission_classes]
@@ -27,7 +28,7 @@ class GroupPackageDetailView(generics.RetrieveUpdateDestroyAPIView):
     
     def get_permissions(self):
         if self.request.method in ['POST', 'PUT', 'PATCH', 'DELETE']:
-            permission_classes = [permissions.IsAdminUser]
+            permission_classes = [IsPlatformAdmin]
         else:
             permission_classes = [permissions.AllowAny]
         return [permission() for permission in permission_classes]
@@ -41,7 +42,7 @@ class PackageListCreateView(generics.ListCreateAPIView):
     
     def get_permissions(self):
         if self.request.method == 'POST':
-            permission_classes = [permissions.IsAdminUser]
+            permission_classes = [IsPlatformAdmin]
         else:
             permission_classes = [permissions.AllowAny]
         return [permission() for permission in permission_classes]
@@ -54,7 +55,7 @@ class PackageDetailView(generics.RetrieveUpdateDestroyAPIView):
 
     def get_permissions(self):
         if self.request.method in ['POST', 'PUT', 'PATCH', 'DELETE']:
-            permission_classes = [permissions.IsAdminUser]
+            permission_classes = [IsPlatformAdmin]
         else:
             permission_classes = [permissions.AllowAny]
         return [permission() for permission in permission_classes]

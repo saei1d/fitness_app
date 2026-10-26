@@ -4,24 +4,24 @@ from django.utils.dateparse import parse_datetime
 from drf_spectacular.utils import extend_schema
 from rest_framework.response import Response
 from rest_framework.decorators import action
+from accounts.permissions import is_platform_admin
 from ..models import Ticket, TicketMessage
 from ..serializers import TicketSerializer, TicketMessageSerializer, TicketDetailSerializer
 
 
 class IsTicketCreatorOrStaff(permissions.BasePermission):
-    """فقط سازنده‌ی تیکت یا کاربر staff به تیکت دسترسی دارند"""
+    """فقط سازنده‌ی تیکت یا ادمین پلتفرم به تیکت دسترسی دارند"""
 
     def has_object_permission(self, request, view, obj):
         if request.method in permissions.SAFE_METHODS:
             return (
                 request.user and request.user.is_authenticated and (
-                    request.user.is_staff or
+                    is_platform_admin(request.user) or
                     obj.creator_id == request.user.id
                 )
             )
-        # Write operations: only staff can modify tickets
         return (
-            request.user and request.user.is_authenticated and request.user.is_staff
+            request.user and request.user.is_authenticated and is_platform_admin(request.user)
         )
 
 
@@ -43,9 +43,7 @@ class TicketViewSet(viewsets.ModelViewSet):
         user = self.request.user
         queryset = Ticket.objects.select_related('creator', 'admin').prefetch_related('messages__author')
 
-        if user.is_staff:
-            pass
-        else:
+        if not is_platform_admin(user):
             queryset = queryset.filter(creator=user)
 
         status_param = self.request.query_params.get('status')
@@ -169,7 +167,7 @@ class TicketViewSet(viewsets.ModelViewSet):
             )
 
         # Regular users can only close open tickets
-        if not request.user.is_staff:
+        if not is_platform_admin(request.user):
             if ticket.status != Ticket.Status.OPEN:
                 return Response(
                     {'error': 'فقط تیکت‌های باز قابل بستن هستند'}, 
@@ -196,7 +194,7 @@ class TicketMessageViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         user = self.request.user
         base_qs = TicketMessage.objects.select_related('ticket', 'author', 'ticket__creator', 'ticket__admin')
-        if user.is_staff:
+        if is_platform_admin(user):
             return base_qs
         # Regular users can only see messages of their own tickets
         return base_qs.filter(ticket__creator=user)

@@ -24,3 +24,21 @@ def validate_iranian_phone_number(value):
             code='invalid_phone_format'
         )
     return value
+
+
+def validate_card_number(value):
+    """
+    Validate bank card number (16 to 20 digits).
+    Persian/Arabic digits and separators (space, dash) are normalized before validation.
+    """
+    if value in (None, ''):
+        return value
+
+    normalized = convert_persian_to_english_digits(str(value))
+    normalized = re.sub(r'[\s-]', '', normalized)
+    if not re.fullmatch(r'[0-9]{16,20}', normalized):
+        raise ValidationError(
+            _('Card number must contain 16 to 20 digits.'),
+            code='invalid_card_number'
+        )
+    return value

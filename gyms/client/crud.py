@@ -9,6 +9,7 @@ from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.response import Response
 from rest_framework.viewsets import ViewSet
 
+from accounts.permissions import IsPlatformAdmin, is_platform_admin
 from gyms.services import promote_gym_owner, resolve_gym_owner
 
 from ..models import Gym, GymImage
@@ -22,7 +23,12 @@ class IsAdminOrGymOwner(permissions.BasePermission):
         return request.user and request.user.is_authenticated
 
     def has_gym_permission(self, request, gym):
-        return request.user.is_staff or gym.owner_id == request.user.id
+        user = request.user
+        if is_platform_admin(user) or gym.owner_id == user.id:
+            return True
+        if getattr(user, "role", None) == "operator":
+            return gym.operators.filter(operator=user, is_active=True).exists()
+        return False
 
 
 class DefaultPagination(PageNumberPagination):
@@ -39,7 +45,7 @@ class GymListCreateView(generics.ListCreateAPIView):
 
     def get_permissions(self):
         if self.request.method == "POST":
-            return [permissions.IsAdminUser()]
+            return [IsPlatformAdmin()]
         return [permissions.AllowAny()]
 
     def get_queryset(self):
@@ -127,7 +133,7 @@ class GymDetailView(generics.RetrieveUpdateDestroyAPIView):
 
     def get_permissions(self):
         if self.request.method in ["DELETE", "PUT", "PATCH"]:
-            return [permissions.IsAdminUser()]
+            return [IsPlatformAdmin()]
         return [permissions.AllowAny()]
 
 

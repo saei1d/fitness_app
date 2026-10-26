@@ -1,4 +1,5 @@
 from accounts.imports import *
+from accounts.permissions import is_platform_admin
 
 
 def _profile_photo_access_allowed(user):
@@ -16,7 +17,7 @@ class EditProfileView(APIView):
     )
     def put(self, request, user_id=None):
         if user_id:
-            if not request.user.is_staff:
+            if not is_platform_admin(request.user):
                 return Response({'detail': 'شما مجوز دسترسی ندارید.'}, status=status.HTTP_403_FORBIDDEN)
             user = User.objects.filter(id=user_id).first()
             if not user:
@@ -39,7 +40,7 @@ class EditProfileView(APIView):
     )
     def get(self, request, user_id=None):
         if user_id:
-            if not request.user.is_staff:
+            if not is_platform_admin(request.user):
                 return Response({'detail': 'شما مجوز دسترسی ندارید.'}, status=status.HTTP_403_FORBIDDEN)
             user = User.objects.filter(id=user_id).first()
             if not user:
@@ -57,7 +58,7 @@ class ProfilePhotoView(APIView):
 
     def _get_user(self, request, user_id=None):
         if user_id:
-            if not request.user.is_staff:
+            if not is_platform_admin(request.user):
                 return None, Response({'detail': 'شما مجوز دسترسی ندارید.'}, status=status.HTTP_403_FORBIDDEN)
             user = User.objects.filter(id=user_id).first()
             if not user:

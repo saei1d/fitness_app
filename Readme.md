@@ -12,6 +12,8 @@ Useful documentation endpoints:
 - `/api/v1/redoc/` — ReDoc
 - `/api/v1/schema/` — OpenAPI schema
 
+Frontend notes for the payout card number flow: `docs/frontend-card-number.md`.
+
 ## Production notes
 
 - Set `DEBUG=False`, `SECRET_KEY`, `ALLOWED_HOSTS`, database credentials, and trusted CORS/CSRF origins in `.env`.

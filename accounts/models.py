@@ -5,7 +5,7 @@ from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, Permis
 from django.db import models
 from django.utils import timezone
 from django.core.validators import FileExtensionValidator
-from .validators import validate_iranian_phone_number
+from .validators import validate_card_number, validate_iranian_phone_number
 from .file_validators import validate_avatar_size
 
 
@@ -62,6 +62,14 @@ class User(AbstractBaseUser, PermissionsMixin):
     referral_code = models.CharField(max_length=20, unique=True, blank=True)
     referred_by = models.CharField(max_length=20, blank=True, null=True)
     is_banned_from_reviews = models.BooleanField(default=False)
+    card_number = models.CharField(
+        max_length=20,
+        null=True,
+        blank=True,
+        default=None,
+        validators=[validate_card_number],
+        help_text="شماره کارت بانکی کاربر برای تسویه حساب (۱۶ تا ۲۰ رقم)",
+    )
 
     objects = UserManager()
 

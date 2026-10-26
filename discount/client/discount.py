@@ -9,7 +9,9 @@ from ..models import DiscountCode, DiscountUsage
 from ..serializers import DiscountCodeSerializer, DiscountUsageSerializer
 from drf_spectacular.utils import extend_schema_view
 from decimal import Decimal
+from accounts.permissions import is_platform_admin
 from packages.models import Package
+from finance.pricing import split_purchase_amounts
 
 
 class IsAdminOrOwnerPermission(permissions.BasePermission):
@@ -24,9 +26,9 @@ class IsAdminOrOwnerPermission(permissions.BasePermission):
             return True
 
         # عملیات نوشتن فقط برای staff یا owner
-        if request.user.is_staff:
+        if is_platform_admin(request.user):
             return True
-        if getattr(request.user, 'role', None) == 'owner':
+        if getattr(request.user, 'role', None) in ('owner', 'operator'):
             return True
         return False
 
@@ -34,11 +36,24 @@ class IsAdminOrOwnerPermission(permissions.BasePermission):
         if not request.user or not request.user.is_authenticated:
             return False
 
+        discount = getattr(obj, 'discount', obj)
+
         # ادمین به همه دسترسی دارد
-        if request.user.is_staff:
+        if is_platform_admin(request.user):
             return True
 
-        discount = getattr(obj, 'discount', obj)
+        if getattr(request.user, 'role', None) == 'operator':
+            from gyms.models import GymOperator
+            gym = getattr(discount, 'gym', None)
+            if gym is None:
+                return False
+            if request.method not in permissions.SAFE_METHODS and getattr(discount, 'source_type', None) == 'admin':
+                return False
+            return GymOperator.objects.filter(
+                gym=gym,
+                operator=request.user,
+                is_active=True,
+            ).exists()
 
         # owner فقط به کدهای باشگاه خودش دسترسی دارد
         if request.user.role == 'owner':
@@ -111,12 +126,17 @@ class DiscountCodeViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         user = self.request.user
 
-        if user.is_staff:
+        if is_platform_admin(user):
             return DiscountCode.objects.all().select_related('gym', 'gym__owner').prefetch_related('packages')
         elif user.role == 'owner':
             return DiscountCode.objects.filter(
                 gym__owner=user
             ).select_related('gym', 'gym__owner').prefetch_related('packages')
+        elif user.role == 'operator':
+            return DiscountCode.objects.filter(
+                gym__operators__operator=user,
+                gym__operators__is_active=True,
+            ).select_related('gym', 'gym__owner').prefetch_related('packages').distinct()
 
         return DiscountCode.objects.none()
 
@@ -148,9 +168,14 @@ class DiscountUsageViewSet(viewsets.ReadOnlyModelViewSet):
     def get_queryset(self):
         user = self.request.user
 
-        if user.is_staff:
+        if is_platform_admin(user):
             # ادمین همه استفاده‌ها را می‌بیند
             return DiscountUsage.objects.all().select_related('discount', 'user', 'discount__gym').prefetch_related('discount__packages')
+        elif user.role == 'operator':
+            return DiscountUsage.objects.filter(
+                discount__gym__operators__operator=user,
+                discount__gym__operators__is_active=True,
+            ).select_related('discount', 'user', 'discount__gym').prefetch_related('discount__packages').distinct()
         elif user.role == 'owner':
             # owner فقط استفاده‌های کدهای باشگاه خودش را می‌بیند
             return DiscountUsage.objects.filter(
@@ -307,10 +332,15 @@ class CheckDiscountCodeView(APIView):
                 effective_amount = requested_amount
             code_discount_amount = effective_amount
 
-        total_discount = package_discount_amount + code_discount_amount
-        final_amount = total_amount - total_discount
-        if final_amount < 0:
-            final_amount = Decimal('0')
+        _, _, final_amount, package_discount_amount, code_discount_amount = split_purchase_amounts(
+            total_amount=total_amount,
+            admin_commission=admin_commission_before_discount,
+            package_discount_amount=package_discount_amount,
+            package_source=package_discount_obj.source_type if package_discount_obj else None,
+            code_discount_amount=code_discount_amount,
+            code_source=discount.source_type,
+        )
+        total_discount = total_amount - final_amount
 
         return Response({
             'is_valid': True,

@@ -433,6 +433,7 @@ class FinancialDiscountTests(TestCase):
         
         # پکیج با قیمت 100,000 تومان و کمیسیون 5%
         self.package = Package.objects.create(
+            gym=self.gym,
             group_package=self.group,
             title='Test Package',
             gender='male',
@@ -450,11 +451,19 @@ class FinancialDiscountTests(TestCase):
     def _create_purchase_with_code(self, discount_code):
         """ایجاد خرید با کد تخفیف"""
         self.client.force_authenticate(self.customer)
-        response = self.client.post(
-            f'/api/v1/pending/{self.package.id}/',
-            {'discount_code': discount_code},
-            format='json'
-        )
+        with patch(
+            'finance.client.pending_purchase.request_payment',
+            return_value=PaymentRequestResult(
+                authority='AUTH-TEST',
+                payment_url='https://pay.example/test',
+                raw_response={},
+            ),
+        ):
+            response = self.client.post(
+                f'/api/pending/{self.package.id}/',
+                {'discount_code': discount_code},
+                format='json'
+            )
         return response
     
     def _finalize_purchase(self, transaction_id):
@@ -462,7 +471,7 @@ class FinancialDiscountTests(TestCase):
         self.client.force_authenticate(self.customer)
         with patch('finance.client.purchase.verify_payment_gateway', return_value=True):
             response = self.client.post(
-                '/api/v1/final-purchase/',
+                '/api/final-purchase/',
                 {'transaction_id': transaction_id, 'payment_verified': True},
                 format='json'
             )
@@ -474,7 +483,7 @@ class FinancialDiscountTests(TestCase):
         self.client.force_authenticate(user)
         with patch('finance.client.purchase.verify_payment', return_value=True):
             response = self.client.post(
-                '/api/v1/verify-by-gym/',
+                '/api/verify-by-gym/',
                 {'buyer_code': buyer_code},
                 format='json'
             )
@@ -495,7 +504,7 @@ class FinancialDiscountTests(TestCase):
         response = self._create_purchase_with_code('ADMIN3')
         self.assertEqual(response.status_code, 201)
         
-        transaction_id = response.data['transaction_id']
+        transaction_id = response.data['transaction']['id']
         finalize = self._finalize_purchase(transaction_id)
         self.assertEqual(finalize.status_code, 200)
         
@@ -540,7 +549,7 @@ class FinancialDiscountTests(TestCase):
         response = self._create_purchase_with_code('CLUB10')
         self.assertEqual(response.status_code, 201)
         
-        transaction_id = response.data['transaction_id']
+        transaction_id = response.data['transaction']['id']
         finalize = self._finalize_purchase(transaction_id)
         self.assertEqual(finalize.status_code, 200)
         
@@ -582,7 +591,7 @@ class FinancialDiscountTests(TestCase):
         response = self._create_purchase_with_code('')
         self.assertEqual(response.status_code, 201)
         
-        transaction_id = response.data['transaction_id']
+        transaction_id = response.data['transaction']['id']
         finalize = self._finalize_purchase(transaction_id)
         self.assertEqual(finalize.status_code, 200)
         
@@ -625,7 +634,7 @@ class FinancialDiscountTests(TestCase):
         response = self._create_purchase_with_code('')
         self.assertEqual(response.status_code, 201)
         
-        transaction_id = response.data['transaction_id']
+        transaction_id = response.data['transaction']['id']
         finalize = self._finalize_purchase(transaction_id)
         self.assertEqual(finalize.status_code, 200)
         
@@ -677,7 +686,7 @@ class FinancialDiscountTests(TestCase):
         response = self._create_purchase_with_code('ADMIN2')
         self.assertEqual(response.status_code, 201)
         
-        transaction_id = response.data['transaction_id']
+        transaction_id = response.data['transaction']['id']
         finalize = self._finalize_purchase(transaction_id)
         self.assertEqual(finalize.status_code, 200)
         
@@ -732,7 +741,7 @@ class FinancialDiscountTests(TestCase):
         response = self._create_purchase_with_code('CLUB5')
         self.assertEqual(response.status_code, 201)
         
-        transaction_id = response.data['transaction_id']
+        transaction_id = response.data['transaction']['id']
         finalize = self._finalize_purchase(transaction_id)
         self.assertEqual(finalize.status_code, 200)
         
@@ -746,19 +755,19 @@ class FinancialDiscountTests(TestCase):
         # تخفیف کد 5% روی 98,000: 4,900 (از سهم باشگاه)
         # کمیسیون اولیه ادمین: 5,000
         # کمیسیون نهایی ادمین: 5,000 - 2,000 = 3,000
-        # سهم باشگاه: 98,000 - 4,900 = 93,100
-        # قیمت نهایی کاربر: 100,000 - 2,000 - 4,900 = 93,100
+        # سهم باشگاه: 95,000 - 4,900 = 90,100
+        # قیمت نهایی کاربر: 90,100 + 3,000 = 93,100
         
         self.assertEqual(purchase.total_amount, Decimal('100000.00'))
         self.assertEqual(purchase.commission_amount, Decimal('3000.00'))
-        self.assertEqual(purchase.net_amount, Decimal('93100.00'))
+        self.assertEqual(purchase.net_amount, Decimal('90100.00'))
         self.assertEqual(purchase.final_amount, Decimal('93100.00'))
         
         verify = self._verify_purchase(buyer_code)
         self.assertEqual(verify.status_code, 200)
         
         wallet = Wallet.objects.get(owner=self.owner)
-        self.assertEqual(wallet.balance, Decimal('93100.00'))
+        self.assertEqual(wallet.balance, Decimal('90100.00'))
         
         admin_wallet = AdminWallet.objects.get(id=1)
         self.assertEqual(admin_wallet.balance, Decimal('3000.00'))
@@ -787,7 +796,7 @@ class FinancialDiscountTests(TestCase):
         response = self._create_purchase_with_code('ADMIN3')
         self.assertEqual(response.status_code, 201)
         
-        transaction_id = response.data['transaction_id']
+        transaction_id = response.data['transaction']['id']
         finalize = self._finalize_purchase(transaction_id)
         self.assertEqual(finalize.status_code, 200)
         
@@ -844,7 +853,7 @@ class FinancialDiscountTests(TestCase):
         response = self._create_purchase_with_code('CLUB10')
         self.assertEqual(response.status_code, 201)
         
-        transaction_id = response.data['transaction_id']
+        transaction_id = response.data['transaction']['id']
         finalize = self._finalize_purchase(transaction_id)
         self.assertEqual(finalize.status_code, 200)
         
@@ -889,7 +898,7 @@ class FinancialDiscountTests(TestCase):
         response = self._create_purchase_with_code('ADMIN10')
         self.assertEqual(response.status_code, 201)
         
-        transaction_id = response.data['transaction_id']
+        transaction_id = response.data['transaction']['id']
         finalize = self._finalize_purchase(transaction_id)
         self.assertEqual(finalize.status_code, 200)
         

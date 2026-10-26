@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
+from accounts.permissions import is_platform_admin
 from .models import Ticket, TicketMessage
 
 
@@ -50,7 +51,7 @@ class TicketMessageSerializer(serializers.ModelSerializer):
         if request and request.user and ticket:
             user = request.user
             # Only ticket creator or staff can post messages
-            if not (user.is_staff or ticket.creator_id == user.id):
+            if not (is_platform_admin(user) or ticket.creator_id == user.id):
                 raise serializers.ValidationError('اجازه ارسال پیام برای این تیکت را ندارید.')
         return attrs
 

@@ -1,4 +1,5 @@
 from drf_spectacular.utils import extend_schema
+from accounts.permissions import is_platform_admin
 from rest_framework import viewsets, permissions, status
 from rest_framework.response import Response
 from rest_framework.decorators import action
@@ -21,7 +22,7 @@ class IsAdminOrReadOnly(permissions.BasePermission):
         # اجازه دسترسی بدون احراز هویت برای لیست و جزئیات
         if request.method in permissions.SAFE_METHODS:
             return True
-        return request.user and request.user.is_authenticated and request.user.is_staff
+        return is_platform_admin(getattr(request, "user", None))
 
 
 class TrainerViewSet(viewsets.ModelViewSet):

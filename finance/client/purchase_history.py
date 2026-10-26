@@ -7,6 +7,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from accounts.permissions import is_platform_admin
 from finance.models import Purchase
 from finance.serializers import PurchaseHistorySerializer
 
@@ -27,11 +28,7 @@ class PurchaseHistoryView(APIView):
         user_role = getattr(user, 'role', None)
         
         # Filter based on user role
-        if not user.is_staff and user_role != 'admin':
-            # Regular users see only their own purchases
-            queryset = queryset.filter(user=user)
-        else:
-            # Admin can filter by user_id
+        if is_platform_admin(user) or user_role == 'admin':
             user_id = request.query_params.get('user_id')
             if user_id:
                 queryset = queryset.filter(user_id=user_id)
@@ -47,6 +44,21 @@ class PurchaseHistoryView(APIView):
             trainer_id = request.query_params.get('trainer_id')
             if trainer_id:
                 queryset = queryset.filter(purchase_type='trainer', trainer_package_generic__trainer_id=trainer_id)
+        elif user_role == 'owner' and user.is_staff:
+            # مالک‌هایی که قبلاً پرچم کارمند داشتند همه‌چیز را می‌دیدند.
+            # حالا فقط خریدهای باشگاه خودشان را می‌بینند.
+            queryset = queryset.filter(
+                purchase_type='gym',
+                package_generic__gym__owner=user,
+            ).distinct()
+        elif user_role == 'operator':
+            queryset = queryset.filter(
+                purchase_type='gym',
+                package_generic__gym__operators__operator=user,
+                package_generic__gym__operators__is_active=True,
+            ).distinct()
+        else:
+            queryset = queryset.filter(user=user)
 
         # Apply filters
         purchase_type = request.query_params.get('purchase_type')

@@ -21,6 +21,7 @@ class UserAdmin(BaseUserAdmin):
     fieldsets = (
         (None, {"fields": ("phone", "password")}),
         ("اطلاعات شخصی", {"fields": ("full_name", "birthdate", "avatar", "role", "is_phone_verified", "referral_code", "referred_by")}),
+        ("اطلاعات مالی", {"fields": ("card_number",)}),
         ("دسترسی‌ها", {"fields": ("is_active", "is_staff", "is_superuser", "groups", "user_permissions")}),
         ("تنظیمات", {"fields": ("is_banned_from_reviews",)}),
         ("تاریخ‌ها", {"fields": ("last_login", "date_joined")}),

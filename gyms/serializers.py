@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from .models import GymImage, Gym
-from accounts.serializers import UserDetailSerializer
+from accounts.serializers import PublicOwnerSerializer
 from django.utils import timezone
 from discount.models import *
 from packages.serializers import PackageSerializer
@@ -38,7 +38,7 @@ class GymImageFlexibleSerializer(serializers.Serializer):
 class GymSerializer(serializers.ModelSerializer):
     price = serializers.SerializerMethodField()
     max_discount = serializers.SerializerMethodField()  # فیلد جدید برای بیشترین تخفیف    owner = serializers.CharField(write_only=True)
-    owner_data = UserDetailSerializer(source='owner', read_only=True)
+    owner_data = PublicOwnerSerializer(source='owner', read_only=True)
     images = serializers.SerializerMethodField()
     package = serializers.SerializerMethodField()
     distance_meters = serializers.SerializerMethodField(read_only=True)

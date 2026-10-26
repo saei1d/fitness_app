@@ -5,6 +5,7 @@ from rest_framework import permissions
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from accounts.permissions import is_platform_admin
 from finance.models import Purchase
 from finance.serializers import GymMemberSerializer
 
@@ -14,7 +15,10 @@ class IsOwnerOrAdminUser(permissions.BasePermission):
         return (
             request.user
             and request.user.is_authenticated
-            and (request.user.is_staff or getattr(request.user, 'role', None) in {'owner', 'admin', 'trainer'})
+            and (
+                is_platform_admin(request.user)
+                or getattr(request.user, 'role', None) in {'owner', 'admin', 'trainer', 'operator'}
+            )
         )
 
 
@@ -33,7 +37,7 @@ class GymMemberListView(APIView):
         user_role = getattr(user, 'role', None)
         
         # Filter based on user role
-        if user.is_staff or user_role == 'admin':
+        if is_platform_admin(user) or user_role == 'admin':
             # Admin sees all
             pass
         elif user_role == 'owner':
@@ -42,6 +46,12 @@ class GymMemberListView(APIView):
                 purchase_type='gym',
                 package_generic__gym__owner=user
             )
+        elif user_role == 'operator':
+            queryset = queryset.filter(
+                purchase_type='gym',
+                package_generic__gym__operators__operator=user,
+                package_generic__gym__operators__is_active=True,
+            ).distinct()
         elif user_role == 'trainer':
             # Trainer sees only their own trainer purchases
             queryset = queryset.filter(

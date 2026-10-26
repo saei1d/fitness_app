@@ -5,7 +5,10 @@ from django.db import transaction
 from django.db.models import F, Q
 from django.contrib.contenttypes.models import ContentType
 
+from accounts.permissions import is_platform_admin
+from accounts.serializers import CardNumberField
 from finance.models import Purchase, Wallet, AdminWallet, Transaction, WithdrawRequest, TrainerWallet, TrainerWithdrawRequest
+from finance.pricing import split_purchase_amounts
 from rest_framework import serializers
 from django.utils import timezone
 from discount.models import DiscountCode, PackageDiscount
@@ -66,7 +69,7 @@ class PurchaseSerializer(serializers.ModelSerializer):
         data = super().to_representation(instance)
         request = self.context.get('request')
         # فقط ادمین می‌تواند admin_notes را ببیند
-        if request and not (request.user.is_staff or request.user.is_superuser):
+        if request and not is_platform_admin(request.user):
             data.pop('admin_notes', None)
         return data
 
@@ -100,9 +103,18 @@ class PurchaseSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError({"discount_code": "کد تخفیف معتبر نیست یا ظرفیت آن تمام شده است"})
 
             user = self.context['request'].user
-            
+
+            # کد مخصوص یک باشگاه نباید روی پکیج مربی بنشیند.
+            # کد سراسری ادمین، مثل کد معرفی، همچنان برای مربی معتبر است.
+            if trainer_package and (
+                discount.gym_id
+                or discount.source_type != 'admin'
+                or discount.packages.exists()
+            ):
+                raise serializers.ValidationError({"discount_code": "این کد برای پکیج مربی معتبر نیست"})
+
             # For gym packages, check gym match
-            if package:
+            if package and not trainer_package:
                 gym = package.gym
                 if discount.gym and discount.gym_id != gym.id:
                     raise serializers.ValidationError({"discount_code": "این کد برای باشگاه انتخاب‌شده معتبر نیست"})
@@ -165,8 +177,6 @@ class PurchaseSerializer(serializers.ModelSerializer):
             ).first()
 
         # Calculate discount amount with limits
-        discount_amount = Decimal('0')
-        discount_source = None
         discount_details = []
 
         # Calculate package discount (if exists)
@@ -197,6 +207,8 @@ class PurchaseSerializer(serializers.ModelSerializer):
         code_discount_amount = Decimal('0')
         if discount_code_obj:
             price_after_package_discount = total_amount - package_discount_amount
+            if price_after_package_discount < 0:
+                price_after_package_discount = Decimal('0')
             if discount_code_obj.discount_type == 'percent':
                 requested_percent = Decimal(str(discount_code_obj.value))
                 # For backward compatibility: if value < 1, convert to percent
@@ -218,33 +230,17 @@ class PurchaseSerializer(serializers.ModelSerializer):
                 code_discount_amount = effective_amount
                 discount_details.append(f"کد تخفیف: {discount_code_obj.code} ({effective_amount} تومان از {discount_code_obj.source_type})")
 
-        # Total discount (stacked)
-        discount_amount = package_discount_amount + code_discount_amount
-        
-        # Determine discount source for share calculation (code has priority)
-        if discount_code_obj:
-            discount_source = discount_code_obj.source_type
-        elif package_discount_obj:
-            discount_source = package_discount_obj.source_type
-
-        # Calculate final_amount for user (should not be negative)
-        final_amount = total_amount - discount_amount
-        if final_amount < 0:
-            final_amount = Decimal('0')
-
-        # Apply discount to shares based on discount source
-        if discount_source == 'admin':
-            # Discount deducted from admin share; gym/trainer share stays fixed
-            commission_amount = admin_commission_before_discount - min(discount_amount, admin_commission_before_discount)
-            if commission_amount < 0:
-                commission_amount = Decimal('0')
-            net_amount = total_amount - admin_commission_before_discount
-        else:
-            # Club/trainer discount deducted from their share; admin commission stays fixed
-            commission_amount = admin_commission_before_discount
-            net_amount = final_amount - commission_amount
-            if net_amount < 0:
-                net_amount = Decimal('0')
+        # سهم‌ها جدا سقف می‌خورند. خرید بدون تخفیف همان قیمت و کمیسیون قبلی را نگه می‌دارد.
+        package_source = package_discount_obj.source_type if package_discount_obj else None
+        code_source = discount_code_obj.source_type if discount_code_obj else None
+        commission_amount, net_amount, final_amount, _, _ = split_purchase_amounts(
+            total_amount=total_amount,
+            admin_commission=admin_commission_before_discount,
+            package_discount_amount=package_discount_amount,
+            package_source=package_source,
+            code_discount_amount=code_discount_amount,
+            code_source=code_source,
+        )
 
         # Build admin notes
         admin_notes = f"قیمت اصلی: {total_amount} تومان\n"
@@ -322,6 +318,8 @@ class TransactionSerializer(serializers.ModelSerializer):
 
 
 class WithdrawRequestSerializer(serializers.ModelSerializer):
+    card_number = CardNumberField(write_only=True, required=False)
+
     class Meta:
         model = WithdrawRequest
         fields = '__all__'
@@ -352,16 +350,28 @@ class WithdrawRequestSerializer(serializers.ModelSerializer):
         if amount > wallet.balance:
             raise serializers.ValidationError({"amount": "Amount exceeds wallet balance"})
 
+        if not attrs.get('card_number') and not user.card_number:
+            raise serializers.ValidationError({
+                "card_number": "برای ثبت درخواست برداشت، ابتدا شماره کارت خود را در پروفایل ثبت کنید."
+            })
+
         return attrs
 
     def create(self, validated_data):
         user = self.context['request'].user
+        card_number = validated_data.pop('card_number', None)
+        if card_number and card_number != user.card_number:
+            user.card_number = card_number
+            user.save(update_fields=['card_number'])
+
         wallet = Wallet.objects.get(owner=user)
         withdraw_request = WithdrawRequest.objects.create(user=user, wallet=wallet, **validated_data)
         return withdraw_request
 
 
 class TrainerWithdrawRequestSerializer(serializers.ModelSerializer):
+    card_number = CardNumberField(write_only=True, required=False)
+
     class Meta:
         model = TrainerWithdrawRequest
         fields = '__all__'
@@ -395,13 +405,47 @@ class TrainerWithdrawRequestSerializer(serializers.ModelSerializer):
         if amount > wallet.balance:
             raise serializers.ValidationError({"amount": "Amount exceeds wallet balance"})
 
+        if not attrs.get('card_number') and not user.card_number:
+            raise serializers.ValidationError({
+                "card_number": "برای ثبت درخواست برداشت، ابتدا شماره کارت خود را در پروفایل ثبت کنید."
+            })
+
         return attrs
 
     def create(self, validated_data):
         trainer = self.context['trainer']
+        user = self.context['request'].user
+
+        card_number = validated_data.pop('card_number', None)
+        if card_number and card_number != user.card_number:
+            user.card_number = card_number
+            user.save(update_fields=['card_number'])
+
         wallet = self.context['wallet']
         withdraw_request = TrainerWithdrawRequest.objects.create(trainer=trainer, wallet=wallet, **validated_data)
         return withdraw_request
+
+
+class AdminWithdrawRequestReadSerializer(serializers.ModelSerializer):
+    """Read-only serializer for admin lists/details, includes user's card number."""
+    card_number = serializers.CharField(source='user.card_number', read_only=True)
+
+    class Meta:
+        model = WithdrawRequest
+        fields = '__all__'
+
+
+class AdminTrainerWithdrawRequestReadSerializer(serializers.ModelSerializer):
+    """Read-only serializer for admin lists/details, includes trainer's card number."""
+    card_number = serializers.SerializerMethodField()
+
+    class Meta:
+        model = TrainerWithdrawRequest
+        fields = '__all__'
+
+    def get_card_number(self, obj):
+        user = obj.trainer.user if obj.trainer_id else None
+        return user.card_number if user else None
 
 
 class AdminWithdrawUpdateSerializer(serializers.ModelSerializer):
@@ -414,7 +458,7 @@ class AdminWithdrawUpdateSerializer(serializers.ModelSerializer):
         if request is None:
             raise serializers.ValidationError("Request context is missing")
 
-        if not request.user.is_staff:
+        if not is_platform_admin(request.user):
             raise serializers.ValidationError("Only admin can update withdraw requests")
 
         new_status = attrs.get('status')
@@ -434,7 +478,7 @@ class AdminTrainerWithdrawUpdateSerializer(serializers.ModelSerializer):
         if request is None:
             raise serializers.ValidationError("Request context is missing")
 
-        if not request.user.is_staff:
+        if not is_platform_admin(request.user):
             raise serializers.ValidationError("Only admin can update trainer withdraw requests")
 
         new_status = attrs.get('status')
@@ -442,30 +486,6 @@ class AdminTrainerWithdrawUpdateSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError({"status": "Invalid status"})
 
         return attrs
-        if request is None:
-            raise serializers.ValidationError("Request context is missing")
-
-        user = request.user
-        # ✅ اصلاح شرط بررسی نقش ادمین
-        if not user.is_authenticated or not (user.is_staff or user.is_superuser):
-            raise serializers.ValidationError("Only admin can update withdraw requests")
-
-        new_status = attrs.get('status')
-        if new_status not in ['approved', 'rejected', 'completed']:
-            raise serializers.ValidationError({"status": "Invalid status transition"})
-
-        instance = self.instance
-        if instance is None:
-            raise serializers.ValidationError("Instance is required")
-
-        if instance.status == 'pending' and new_status in ['approved', 'rejected']:
-            return attrs
-        if instance.status == 'approved' and new_status in ['completed', 'rejected']:
-            return attrs
-        if instance.status in ['rejected', 'completed']:
-            raise serializers.ValidationError("Withdraw request already finalized")
-
-        raise serializers.ValidationError({"status": "Not allowed transition"})
 
     def update(self, instance, validated_data):
         user = self.context['request'].user

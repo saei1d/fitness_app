@@ -1,3 +1,4 @@
+from accounts.permissions import is_platform_admin
 from rest_framework import serializers
 from .models import DiscountCode, DiscountUsage, PackageDiscount, TrainerDiscountCode, TrainerDiscountUsage, TrainerPackageDiscount
 
@@ -86,7 +87,7 @@ class DiscountCodeSerializer(serializers.ModelSerializer):
                 packages = list(self.instance.packages.all())
 
         # Owners constraints
-        if not user.is_staff and getattr(user, 'role', None) == 'owner':
+        if not is_platform_admin(user) and getattr(user, 'role', None) == 'owner':
             # Owner can only work with their own gym
             if gym is None:
                 raise serializers.ValidationError("مالک باشگاه باید برای باشگاه خود کد بسازد")
@@ -98,6 +99,16 @@ class DiscountCodeSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError("مالک باشگاه فقط می‌تواند کد با منبع 'club' ایجاد/ویرایش کند")
             
             # All packages must belong to the gym
+            for pkg in packages:
+                if pkg.gym != gym:
+                    raise serializers.ValidationError("تمام پکیج‌ها باید متعلق به باشگاه انتخاب‌شده باشند")
+
+        elif not is_platform_admin(user) and getattr(user, 'role', None) == 'operator':
+            from gyms.models import GymOperator
+            if gym is None or not GymOperator.objects.filter(gym=gym, operator=user, is_active=True).exists():
+                raise serializers.ValidationError("شما فقط می‌توانید برای باشگاه خودتان کد تخفیف بسازید/ویرایش کنید")
+            if source_type != 'club':
+                raise serializers.ValidationError("متصدی فقط می‌تواند کد با منبع باشگاه ایجاد/ویرایش کند")
             for pkg in packages:
                 if pkg.gym != gym:
                     raise serializers.ValidationError("تمام پکیج‌ها باید متعلق به باشگاه انتخاب‌شده باشند")
@@ -191,7 +202,7 @@ class PackageDiscountSerializer(serializers.ModelSerializer):
                 source_type = self.instance.source_type
 
         # Owners constraints
-        if not user.is_staff and getattr(user, 'role', None) == 'owner':
+        if not is_platform_admin(user) and getattr(user, 'role', None) == 'owner':
             # Owner can only work with packages from their own gym
             if package.gym.owner != user:
                 raise serializers.ValidationError("شما فقط می‌توانید برای پکیج‌های باشگاه خودتان تخفیف بسازید/ویرایش کنید")
@@ -199,6 +210,13 @@ class PackageDiscountSerializer(serializers.ModelSerializer):
             # Owner can only use club source
             if source_type != 'club':
                 raise serializers.ValidationError("مالک باشگاه فقط می‌تواند تخفیف با منبع 'club' ایجاد/ویرایش کند")
+
+        elif not is_platform_admin(user) and getattr(user, 'role', None) == 'operator':
+            from gyms.models import GymOperator
+            if package is None or not GymOperator.objects.filter(gym=package.gym, operator=user, is_active=True).exists():
+                raise serializers.ValidationError("شما فقط می‌توانید برای پکیج‌های باشگاه خودتان تخفیف بسازید/ویرایش کنید")
+            if source_type != 'club':
+                raise serializers.ValidationError("متصدی فقط می‌تواند تخفیف با منبع باشگاه ایجاد/ویرایش کند")
 
         return attrs
 
@@ -287,7 +305,7 @@ class TrainerDiscountCodeSerializer(serializers.ModelSerializer):
                 packages = list(self.instance.packages.all())
 
         # Trainers constraints
-        if not user.is_staff and getattr(user, 'role', None) == 'trainer':
+        if not is_platform_admin(user) and getattr(user, 'role', None) == 'trainer':
             # Trainer can only work with their own packages
             from trainers.models import Trainer
             try:
@@ -397,7 +415,7 @@ class TrainerPackageDiscountSerializer(serializers.ModelSerializer):
                 source_type = self.instance.source_type
 
         # Trainers constraints
-        if not user.is_staff and getattr(user, 'role', None) == 'trainer':
+        if not is_platform_admin(user) and getattr(user, 'role', None) == 'trainer':
             # Trainer can only work with their own packages
             from trainers.models import Trainer
             try:
