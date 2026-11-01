@@ -23,27 +23,38 @@ from finance.serializers import PurchaseSerializer
 logger = logging.getLogger(__name__)
 
 
+# Melipayamak shared/pattern template IDs for successful purchases.
+SMS_BODY_ID_GYM_PURCHASE = '487687'
+SMS_BODY_ID_TRAINER_PURCHASE = '569259'
+
+# Buyer code validity window; must match the number rendered in the SMS template.
+PURCHASE_CODE_EXPIRY_DAYS = 7
+
+
 def send_purchase_notification(phone, gym_or_trainer, package_title, buyer_code, is_trainer=False):
     if not settings.MELIPAYAMAK_API_KEY:
         logger.error("MELIPAYAMAK_API_KEY is not configured")
         return {"error": "SMS API key not configured"}
-    
+
     url = f"https://console.melipayamak.com/api/send/shared/{settings.MELIPAYAMAK_API_KEY}"
 
+    body_id = SMS_BODY_ID_TRAINER_PURCHASE if is_trainer else SMS_BODY_ID_GYM_PURCHASE
+
     payload = {
-        'bodyId': '487687',
+        'bodyId': body_id,
         'to': phone,
-        'args': [gym_or_trainer or '', package_title or '', '7', buyer_code or '']
+        # {0} gym/trainer name, {1} package title, {2} code validity days, {3} buyer code
+        'args': [gym_or_trainer or '', package_title or '', str(PURCHASE_CODE_EXPIRY_DAYS), buyer_code or '']
     }
 
     try:
         response = requests.post(url, json=payload, timeout=10)
         response.raise_for_status()
         result = response.json()
-        logger.info(f"SMS sent successfully to {phone}: {result}")
+        logger.info(f"SMS sent successfully to {phone} (bodyId={body_id}): {result}")
         return result
     except Exception as e:
-        logger.error(f"Failed to send SMS to {phone}: {str(e)}")
+        logger.error(f"Failed to send SMS to {phone} (bodyId={body_id}): {str(e)}")
         return {"error": str(e)}
 
 
@@ -493,9 +504,8 @@ class VerifyPurchaseView(APIView):
                     elif not is_admin:
                         return Response({'error': 'Only gym owner, operator, or admin can verify gym purchases'}, status=403)
 
-                CODE_EXPIRY_DAYS = 7
                 if not is_admin:
-                    code_expire_date = purchase.purchase_date + timedelta(days=CODE_EXPIRY_DAYS)
+                    code_expire_date = purchase.purchase_date + timedelta(days=PURCHASE_CODE_EXPIRY_DAYS)
                     if timezone.now() > code_expire_date:
                         return Response({
                             'error': 'کد خرید شما منقضی شده است. لطفاً با پشتیبانی تماس بگیرید.',

@@ -17,3 +17,5 @@ class UsersList(APIView):
         users = User.objects.all()
         serializer = UserDetailSerializer(users, many=True)
         return Response(serializer.data)
+
+#test
